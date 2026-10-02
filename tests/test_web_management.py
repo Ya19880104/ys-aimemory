@@ -20,12 +20,16 @@ def managed(tmp_path):
     for project in ['visible','private']:hub.call('create_project',{'project_id':project},admin)
     password_hash=hash_password('fixture-management-password')
     now=[1000]
+    bootstrap_app=FastAPI()
+    bootstrap=install_web(bootstrap_app,hub,WebConfig('fixture',password_hash,('visible','new'),False,300,'admin'),clock=lambda:now[0])
+    bootstrap.start_session('fixture-admin-session','fixture-csrf','',bootstrap.users.authenticate('fixture','fixture-management-password'))
+    bootstrap.users.create(bootstrap.session('fixture-admin-session'),'fixture-reader','Reader','fixture-management-password','read_only',('visible','new'))
     def client_for(role):
         app=FastAPI()
         install_web(app,hub,WebConfig('fixture',password_hash,('visible','new'),False,300,role),clock=lambda:now[0])
         client=TestClient(app)
         token=re.search('name="csrf" value="([^"]+)"',client.get('/login').text)[1]
-        client.post('/login',data={'csrf':token,'username':'fixture','password':'fixture-management-password'})
+        client.post('/login',data={'csrf':token,'username':'fixture-reader' if role=='read_only' else 'fixture','password':'fixture-management-password'})
         return client
     yield client_for,hub,admin,now
     store.engine.dispose()
@@ -67,7 +71,7 @@ def test_create_project_source_task_and_double_submission(managed):
 def test_scope_role_csrf_and_unavailable_actions(managed):
     make,hub,_,_=managed; reader=make('read_only')
     assert reader.post('/ui/action/project',data={'project_id':'new','role':'admin'}).status_code==403
-    assert '此帳號為唯讀' in reader.get('/ui/manage?project=visible').text
+    assert '<form method="post" action="/ui/action/source">' not in reader.get('/ui/manage?project=visible').text
     for route in ['manage','search','task','inbox']:
         assert reader.get('/ui/'+route+'?project=private').status_code==403
     admin=make('admin')

@@ -7,8 +7,8 @@ import secrets
 
 
 def hash_password(password: str) -> str:
-    if len(password) < 12:
-        raise ValueError('Use a password of at least 12 characters')
+    if not 12 <= len(password) <= 1024:
+        raise ValueError('Use a password of 12–1024 characters')
     salt = secrets.token_bytes(16)
     digest = hashlib.scrypt(password.encode(), salt=salt, n=32768, r=8, p=1, maxmem=64 * 1024 * 1024)
     return 'scrypt$32768$8$1$' + base64.urlsafe_b64encode(salt).decode() + '$' + base64.urlsafe_b64encode(digest).decode()

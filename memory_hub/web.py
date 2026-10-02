@@ -1,7 +1,7 @@
 """Role-scoped human dashboard and management. Browser sessions never become MCP credentials.
 
-Opaque sessions, login throttles and one-use forms are persisted in the database
-and shared by application workers. Configuration changes invalidate sessions.
+Opaque sessions, login throttles, human accounts and one-use forms are persisted
+in the database. Account edits and runtime security-policy changes revoke sessions.
 """
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -15,9 +15,10 @@ from urllib.parse import parse_qs
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import select
 from .store import projects, events
-from .web_password import valid_hash, verify_password
+from .web_password import valid_hash
 
 COOKIE = 'hub_web_session'
 LOGIN_COOKIE = 'hub_web_login'
@@ -42,10 +43,6 @@ class WebConfig:
             except (ValueError, TypeError, AttributeError):
                 raise ValueError('HUB_WEB_OWNER_ID must be a stable UUID when MCP management is enabled') from None
 
-    def project_scope(self, hub):
-        owned = hub.credentials.owned_projects(self.owner_id) if self.mcp_enabled and self.role == 'admin' else ()
-        return tuple(dict.fromkeys((*self.projects, *owned)))
-
     @classmethod
     def from_env(cls):
         fields = [os.getenv('HUB_WEB_USERNAME', ''), os.getenv('HUB_WEB_PASSWORD_HASH', ''), os.getenv('HUB_WEB_PROJECTS', '')]
@@ -68,6 +65,19 @@ class WebConfig:
         return cls(*fields[:2], scope, secure == 'true', ttl, os.getenv('HUB_WEB_ROLE', 'read_only'),
                    enabled == 'true', os.getenv('HUB_WEB_OWNER_ID', ''))
 
+    @classmethod
+    def policy_from_env(cls):
+        """Runtime settings after bootstrap; no environment identity is needed."""
+        secure = os.getenv('HUB_WEB_COOKIE_SECURE', 'true').lower()
+        enabled = os.getenv('HUB_WEB_MCP_ENABLED', 'false').lower()
+        ttl = int(os.getenv('HUB_WEB_SESSION_TTL', '3600'))
+        if secure not in ('true', 'false') or enabled not in ('true', 'false') or not 300 <= ttl <= 28800:
+            raise RuntimeError('Invalid browser cookie, session lifetime or MCP feature setting')
+        # owner_id validation belongs to the credential-bearing bootstrap only.
+        policy = cls('', '', (), secure == 'true', ttl)
+        policy.mcp_enabled = enabled == 'true'
+        return policy
+
 
 def e(value):
     return escape(str(value), quote=True)
@@ -82,11 +92,12 @@ CSS = '''
 '''
 
 
-def page(body, status=200, script=''):
+def page(body, status=200, script='', *, css='', connect=False):
     nonce = secrets.token_urlsafe(18)
     extra = '<script nonce="'+nonce+'">'+script+'</script>' if script else ''
     script_policy = f"; script-src 'nonce-{nonce}'" if script else ''
-    return HTMLResponse('<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ys · 專案記憶中樞</title><style nonce="'+nonce+'">'+CSS+'</style></head><body>'+body+extra+'</body></html>', status_code=status, headers={'Cache-Control':'no-store', 'Pragma':'no-cache', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY', 'Referrer-Policy':'no-referrer', 'Content-Security-Policy':f"default-src 'none'; style-src 'nonce-{nonce}'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"+script_policy})
+    connect_policy = "; connect-src 'self'" if connect else ''
+    return HTMLResponse('<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ys · 專案記憶中樞</title><style nonce="'+nonce+'">'+CSS+css+'</style></head><body>'+body+extra+'</body></html>', status_code=status, headers={'Cache-Control':'no-store', 'Pragma':'no-cache', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY', 'Referrer-Policy':'no-referrer', 'Content-Security-Policy':f"default-src 'none'; style-src 'nonce-{nonce}'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"+script_policy+connect_policy})
 
 
 def badge(text, kind=''):
@@ -124,7 +135,7 @@ def render_recovery(record):
             +e(target)+'</div><p class="muted">先前租約與脈絡包已失效，接手需重新取得脈絡並確認。</p></div>')
 
 
-def render_dashboard(config, selected, states, audit, principals, csrf, now):
+def render_dashboard(config, selected, states, audit, principals, csrf, now, *, identity=None):
     state = states.get(selected, {})
     tasks = state.get('tasks', {})
     sources = state.get('sources', {})
@@ -185,18 +196,20 @@ def render_dashboard(config, selected, states, audit, principals, csrf, now):
     for row in reversed(audit[-30:]):
         body += '<div class="row"><div class="row-title"><strong>'+e(row['operation'])+'</strong><small>'+e(stamp(row['at']))+'</small></div><div class="meta">#'+e(row['sequence'])+' · '+e(row['worker_id'])+' · '+e(row.get('task_id') or '專案層級')+' · r'+e(row['context_revision'])+'</div></div>'
     if not audit: body += '<p class="muted">尚無活動紀錄</p>'
-    body += '</div></section><p class="foot">唯讀檢視 · '+e(config.username)+' · '+e(stamp(now))+'<br>重新整理取得最新狀態；此頁不取代工作前的 validate_task_context。</p></main></div>'
-    if config.role == 'admin':
+    body += '</div></section><p class="foot">唯讀檢視 · '+e(identity.display_name if identity else config.username)+' · '+e(stamp(now))+'<br>重新整理取得最新狀態；此頁不取代工作前的 validate_task_context。</p></main></div>'
+    if (identity.role if identity else config.role) == 'admin':
         body=body.replace('此介面僅供檢視<br>寫入需經授權 API / MCP','管理員檢視<br>管理操作另有確認表單').replace('唯讀檢視 · ','管理員檢視 · ')
     return body
 
 
 def install_web(app, hub, config=None, clock=time.time):
-    config = config or WebConfig.from_env()
+    config = config or WebConfig.from_env() or WebConfig.policy_from_env()
     from .web_auth import WebAuthStore
     auth=WebAuthStore(hub.store, config, clock)
     def session(request):
-        return auth.session(request.cookies.get(COOKIE,'')) if config else None
+        return auth.session(request.cookies.get(COOKIE,'')) if auth.enabled else None
+    app.state.web_auth = auth
+    app.state.web_session = session
     def redirect(path):
         return RedirectResponse(path, status_code=303, headers={'Cache-Control':'no-store'})
     def login_form(message='', status=200):
@@ -222,14 +235,14 @@ def install_web(app, hub, config=None, clock=time.time):
 
     @app.get('/login')
     def login_get(request: Request):
-        if config is None: return page('<main><h1>網頁登入尚未啟用</h1><p>請管理員設定使用者名稱、密碼雜湊與專案範圍。</p></main>',503)
+        if not auth.enabled: return page('<main><h1>網頁登入尚未啟用</h1><p>請管理員設定使用者名稱、密碼雜湊與專案範圍。</p></main>',503)
         if session(request): return redirect('/ui')
         return login_form()
 
     @app.post('/login')
     async def login_post(request: Request):
-        if config is None: return page('<main>網頁登入尚未啟用</main>',503)
-        values=await form(request)
+        if not auth.enabled: return page('<main>網頁登入尚未啟用</main>',503)
+        values=await form(request,max_bytes=16384)
         pre=auth.consume_login(request.cookies.get(LOGIN_COOKIE,''))
         if not pre or not hmac.compare_digest(values.get('csrf','').encode(),pre['csrf'].encode()):
             return login_form('登入頁已過期，請重新輸入。',403)
@@ -238,12 +251,10 @@ def install_web(app, hub, config=None, clock=time.time):
             response=login_form('登入嘗試過於頻繁，請五分鐘後再試。',429)
             response.headers['Retry-After']='300'
             return response
-        # Always calculate the expensive hash, including for an unknown username.
-        verified=verify_password(values.get('password',''),config.password_hash)
-        correct_user=hmac.compare_digest(values.get('username','').encode(),config.username.encode())
-        if not verified or not correct_user: return login_form('使用者名稱或密碼不正確。',401)
+        identity = await run_in_threadpool(auth.users.authenticate, values.get('username',''), values.get('password',''))
+        if identity is None: return login_form('使用者名稱或密碼不正確。',401)
         token,csrf=secrets.token_urlsafe(32),secrets.token_urlsafe(32)
-        if not auth.start_session(token,csrf,request.cookies.get(COOKIE,'')):
+        if not auth.start_session(token,csrf,request.cookies.get(COOKIE,''),identity):
             return page('<main>登入設定已更新，請重新載入。</main>',503)
         response=redirect('/ui')
         response.set_cookie(COOKIE,token,httponly=True,secure=config.secure,samesite='strict',max_age=config.ttl,path='/')
@@ -264,17 +275,19 @@ def install_web(app, hub, config=None, clock=time.time):
     def dashboard(request: Request):
         current=session(request)
         if not current: return redirect('/login')
-        scope=config.project_scope(hub)
+        identity=auth.principal(current)
+        if identity is None: return redirect('/login')
+        scope=identity.projects
         with hub.store.engine.connect() as conn:
             states={row.id:row.state for row in conn.execute(select(projects).where(projects.c.id.in_(scope))).all()}
             selected=request.query_params.get('project') or next(iter(sorted(states)), '')
             if selected and selected not in states: return page('<main><h1>找不到可讀取的專案</h1><a href="/ui">返回總覽</a></main>',404)
             records=conn.execute(select(events.c.sequence,events.c.event).where(events.c.project_id==selected).order_by(events.c.sequence.desc()).limit(200)).all()
             audit=[{'sequence':row.sequence,**row.event} for row in reversed(records)]
-        output=render_dashboard(config,selected,states,audit,hub.principals,current['csrf'],clock())
+        output=render_dashboard(config,selected,states,audit,hub.principals,current['csrf'],clock(),identity=identity)
         from urllib.parse import urlencode
         links='<div class="panel"><a href="/ui/manage?'+urlencode({'project':selected})+'">專案管理</a> · <a href="/ui/search?'+urlencode({'project':selected})+'">搜尋記憶</a> · <a href="/ui/inbox?'+urlencode({'project':selected})+'">任務收件匣</a></div>'
-        links=links.replace('</div>', ' · <a href="/help">操作教學與 CA 下載</a>'+(' · <a href="/ui/mcp">MCP 產生器</a>' if config.mcp_enabled and config.role=='admin' else '')+'</div>')
+        links=links.replace('</div>', ' · <a href="/ui/chat">共享 Chat</a> · <a href="/ui/account/password">變更密碼</a> · <a href="/help">操作教學與 CA 下載</a>'+(' · <a href="/ui/mcp">MCP 產生器</a>' if config.mcp_enabled and identity.role=='admin' else '')+(' · <a href="/ui/users">使用者管理</a>' if identity.can_manage_users else '')+'</div>')
         output=output.replace('<div class="stats">', links+'<div class="stats">',1)
         return page(output)
 
@@ -282,3 +295,6 @@ def install_web(app, hub, config=None, clock=time.time):
     install_management(app, hub, config, session, form, redirect, auth, clock)
     from .web_mcp import install_mcp_management
     install_mcp_management(app, hub, config, session, form, redirect, auth, clock)
+    from .web_accounts import install_accounts
+    install_accounts(app, auth, session, form, redirect)
+    return auth

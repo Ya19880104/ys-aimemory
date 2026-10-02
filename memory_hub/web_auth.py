@@ -1,10 +1,9 @@
 """Database-backed opaque sessions, one-use forms and cross-instance throttles.
 
-No bearer token, password or raw browser token is persisted. All auth state
+No bearer token, plaintext password or raw browser token is persisted. All auth state
 transitions share one small DB lock; correctness precedes auth throughput.
 """
 from contextlib import contextmanager
-from dataclasses import asdict
 import hashlib
 import json
 from sqlalchemy import select, func
@@ -17,10 +16,17 @@ class WebAuthStore:
     def __init__(self, store, config, clock):
         self.store, self.config, self.clock = store, config, clock
         self.entries, self.guard = WEB_TABLES['entries'], WEB_TABLES['lock']
-        encoded=json.dumps(asdict(config),sort_keys=True,separators=(',',':')) if config else 'disabled'
+        # Identity is persisted separately. A stale environment must never undo
+        # online edits or revoke sessions merely by restarting another worker.
+        encoded=json.dumps({'format': 2, 'secure': config.secure, 'ttl': config.ttl,
+                            'mcp_enabled': config.mcp_enabled},sort_keys=True,separators=(',',':'))
         self.fingerprint=hashlib.sha256(encoded.encode()).hexdigest()
         self.config_key=self.key('web-auth-active-configuration')
+        from .web_users import WebUsers
+        self.users = WebUsers(self)
         with self.transaction() as conn:
+            self.users.bootstrap(conn, config)
+            self.enabled = self.users.configured(conn)
             previous=conn.execute(select(self.entries.c.fingerprint).where(self.entries.c.token_hash==self.config_key)).scalar_one_or_none()
             if previous!=self.fingerprint:
                 conn.execute(self.entries.delete().where(self.entries.c.kind.in_(['session','login','nonce','config'])))
@@ -54,6 +60,10 @@ class WebAuthStore:
         if not self._active(conn):return None
         row=conn.execute(select(self.entries).where(self.entries.c.token_hash==key,self.entries.c.kind==kind)).mappings().one_or_none()
         if row is None or row['fingerprint']!=self.fingerprint: return None
+        if kind == 'session':
+            account = self.users._load(conn, row['payload'].get('user_id', ''))
+            if not account or not account['enabled'] or account['security_version'] != row['payload'].get('security_version'):
+                return None
         return {**row['payload'],'expires':row['expires'],'_key':key}
 
     def _put(self,conn,key,kind,payload,expires,cap=1000):
@@ -65,6 +75,13 @@ class WebAuthStore:
 
     def session(self,token):
         with self.transaction() as conn: return self._get(conn,self.key(token),'session')
+
+    def principal(self,current):
+        """Return current DB permissions only for a still-valid opaque session."""
+        with self.transaction() as conn:
+            record = self._get(conn, (current or {}).get('_key', ''), 'session')
+            if record is None: return None
+            return self.users._identity(conn, self.users._load(conn, record['user_id']))
 
     def start_login(self,token,csrf):
         with self.transaction() as conn:
@@ -92,11 +109,15 @@ class WebAuthStore:
                 self._put(conn,key,'throttle',{'times':times+[now]},now+300,cap=102)
             return True
 
-    def start_session(self,token,csrf,previous):
+    def start_session(self,token,csrf,previous,identity):
         with self.transaction() as conn:
             if not self._active(conn):return False
+            account = self.users._load(conn, identity.user_id) if identity else None
+            if not account or not account['enabled'] or account['security_version'] != identity.security_version:
+                return False
             conn.execute(self.entries.delete().where(self.entries.c.token_hash==self.key(previous),self.entries.c.kind=='session'))
-            self._put(conn,self.key(token),'session',{'csrf':csrf},self.clock()+self.config.ttl)
+            self._put(conn,self.key(token),'session',{'csrf':csrf, 'user_id': identity.user_id,
+                'security_version': identity.security_version},self.clock()+self.config.ttl)
             return True
 
     def logout(self,token):
