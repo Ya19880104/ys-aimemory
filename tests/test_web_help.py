@@ -48,7 +48,10 @@ def test_help_without_ca_is_public_and_never_uses_request_host(tmp_path, monkeyp
         assert "https://192.0.2.10/mcp" in response.text
         assert "attacker.invalid" not in response.text
         assert "CA 尚未提供" in response.text
-        assert "單一網頁帳號" in response.text
+        assert "線上帳號管理" in response.text
+        assert 'id="sessions"' in response.text
+        assert 'id="efficient"' in response.text
+        assert 'id="accounts"' in response.text
         assert "私有 CA" in response.text
         assert "可信通道" in response.text
         assert "只顯示一次" in response.text
@@ -121,7 +124,7 @@ def test_help_bundle_download_uses_configured_https_origin(tmp_path, monkeypatch
         response = browser.get("/help", headers={"Host": "attacker.invalid", "X-Forwarded-Proto": "http"})
         parsed = Downloads()
         parsed.feed(response.text)
-        assert parsed.links.get("stdio-bundle-download") == base + "/downloads/ys-memory-stdio-1.0.0.zip"
+        assert parsed.links.get("stdio-bundle-download") == base + "/downloads/ys-memory-stdio-1.1.0.zip"
         path.write_bytes(b"not a public CA")
         unavailable = Downloads()
         response = browser.get("/help")

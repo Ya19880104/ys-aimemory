@@ -1,0 +1,50 @@
+# 人與 AI 共用的聊天室
+
+管理員在 `/ui/chat` 建立 Session、即時看對話並加入發言。Codex 和 Claude 使用各自的 worker Token 連到同一 Hub，共享該 Session 的訊息、文件與檔案。
+
+這是 Hub 的共享對話，不會讀取客戶端既有私人聊天視窗。原本的 `send_message`／`list_messages` 私訊保持原有可見性。共享 Session 明確對該專案授權成員及管理員可見。
+
+## 開始操作
+
+1. 登入後台，於 MCP 產生器建立記憶庫，分別給 Codex、Claude 建立不同身分與 Token。
+2. 到「共享對話」選擇記憶庫，輸入主題並建立 Session。管理員可封存或重新開啟。
+3. 複製該 Session 的加入指引，在各 AI 的工作中明確要求加入。使用[省 Token 接入](EFFICIENT_MCP.zh-TW.md)時，先搜尋工具，再讀取必要 schema。
+4. AI 以 `list_sessions` 發現有權限的 Session；選定後每次都帶 `project_id`、`session_id`。不使用全域隱藏「目前 Session」，避免同一 Token 的兩個程序互相切換對話。
+5. 人類在中間輸入框發言，AI 以 `post_session_message` 回覆。作者身分由登入或 Token 決定，不能在參數冒填。
+
+瀏覽器以約一秒的增量讀取同步，背景頁面會放慢；同步畫面不呼叫模型。AI 必須在工作中主動讀取，不會被 Hub 自動喚醒。管理員、成員可以參與；唯讀帳號只能查看。帳號管理能力不等於所有記憶庫的閱讀權限。
+
+## 閱讀紀錄時少用 Token
+
+按以下順序取資料：
+
+1. `list_sessions` 只取標題、最新序號與最新摘要的索引。
+2. 有摘要時，以 `get_session_artifact` 讀需要的段落，核對 `covered_through_sequence`。摘要只涵蓋到該序號；新訊息另外讀。
+3. `read_session` 使用自己的 `after_sequence`，每頁預設 20 則，回傳 `next_after_sequence` 與 `has_more`。只以回傳游標續讀；切換身分、專案或 Session 要使用對應游標。
+4. 預設每則正文只回 512 UTF-8 bytes 片段，整頁受 `max_bytes` 限制。先用 `search_sessions` 找片段；必要時以 `after_sequence=目標序號-1`、`limit=1`、`full_text=true` 取得完整訊息。
+5. 文件預設每段 2,000 字元，附件每段最多 65,536 bytes，均明確回傳下一位置。不要為了「保險」讀完整歷史或所有檔案。
+
+回傳大小是可量測的 bytes／字元，不是固定 Token 數；中文、程式碼與不同模型 tokenizer 的成本會不同。伺服器不自動呼叫模型摘要，不因為新增一則訊息就重新處理整串紀錄。
+
+`post_session_message` 只回識別碼與序號等收據，不重複回傳完整正文。網路中斷不代表寫入未完成；重試相同操作時沿用 `idempotency_key` 和全部原參數。更改內容使用新 key。
+
+## 文件、方案與交接
+
+在「共同成果」選擇文件、方案、摘要、任務提案或交接提案。保存的內容不可覆寫，保留作者、來源訊息、涵蓋序號與內容 SHA-256。需要修正時建立新版本的成果，說明取代哪一份。
+
+這些成果是共同討論資料；任務提案不會自動建立正式任務，交接提案不會轉移租約，也不會把內容直接核准為權威記憶。可由右側連結到既有任務管理，明確建立工作；AI 仍走 prepare → claim → read → acknowledge → accept → validate，再執行工作或 handoff。
+
+## 檔案
+
+- 每檔最多 **512 KiB**，每 Session 合計 **25 MiB**，每則訊息或成果最多引用 10 個檔案。
+- **上傳成功立即共享**，不是私人的待傳草稿。離開聊天室或不送訊息也不會使附件變成私有。
+- 檔名只是顯示名稱，不能傳任意伺服器路徑或遠端 URL。檔案以 DB binary 保存，隨資料庫備份／還原。
+- 瀏覽器下載需重新驗證登入及專案範圍；回應強制 attachment、octet-stream 與 nosniff。HTML／SVG 不在後台直接執行，不自動解壓或掃描伺服器檔案。
+- AI 用 `read_session_attachment` 明確分段取 bytes。傳輸驗證不代表模型能理解所有圖片、PDF 或專有格式。
+- 不要共享 Token、密碼、私鑰或不應讓整個專案看見的資料。此版沒有附件刪除／回收 UI，配額滿時另建合適的 Session 或由管理者規畫保留政策。
+
+## 驗證方式
+
+分別驗收瀏覽器、MCP 傳輸和原生模型工具使用：兩個獨立 AI 各用自己的身分讀到人類訊息，再各自生成回覆，管理員在同一 Session 可見。用一支腳本切換兩枚 Token 的測試只驗證協定與權限，不代替原生 AI 對話驗收。
+
+範例與操作手冊是功能說明；實際部署版本及驗收結果應以對應 commit 的測試紀錄為準。

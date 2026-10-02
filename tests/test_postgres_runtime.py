@@ -74,6 +74,18 @@ def test_logical_backup_restore_preserves_hub_state_and_audit(postgres_url, tmp_
             conn.execute(text(f'CREATE SCHEMA "{schema}"'))
         source_store = Store(scoped_url.render_as_string(hide_password=False))
         hub = Hub(source_store, clock=lambda: 1000.0, principals=principals)
+        from memory_hub.web import WebConfig
+        from memory_hub.web_auth import WebAuthStore
+        from memory_hub.web_password import hash_password
+        config = WebConfig('restore-admin', hash_password('synthetic-restore-password'),
+                           ('backup-proof',), False, 300, 'admin')
+        auth = WebAuthStore(source_store, config, lambda: 1000.0)
+        identity = auth.users.authenticate('restore-admin', 'synthetic-restore-password')
+        assert identity is not None
+        assert auth.start_session('synthetic-restore-cookie', 'synthetic-csrf', '', identity)
+        current = auth.session('synthetic-restore-cookie')
+        member_id = auth.users.create(current, 'restore-member', '還原成員',
+            'synthetic-member-password', 'member', ('backup-proof',), False)
         hub.call("create_project", {"project_id": "backup-proof"}, admin)
         hub.call("register_source", {
             "project_id": "backup-proof", "source_id": "backup-spec",
@@ -155,12 +167,21 @@ def test_logical_backup_restore_preserves_hub_state_and_audit(postgres_url, tmp_
         assert "projects" in listing and "audit_events" in listing
         assert all(name in listing for name in ('collab_sessions','collab_events','collab_artifacts',
                                                 'collab_attachments','collab_requests'))
+        assert all(name in listing for name in ('web_users','web_user_projects',
+                                                'web_account_bootstrap','web_user_audit'))
         run("createdb", target)
         target_created = True
         run("pg_restore", "--dbname", target, "--no-owner", "--no-acl",
             "--exit-on-error", "--single-transaction", data=archive.read_bytes())
         restored_url = scoped_url.set(database=target)
         restored_store = Store(restored_url.render_as_string(hide_password=False))
+        restored_auth = WebAuthStore(restored_store, config, lambda: 1000.0)
+        restored_member = restored_auth.users.authenticate('restore-member', 'synthetic-member-password')
+        assert restored_member.user_id == member_id
+        assert restored_member.projects == ('backup-proof',) and restored_member.role == 'member'
+        assert not restored_member.can_manage_users
+        restored_login = restored_auth.principal(restored_auth.session('synthetic-restore-cookie'))
+        assert restored_login.user_id == identity.user_id and restored_login.can_manage_users
         with restored_store.transaction("backup-proof") as (state, conn):
             assert state == before_state
             assert restored_store.read_audit(conn, "backup-proof") == before_audit
