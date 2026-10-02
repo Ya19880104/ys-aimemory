@@ -14,6 +14,7 @@ Repository：[Ya19880104/ys-aimemory](https://github.com/Ya19880104/ys-aimemory)
 - **回報問題與分支開發：** [Issues](https://github.com/Ya19880104/ys-aimemory/issues)、[貢獻方式](CONTRIBUTING.md)。
 - **人與 AI 共同討論：** [共享 Session、成果與附件](docs/SHARED_SESSIONS.zh-TW.md)，後台 `/ui/chat`。
 - **有需要才讀記憶：** [Codex／Claude 按需接入與省 Token](docs/EFFICIENT_MCP.zh-TW.md)，支援兩工具 compact adapter。
+- **確認模型真的連上：** [原生工具與共享對話驗收](docs/NATIVE_CLIENT_CHECK.zh-TW.md)，分辨 transport、SDK、工具核准與模型登入。
 
 公開庫不附部署環境、SSH 金鑰、帳密、worker token、TLS 私鑰、資料庫或現場驗收資料。`MANIFEST.sha256.json` 與 `TEST_REPORT.zh-TW.md` 保存原交付基線，不是目前所有新增檔案的 manifest 或本次 CI 成績；最新 CI 請查看對應 commit 的 [Actions](https://github.com/Ya19880104/ys-aimemory/actions)。
 
