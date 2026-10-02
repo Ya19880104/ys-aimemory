@@ -1,0 +1,83 @@
+name: ys-aimemory
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: memory_hub
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set an operator-provided database password in .env}
+      HUB_DB_PASSWORD: ${HUB_DB_PASSWORD:?Set a separate operator-provided application database password}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    networks: [backend]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    security_opt: [no-new-privileges:true]
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      HUB_DATABASE_URL: ${HUB_DATABASE_URL:?Set the PostgreSQL psycopg DSN in .env}
+      HUB_AUTH_TOKENS: ${HUB_AUTH_TOKENS:?Set operator-provided identity tokens in .env}
+      HUB_ALLOWED_HOSTS: ${HUB_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      HUB_ALLOW_SQLITE: "false"
+      HUB_WEB_USERNAME: ${HUB_WEB_USERNAME:-}
+      HUB_WEB_PASSWORD_HASH: ${HUB_WEB_PASSWORD_HASH:-}
+      HUB_WEB_PROJECTS: ${HUB_WEB_PROJECTS:-}
+      HUB_WEB_SESSION_TTL: ${HUB_WEB_SESSION_TTL:-3600}
+      HUB_WEB_ROLE: ${HUB_WEB_ROLE:-read_only}
+      HUB_WEB_COOKIE_SECURE: "true"
+      HUB_WEB_MCP_ENABLED: ${HUB_WEB_MCP_ENABLED:-false}
+      HUB_WEB_OWNER_ID: ${HUB_WEB_OWNER_ID:-}
+      HUB_PUBLIC_BASE_URL: ${HUB_PUBLIC_BASE_URL:-}
+      HUB_PUBLIC_CA_FILE: /app/public/ys-ai-memory-ca.crt
+    volumes:
+      - ./nginx/public:/app/public:ro
+    ports:
+      - "127.0.0.1:${HUB_HTTP_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [backend, frontend]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  nginx:
+    image: nginx:stable-alpine
+    profiles: [tls]
+    restart: unless-stopped
+    user: "101:101"
+    entrypoint: [nginx]
+    command: [-g, "daemon off;"]
+    ports:
+      - "${HUB_BIND_HOST:-${HUB_HTTPS_BIND_IP:-127.0.0.1}}:${HUB_BOOTSTRAP_PORT:-80}:8080"
+      - "${HUB_BIND_HOST:-${HUB_HTTPS_BIND_IP:-127.0.0.1}}:${HUB_HTTPS_PORT:-8443}:8443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks: [frontend]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+volumes:
+  postgres_data:
+networks:
+  backend:
+    internal: true
+  frontend:

@@ -1,0 +1,65 @@
+# 中央記憶與四 AI 協作架構
+
+## 目標與邊界
+
+這是獨立的 `ys-aimemory` 專案，集中保存經核准的專案知識、任務上下文、訊息、交接與稽核紀錄。它不是 PHP ERP，也不修改既有 ERP 或另建 AIOps 平台。四個訂閱帳號透過各自官方客戶端工作；Hub 不代理模型推論、不提取登入 cookie，也不把訂閱帳號轉成通用推論 API。
+
+部署目標：PVE 上的 Ubuntu VM 提供 Hub 與 PostgreSQL；Windows 專用電腦與 Windows VM 執行客戶端。10Gbps LAN 有利於傳檔，但不能消除推論延遲、帳號額度或同時修改造成的衝突。
+
+```text
+Windows 專用電腦                       Windows VM
+  agent-01 官方客戶端、獨立 clone        agent-03 官方客戶端、獨立 clone
+  agent-02 官方客戶端、獨立 clone        agent-04 官方客戶端、獨立 clone
+             \                          /
+              經授權的 TLS MCP / REST
+                     Ubuntu VM
+                  Hub → PostgreSQL
+```
+
+四個身分是固定識別碼，模型品牌與工作角色可以改變。不要把「Claude 永遠實作、Codex 永遠審查」寫死。每次任務安排 coordinator、implementer、reviewer、tester；輪替角色只改分工，不能取得 approver/admin 權限。
+
+## 三層資料與權威性
+
+1. 原始依據：管理者登錄的需求、架構、契約或測試快照，含 `source_id`、SHA-256、URI、commit；更新會推進專案 context revision，並保留歷史快照。URI 是追溯位置，不等於 Hub 會重新下載或驗證外站內容。
+2. 核准知識：經有權限的人核准的記憶變更。核准使專案 context revision 前進，舊封包失效。這代表政策上接受，不代表內容必然正確。
+3. 工作產物：checkpoint、交接摘要與待審 proposal。未核准提案不得當成權威要求；搜尋結果也不應自動成為新指令。
+
+另外，`send_message`／`list_messages` 保存 AI 明確收發的對話內容。訊息是不受信任資料，
+不會成為核准知識，不推進 project revision，也不修改 task lease／fence／交接接受狀態。
+每個身分只讀本人寄出或收到的訊息；同 project 的其他 worker 或 admin 均不取得旁觀權限。
+訊息正文不放入知識搜尋或 audit；audit 仍保存訊息 ID、寄收件人、thread 等操作中繼資料，
+依原本的 project audit 權限可見。操作流程見 [MCP 訊息](MCP_MESSAGES.zh-TW.md)。
+
+有衝突時以目前使用者明確授權及最新核准來源處理；記錄衝突並請負責人裁定，不靠多數 AI 投票偷偷改需求。文件中的指令是資料，不得藉它擴張工具權限或洩漏憑證。
+
+## 信任與強制邊界
+
+Hub 以憑證決定 worker 身分及可用 project，不信任工具參數中自報的角色。`worker`、`approver`、`admin` 是安全權限；coordinator 等是工作角色。四個正式 AI 原則上各配 worker；人類另用核准身分。提供的範例不包含可直接使用的秘密。
+
+伺服器檢查封包身分、專案修訂、讀取紀錄、租約、fence 與交接接受狀態；SQLite 僅供單機測試，正式多客戶端以 PostgreSQL 的交易序列化執行。租約過期或已交接的舊 fence 不可再寫入。
+
+重要限制：Hub 無法證明模型真的理解所讀內容，也無法阻止具有本機檔案權限的客戶端繞過 Hub 改檔。讀取收據只能證明內容被工具取回。Skill、AGENTS.md 和 CLAUDE.md 是協作約定，不是隔離機制。要把「禁止未授權寫檔／合併」變成強制限制，還需 OS ACL、獨立工作區、受保護分支、CI 與人類核准，這些不由本 Hub 自動部署。
+
+## 工作區隔離
+
+優先採四個獨立 clone，避免四個程序共用 index、工作樹與未提交檔案。同一台機器亦可採 Git worktree，但同一 branch 不能同時 checkout；worktree 共享 Git 物件與部分設定，並非安全隔離。Windows 主機與 VM 各自 clone，不透過 SMB 共用可寫 `.git`。
+
+每件工作記錄 repo、基底 commit、branch、工作目錄、允許路徑、驗收條件。對同一檔案有依賴時順序交接；不要同時寫再讓 AI 猜如何合併。審查與測試指定確切 commit，不能把不同 SHA 的成功結果混用。
+
+## 尚未包含
+
+- 四個訂閱帳號的自動登入、排程啟動及無人值守對話編排
+- 自動喚醒其他模型、無人值守對話編排，或取得其他帳號既有的歷史對話；本版僅保存明確經 MCP 工具傳送的訊息
+- Grok 接入保證；須先確認所用官方客戶端有支援且授權允許
+- 向量資料庫、任意網頁爬取、雲端公開入口、憑證自動發放
+- 自動匯入／分析客戶端完整聊天紀錄；訊息中仍不得放入密碼、API key 或登入 cookie
+
+先把小範圍、可稽核交接跑通，再依實際需求擴充。
+
+## 網頁與內建交接
+
+任務與指定接手者保存在服務端；四 AI 可透過工具查詢，不依賴某個聊天視窗。網頁以獨立帳號密碼登入，預設唯讀；部署者明確配置 admin 後，可在指定專案內管理來源、任務、提案與交接恢復。它不使用 worker token 當人類 session，所有寫入經 CSRF、一次性表單與共同服務層權限驗證；詳見 [網頁指南](WEB_DASHBOARD.zh-TW.md)。
+
+訊息表於 schema v4 加入。升級需先備份資料庫與部署配置，並在獨立還原庫驗證資料與 app
+角色權限。舊 v3 app 不能直接降版連到 v4 資料庫；回退需先協調停止寫入、保存目前資料，
+再以對應版本的備份與配置進行受控還原，不能覆寫現有 volume 來略過遷移邊界。

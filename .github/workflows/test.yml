@@ -1,0 +1,78 @@
+name: Test ys-aimemory
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-tested.txt && python -m pip install --no-deps .
+      - name: Run unit and web security tests
+        run: python -m pytest -q
+      - name: Check deployment script syntax
+        run: |
+          for script in scripts/*.sh; do
+            bash -n "$script" || exit 1
+          done
+          python -m py_compile scripts/validate-compose.py
+          python scripts/test-deployment.py
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: hub_test
+          POSTGRES_USER: hub_test
+          # Disposable CI fixture only, never a deployment credential.
+          POSTGRES_PASSWORD: ci-fixture-only-not-a-production-secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hub_test -d hub_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      HUB_TEST_DATABASE_URL: postgresql+psycopg://hub_test:ci-fixture-only-not-a-production-secret@127.0.0.1:5432/hub_test
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-tested.txt && python -m pip install --no-deps .
+      - name: Require a real PostgreSQL connection
+        run: |
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, text
+          engine = create_engine(os.environ['HUB_TEST_DATABASE_URL'])
+          with engine.connect() as connection:
+              assert connection.dialect.name == 'postgresql'
+              assert int(connection.scalar(text('SHOW server_version_num'))) >= 180000
+          engine.dispose()
+          PY
+      - name: Run PostgreSQL integration and backup tests
+        env:
+          HUB_TEST_RUNTIME: "1"
+          HUB_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
+          HUB_TEST_POSTGRES_MAJOR: "18"
+        run: python -m pytest -q
