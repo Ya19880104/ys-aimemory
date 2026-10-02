@@ -28,11 +28,11 @@ Files: new `memory_hub/session_store.py`, `memory_hub/session_service.py`, `memo
 
 Contract: `hub.sessions.call(name, arguments, actor)` for browser and MCP. `actor` has `kind`, `id`, `display_name`, `projects`, `role`; browser must derive it from current validated human account. MCP uses validated Principal. Methods include list/create/read/post/search Sessions, create/get artifacts, upload/read attachments, archive/reopen. Explicit project/session IDs on every operation except scoped discovery. Return stable event sequence, next cursor and has_more. List/search omit full bodies; reads default 20 events with bounded bytes and explicit full option. Store source references and summary coverage as immutable artifacts.
 
-- [ ] Add failing tests for real A/B/human conversation, scope/actor isolation, old private-message privacy.
-- [ ] Implement transactional sequence/idempotency/quota with project lock and separate event tables.
-- [ ] Add attachment hash/chunk/pagination/rollback and exact-limit tests.
-- [ ] Verify SQLite and integrate additive schema version and backup coverage.
-- [ ] Commit isolated deliverable; independent review before integration.
+- [x] Add failing tests for real A/B/human conversation, scope/actor isolation, old private-message privacy.
+- [x] Implement transactional sequence/idempotency/quota with project lock and separate event tables.
+- [x] Add attachment hash/chunk/pagination/rollback and exact-limit tests.
+- [x] Verify SQLite and integrate additive schema version and backup coverage.
+- [x] Commit isolated deliverable; independent review before integration.
 
 ## 2. Database human accounts
 
@@ -42,26 +42,26 @@ Files: new `memory_hub/web_users.py`, `memory_hub/web_accounts.py`; modify `web.
 
 Contract: `auth.principal(current_session)` returns live human identity (`user_id`, username/display_name, role, projects, can_manage_users, security_version); route code must stop relying on global config scope/role. Initial configured account imports once with stable owner UUID and explicit grants including currently owned projects. Future restarts must not overwrite online changes. New project creation grants creator scope transactionally. Root session UI consumes this contract.
 
-- [ ] Write failing bootstrap/restart/version/revocation/scope/last-admin tests.
-- [ ] Add DB accounts, explicit grants, serialized management and audit, password bounds and persistent bootstrap marker.
-- [ ] Add account CRUD, enable/disable/reset/self-password pages with CSRF/nonces/CAS. No deletion of historical identity.
-- [ ] Convert existing browser paths to live principal; maintain worker bearer separation.
-- [ ] Run full web regression; commit isolated deliverable; independent review.
+- [x] Write failing bootstrap/restart/version/revocation/scope/last-admin tests.
+- [x] Add DB accounts, explicit grants, serialized management and audit, password bounds and persistent bootstrap marker.
+- [x] Add account CRUD, enable/disable/reset/self-password pages with CSRF/nonces/CAS. No deletion of historical identity.
+- [x] Convert existing browser paths to live principal; maintain worker bearer separation.
+- [x] Run full web regression; commit isolated deliverable; independent review.
 
 ## 3. Browser workspace and efficient client access
 
 Owner: root integrator. Files: `memory_hub/web_sessions.py`, precise app routes, navigation/help/client generator, `clients/`, docs and focused tests.
 
-- [ ] Verify official Hermes and client lazy-discovery support; document deferred schema vs server activation vs history reads accurately.
-- [ ] Implement responsive Session list, actor-labelled timeline, safe text rendering, human composer, documents/files and task links. Poll incremental events about once per second, back off hidden tabs, stop on auth loss; preserve draft/scroll.
-- [ ] Provide scoped JSON reads/mutations with CSRF; download attachments with authorization and safe headers. CSP permits only same-origin room fetch.
-- [ ] Provide compact optional MCP discovery/dispatch or explicit activation profile with project-local configuration; keep legacy tools interoperable. No implicit remote reads during ordinary conversation.
-- [ ] Explain single connection -> Session selection -> incremental conversation -> explicit artifact/handoff workflow and exact token controls.
-- [ ] Test account/chat integration, browser acceptance and two independent client identities; separately record native model limitations.
+- [x] Verify official Hermes and client lazy-discovery support; document deferred schema vs server activation vs history reads accurately.
+- [x] Implement responsive Session list, actor-labelled timeline, safe text rendering, human composer, documents/files and task links. Poll incremental events about once per second, back off hidden tabs, stop on auth loss; preserve draft/scroll.
+- [x] Provide scoped JSON reads/mutations with CSRF; download attachments with authorization and safe headers. CSP permits only same-origin room fetch.
+- [x] Provide compact optional MCP discovery/dispatch or explicit activation profile with project-local configuration; keep legacy tools interoperable. No implicit remote reads during ordinary conversation.
+- [x] Explain single connection -> Session selection -> incremental conversation -> explicit artifact/handoff workflow and exact token controls.
+- [x] Test account/chat integration, browser acceptance and two independent client identities; separately record native model limitations.
 
 ## 4. Delivery
 
-- [ ] Run all regression and deployment validators; review diff/secrets and exact source identity.
+- [x] Run all regression and deployment validators; review diff/secrets and exact source identity.
 - [ ] Publish feature branch/PR and verify exact-commit GitHub SQLite/PostgreSQL CI. Attach PR to task.
 - [ ] Back up authorized VM, deploy only verified candidate, smoke-test browser and MCP; keep rollback evidence private and report any unverified gates accurately.
 
@@ -69,4 +69,7 @@ Owner: root integrator. Files: `memory_hub/web_sessions.py`, precise app routes,
 
 - Public source baseline: pushed main, SQLite and PostgreSQL CI success on 2026-10-02, run 36967375187.
 - Native worktree creation unavailable because chat opens outer non-Git handoff folder; isolated Git worktrees created through Git in inner repository.
-- Implementation and deployment below this baseline remain pending until their evidence is recorded.
+- Integrated source a577f319: Windows Python 3.12 / PostgreSQL 18.6 full regression 414 passed, 0 failed, 0 skipped, 3 dependency warnings; actual backup/restore included. Deployment validators: 14 passed.
+- Browser acceptance: human message, shared artifact, authenticated attachment download (matching SHA-256), search, two synthetic MCP identities, incremental display, desktop/mobile layout, account-management form and no browser console errors. Native model tool invocation remains a separate unverified gate.
+- Independent review found a same-project overlapping-search race. Actual CHAT_JS regression reproduced stale A overwriting B; request tickets passed both overlapping initial-search and stale-pagination scenarios. All other reviewed P1/P2 findings resolved.
+- Publishing and production migration remain pending until exact candidate evidence is recorded.
