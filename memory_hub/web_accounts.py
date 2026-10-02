@@ -35,8 +35,8 @@ def install_accounts(app, auth, session, parse_form, redirect):
         route = '/ui/account/password' if action == 'self-password' else '/ui/users/' + action
         return '<form method="post" action="' + route + '">' + hidden('csrf', current['csrf']) + hidden('nonce', nonce) + hidden('target_id', target) + hidden('expected_version', version)
 
-    def password_field(name='password', label='新密碼（12–1024 字元）'):
-        return '<label>' + e(label) + '<input type="password" name="' + e(name) + '" minlength="12" maxlength="1024" autocomplete="' + ('current-password' if name == 'current_password' else 'new-password') + '" required></label>'
+    def password_field(name='password', label='新密碼（10–1024 字元）'):
+        return '<label>' + e(label) + '<input type="password" name="' + e(name) + '" minlength="10" maxlength="1024" autocomplete="' + ('current-password' if name == 'current_password' else 'new-password') + '" required></label>'
 
     def permissions(row=None):
         row = row or {'role': 'read_only', 'projects': (), 'can_manage_users': False}

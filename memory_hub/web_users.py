@@ -52,8 +52,8 @@ def account_values(display_name, role, scopes, manager):
 
 
 def password_digest(password):
-    if not isinstance(password, str) or not 12 <= len(password) <= 1024 or '\x00' in password:
-        raise HubError('invalid_password', '密碼必須為 12–1024 字元且不得含 NUL。', 400)
+    if not isinstance(password, str) or not 10 <= len(password) <= 1024 or '\x00' in password:
+        raise HubError('invalid_password', '密碼必須為 10–1024 字元且不得含 NUL。', 400)
     return hash_password(password)
 
 
