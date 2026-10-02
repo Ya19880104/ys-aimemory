@@ -231,12 +231,12 @@ def install_web(app, hub, config=None, clock=time.time):
         except (ValueError,UnicodeDecodeError): return {}
 
     @app.get('/')
-    def root(): return redirect('/ui')
+    def root(): return redirect('/ui/chat')
 
     @app.get('/login')
     def login_get(request: Request):
         if not auth.enabled: return page('<main><h1>網頁登入尚未啟用</h1><p>請管理員設定使用者名稱、密碼雜湊與專案範圍。</p></main>',503)
-        if session(request): return redirect('/ui')
+        if session(request): return redirect('/ui/chat')
         return login_form()
 
     @app.post('/login')
@@ -256,7 +256,7 @@ def install_web(app, hub, config=None, clock=time.time):
         token,csrf=secrets.token_urlsafe(32),secrets.token_urlsafe(32)
         if not auth.start_session(token,csrf,request.cookies.get(COOKIE,''),identity):
             return page('<main>登入設定已更新，請重新載入。</main>',503)
-        response=redirect('/ui')
+        response=redirect('/ui/chat')
         response.set_cookie(COOKIE,token,httponly=True,secure=config.secure,samesite='strict',max_age=config.ttl,path='/')
         response.delete_cookie(LOGIN_COOKIE,path='/',secure=config.secure,httponly=True,samesite='strict')
         return response
@@ -286,6 +286,12 @@ def install_web(app, hub, config=None, clock=time.time):
             audit=[{'sequence':row.sequence,**row.event} for row in reversed(records)]
         output=render_dashboard(config,selected,states,audit,hub.principals,current['csrf'],clock(),identity=identity)
         from urllib.parse import urlencode
+        navigation = '<a href="/ui/chat?' + e(urlencode({'project': selected})) + '">共享對話</a><a href="/ui/account/password">修改密碼</a>'
+        if config.mcp_enabled and identity.role == 'admin':
+            navigation += '<a href="/ui/mcp">MCP 產生器</a>'
+        if identity.can_manage_users:
+            navigation += '<a href="/ui/users">使用者管理</a>'
+        output = output.replace('<nav><a href="#overview">◈ 專案總覽</a>', '<nav aria-label="主要導覽"><a href="#overview">◈ 專案總覽</a>' + navigation, 1)
         links='<div class="panel"><a href="/ui/manage?'+urlencode({'project':selected})+'">專案管理</a> · <a href="/ui/search?'+urlencode({'project':selected})+'">搜尋記憶</a> · <a href="/ui/inbox?'+urlencode({'project':selected})+'">任務收件匣</a></div>'
         links=links.replace('</div>', ' · <a href="/ui/chat">共享 Chat</a> · <a href="/ui/account/password">變更密碼</a> · <a href="/help">操作教學與 CA 下載</a>'+(' · <a href="/ui/mcp">MCP 產生器</a>' if config.mcp_enabled and identity.role=='admin' else '')+(' · <a href="/ui/users">使用者管理</a>' if identity.can_manage_users else '')+'</div>')
         output=output.replace('<div class="stats">', links+'<div class="stats">',1)

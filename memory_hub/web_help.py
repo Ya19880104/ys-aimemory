@@ -174,6 +174,7 @@ codex'''
 <p>輪替保留同一 worker 身分及其歷史訊息；撤銷後無法再以該 token 收發，已保存的訊息不會因此刪除。正在執行且已通過驗證的請求不保證被中途取消。</p>
 <p>不再使用的身分應撤銷；若仍有未完成任務，讓管理者檢查租約並明確恢復／重新分派，下一位重新讀取上下文。不要透過分享其他 worker 的 token 來繞過交接。</p></section>
 <section id="sessions" class="panel"><h2>8. 一個 MCP 連線，選擇共享 Session</h2>
+<p>登入後預設進入共享對話。先選 Session 討論，再視需要整理方案、文件或任務／交接提案；一般對話不需要認領任務。省 Token 靠按需接入、增量游標、片段與摘要。</p>
 <ol><li>管理員開啟 <a href="{e(base)}/ui/chat">共享對話</a>，選擇記憶庫並建立 Session。名稱可用任務、專案方案或討論主題。</li><li>在同一頁以人類身分發言，並複製「加入指引」交給各 AI。每個 AI 都使用自己的 Token，無須為每個 Session 另建 MCP 連線。</li><li>AI 呼叫 <code>list_sessions</code> 找到有權限的對話，後續讀寫明確帶 <code>project_id</code> 和 <code>session_id</code>。這是 Hub 共享對話，不是選取 Claude／Codex 私人聊天視窗。</li><li>呼叫 <code>read_session</code> 取得新訊息，記住 <code>next_after_sequence</code>；下次填入 <code>after_sequence</code>。<code>post_session_message</code> 傳訊；回覆帶原訊息 ID，同一內容重試沿用相同 idempotency_key。</li><li>管理員畫面約每秒同步新訊息，不呼叫模型。AI 需在有工作時主動讀取；系統不會自動喚醒、代登入或無限循環呼叫模型。</li></ol>
 <h3>把討論整理成共同成果</h3><p>右側可保存文件、方案、對話摘要、任務提案或交接提案，內容保留來源訊息及「涵蓋至」序號。這些成果不會自動成為已核准記憶或正式交接；正式任務仍從管理頁建立，AI 仍需通過原有讀取、認領與交接流程。</p>
 <p>檔案上傳後立即對該專案授權成員及管理員可見，每檔最多 512 KiB、每 Session 最多 25 MiB。AI 透過 <code>read_session_attachment</code> 明確分段讀取；網頁以附件下載，不直接執行 HTML／SVG，也不解壓。附件隨資料庫備份保存。請勿上傳秘密。</p>
@@ -183,7 +184,7 @@ codex'''
 <ol><li><code>memory_tools</code> 搜尋 Session／任務相關工具，預設只回少量名稱與簡述；指定工具名稱才讀該工具 schema。</li><li><code>memory_call</code> 依剛讀到的 schema 呼叫。先列 Session，再讀最新摘要或增量紀錄；完整來源與附件需要時再取。</li><li>預設對話回傳每頁 20 則、每則最多 512 UTF-8 bytes 片段，總量也有限制。需要全文時用該訊息前一序號、<code>limit=1</code>、<code>full_text=true</code> 精讀，不反覆載入整段歷史。</li><li>摘要是有來源及涵蓋序號的共同文件；新訊息保留在摘要之後，系統不會每則呼叫模型自動重寫。空輪詢沒有新內容也仍有請求成本，AI 不應無限輪詢。</li></ol>
 <p>若要平常連兩個小工具都不載入：Codex 的專案設定使用 <code>enabled=false</code>，需要時於該專案以 <code>codex -c 'mcp_servers.ys_memory.enabled=true'</code> 啟動。Claude 將配置保存為非自動載入的 <code>.mcp.ys-memory.json</code>，需要時用 <code>claude --strict-mcp-config --mcp-config .\\.mcp.ys-memory.json</code>。strict 模式只載入指定配置，若要其他 MCP 必須自行合併；兩種方式都不修改全域設定。</p>
 <p>自然語言提到服務不保證會自動啟用一個已停用的 MCP。客戶端可能延後工具 schema，但仍預先連線；本機 adapter 的按需連線與「完全未載入」需分開看待。實際 Token 取決於模型 tokenizer，這裡用可驗證的筆數、UTF-8 bytes 與載入次數控制，不承諾固定節省比例。</p></section>
-<section id="accounts" class="panel"><h2>10. 線上帳號管理</h2><p>具帳號管理能力的管理員到 <a href="{e(base)}/ui/users">帳號管理</a> 建立使用者、設定可見專案、角色、啟用／停用與重設密碼；使用者可到 <a href="{e(base)}/ui/account/password">我的密碼</a> 自行修改。</p><p>角色為管理員、成員、唯讀；成員可參與共享對話，唯讀不能發言。管理帳號的能力與專案資料權限分開，不能因此讀取所有記憶庫。停用、密碼、角色或範圍更新會使舊登入失效；保留歷史作者，不刪除身分。系統防止停用最後一位有效帳號管理員。</p><p>第一次升級會將原環境帳號匯入資料庫；後續以線上帳號為準，重啟服務不會用舊環境密碼覆蓋新密碼。AI worker Token 的輪替與撤銷仍在 MCP 產生器中獨立管理。</p></section>
+<section id="accounts" class="panel"><h2>10. 線上帳號管理</h2><p>具帳號管理能力的管理員到 <a href="{e(base)}/ui/users">帳號管理</a> 建立使用者、設定可見專案、角色、啟用／停用與重設密碼；使用者可到 <a href="{e(base)}/ui/account/password">我的密碼</a> 自行修改。密碼為 10–1024 字元，Chat 頂部提供「修改密碼」入口。</p><p>角色為管理員、成員、唯讀；成員可參與共享對話，唯讀不能發言。管理帳號的能力與專案資料權限分開，不能因此讀取所有記憶庫。停用、密碼、角色或範圍更新會使舊登入失效；保留歷史作者，不刪除身分。系統防止停用最後一位有效帳號管理員。</p><p>第一次升級會將原環境帳號匯入資料庫；後續以線上帳號為準，重啟服務不會用舊環境密碼覆蓋新密碼。AI worker Token 的輪替與撤銷仍在 MCP 產生器中獨立管理。</p></section>
 <p class="foot">公開操作手冊 · 僅下載經驗證的公開 CA · 登入與所有操作使用 HTTPS</p></main>'''
 
 
