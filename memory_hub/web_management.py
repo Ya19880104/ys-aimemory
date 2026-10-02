@@ -28,8 +28,11 @@ def hidden(name, value):
     return '<input type="hidden" name="'+e(name)+'" value="'+e(value)+'">'
 
 
-def shell(title, body, project='', role='read_only'):
-    return '<main class="management"><div class="eyebrow">YS-AIMEMORY / '+e(role)+'</div><h1>'+e(title)+'</h1>'+('<p class="project-context">目前專案 <strong>'+e(project)+'</strong></p>' if project else '')+'<p><a href="'+link('/ui',project=project)+'">← 總覽</a> · <a href="'+link('/ui/manage',project=project)+'">管理</a> · <a href="'+link('/ui/search',project=project)+'">搜尋</a> · <a href="'+link('/ui/inbox',project=project)+'">收件匣</a> · <a href="'+link('/ui/chat',project=project)+'">共享對話</a> · <a href="/ui/account/password">變更密碼</a></p>'+body+'</main>'
+def shell(title, body, project='', role='read_only', *, config=None, identity=None, csrf='', section='overview', tab='list'):
+    if config is not None and identity is not None:
+        from .web import workspace_shell
+        return workspace_shell(title,body,project,config,identity,csrf,section,tab)
+    return '<main class="management"><h1>'+e(title)+'</h1><p><a href="'+link('/ui',project=project)+'">返回專案總覽</a></p>'+body+'</main>'
 
 
 def install_management(app, hub, config, session, parse_form, redirect, auth, clock):
@@ -80,32 +83,32 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
             project=selected(request, current)
             with hub.store.engine.connect() as conn:
                 state=conn.execute(select(projects.c.state).where(projects.c.id==project)).scalar_one_or_none()
-            body=flash(current)+'<form method="get"><label for="project">專案範圍</label><select id="project" name="project">'+''.join('<option'+(' selected' if p==project else '')+'>'+e(p)+'</option>' for p in identity.projects)+'</select><p><button>切換</button></p></form>'
+            area=request.query_params.get('area','tasks')
+            if area not in ('tasks','memory','project'): raise HubError('not_found','找不到此管理頁',404)
+            if area=='tasks' and request.query_params.get('after'):
+                return redirect('/ui?'+urlencode({'project':project,'view':'tasks','after':request.query_params['after']}))
+            section='settings' if area=='project' else area
+            title={'tasks':'建立任務','memory':'登錄與審核','project':'建立專案'}[area]
+            body=flash(current)
             if identity.role!='admin':
-                body+='<div class="alert">此帳號在專案管理頁為唯讀。管理表單需專案管理員角色；帳號權限由使用者管理員設定。</div>'
-                return page(shell('專案管理',body,project,identity.role))
-            if not state:
+                body+='<div class="alert">管理表單需專案管理員角色。</div>'
+            elif not state:
                 body+='<section class="panel"><h2>建立專案 '+e(project)+'</h2><p>僅能建立配置中已授權的專案 ID。</p>'+form_start('project',current,project)+'<button>建立專案</button></form></section>'
-                return page(shell('專案管理',body,project,identity.role))
-            revision=state['revision']
-            body+='<p>'+badge('目前脈絡 r'+str(revision))+' 更新來源、核准記憶或復原任務前會核對版本。</p><div class="grid">'
-            body+='<section class="panel"><h2>登錄／更新來源</h2>'+form_start('source',current,project,{'expected_revision':revision})+input_field('source_id','來源 ID')+input_field('uri','來源位置（只記錄，不會自動抓取）')+input_field('commit','Commit／版本標記')+input_field('content','完整來源內容（未信任參考資料）',textarea=True)+'<p><button>儲存來源</button></p></form></section>'
-            body+='<section class="panel"><h2>批次匯入來源</h2><p>貼上 JSON 陣列，每筆包含 source_id、content、uri、commit。最多 20 筆，內容合計最多 750 KB；表單 URL 編碼後仍須小於 1 MiB，中文長文請分批匯入。全部成功才提交；不會自動開啟外部網址。</p>'+form_start('import',current,project,{'expected_revision':revision})+input_field('sources_json','來源 JSON',textarea=True)+'<p><button>驗證並匯入</button></p></form></section>'
-            body+='<section class="panel"><h2>建立任務</h2>'+form_start('task',current,project)+input_field('task_id','任務 ID')+input_field('goal','工作目標',textarea=True)+input_field('allowed_paths','允許路徑（每行一項）',textarea=True)+input_field('acceptance_criteria','驗收條件（每行一項）',textarea=True)+input_field('source_ids','必要來源 ID（每行一項）',textarea=True)+'<p><button>建立任務</button></p></form></section><section class="panel"><h2>待審提案</h2>'
-            proposals=[d for d in state['decisions'].values() if d['status']=='proposed']
-            for decision in proposals:
-                body+='<div class="row"><p class="body-text">'+e(decision['text'])+'</p>'+badge('提案 r'+str(decision['binding']['context_revision']))+form_start('approve',current,project,{'decision_id':decision['decision_id'],'expected_revision':revision})+'<p><button>核准為權威記憶</button></p></form></div>'
-            if not proposals: body+='<p class="muted">目前沒有待審提案</p>'
-            body+='</section></div><div class="section-head"><h2>任務清單／管理復原</h2></div>'
-            task_page=hub.call('list_tasks',{'project_id':project,'after_id':request.query_params.get('after') or None,'limit':20},principal(current))
-            for task in task_page['items']:
-                tid=task['task_id']
-                body+='<div class="panel task"><a href="'+link('/ui/task',project=project,task=tid)+'">'+e(tid)+'</a> · '+e(task['goal'])+'</div>'
-            if not task_page['items']: body+='<div class="empty">目前沒有任務</div>'
-            body+='<p><a href="'+link('/ui/manage',project=project)+'">任務第一頁</a>'
-            if task_page.get('next_after_id'): body+=' · <a href="'+link('/ui/manage',project=project,after=task_page['next_after_id'])+'">下一頁任務 →</a>'
-            body+='</p>'
-            return page(shell('專案管理',body,project,identity.role))
+            elif area=='project':
+                body+='<p>目前專案已建立。請選擇已獲授權但尚未建立的專案，或請管理員調整授權。</p>'
+            elif area=='memory':
+                revision=state['revision']
+                body+='<section class="panel"><h2>登錄／更新來源</h2>'+form_start('source',current,project,{'expected_revision':revision})+input_field('source_id','來源 ID')+input_field('uri','來源位置（只記錄，不會自動抓取）')+input_field('commit','Commit／版本標記')+input_field('content','完整來源內容（未信任參考資料）',textarea=True)+'<p><button>儲存來源</button></p></form></section>'
+                body+='<details class="panel"><summary>批次匯入來源</summary><p>貼上 JSON 陣列，每筆包含 source_id、content、uri、commit。最多20筆、內容合計750 KB；中文長文請分批。URI只用於追溯，不會自動抓取。</p>'+form_start('import',current,project,{'expected_revision':revision})+input_field('sources_json','來源 JSON',textarea=True)+'<p><button>驗證並匯入</button></p></form></details>'
+                body+='<section class="panel"><h2>待審提案</h2>'
+                proposals=[d for d in state['decisions'].values() if d['status']=='proposed']
+                for decision in proposals:
+                    body+='<div class="row"><p class="body-text">'+e(decision['text'])+'</p>'+badge('提案 r'+str(decision['binding']['context_revision']))+form_start('approve',current,project,{'decision_id':decision['decision_id'],'expected_revision':revision})+'<p><button>核准為權威記憶</button></p></form></div>'
+                if not proposals: body+='<p class="muted">目前沒有待審提案</p>'
+                body+='</section>'
+            else:
+                body+='<section class="panel"><p>先在「記憶 → 登錄與審核」建立必要來源，再指定任務目標與驗收條件。</p>'+form_start('task',current,project)+input_field('task_id','任務 ID')+input_field('goal','工作目標',textarea=True)+input_field('allowed_paths','允許路徑（每行一項）',textarea=True)+input_field('acceptance_criteria','驗收條件（每行一項）',textarea=True)+input_field('source_ids','必要來源 ID（每行一項）',textarea=True)+'<p><button>建立任務</button></p></form></section>'
+            return page(shell(title,body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section=section,tab='project' if area=='project' else 'edit'))
         except HubError as exc: return error(exc)
         except ValidationError: return error(HubError('invalid_page','分頁參數格式不正確',400))
 
@@ -144,7 +147,8 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
             auth.set_flash(current,'未儲存：'+exc.message+'（'+exc.code+'）。請核對最新資料後重新提交。')
         except (ValueError,TypeError,ValidationError):
             auth.set_flash(current,'未儲存：表單或匯入資料格式不正確。請核對必填欄位、JSON 結構及數量限制。')
-        return redirect('/ui/manage?'+urlencode({'project':project}))
+        area='memory' if action in ('source','import','approve') else 'project' if action=='project' else 'tasks'
+        return redirect('/ui/manage?'+urlencode({'project':project,'area':area}))
 
     @app.get('/ui/search')
     def search(request: Request):
@@ -171,7 +175,7 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
                 if offset: body+='<a href="'+link('/ui/search',project=project,q=query,offset=max(0,offset-20))+'">← 上一頁</a> '
                 if result.get('next_offset') is not None: body+='<a href="'+link('/ui/search',project=project,q=query,offset=result['next_offset'])+'">下一頁 →</a>'
                 body+='</p>'
-            return page(shell('搜尋記憶',body,project,identity.role))
+            return page(shell('搜尋記憶',body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section='memory',tab='search'))
         except HubError as exc: return error(exc)
         except ValidationError: return error(HubError('invalid_query','搜尋詞長度必須為 1–200 字元',400))
 
@@ -195,7 +199,7 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
                 for tid,t in rows: body+='<div class="row"><a href="'+link('/ui/task',project=project,task=tid)+'">'+e(tid)+'</a> · '+e(t['goal'])+'<div class="meta">'+e(t.get('pending_recipient') or t.get('owner') or '尚無持有者')+'</div></div>'
                 if not rows: body+='<p class="muted">目前沒有符合項目</p>'
                 body+='</section>'
-            return page(shell('任務收件匣',body,project,identity.role))
+            return page(shell('任務收件匣',body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section='tasks',tab='inbox'))
         except HubError as exc: return error(exc)
 
     @app.get('/ui/task')
@@ -214,5 +218,5 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
             for cp in task.get('checkpoints',[]): body+='<div class="panel task"><h3>'+e(cp['kind'])+'</h3><p class="body-text">'+e(cp['summary'])+'</p><div class="path">'+e(cp['binding']['commit'])+'</div></div>'
             if identity.role=='admin':
                 body+='<section class="panel"><h2>管理員復原／重新指定接手</h2><div class="alert">這會撤銷目前認領與舊 fence，讓舊持有者失去後續 Hub 寫入資格。請確認已與協作者核對。</div>'+form_start('recover',current,project,{'task_id':tid,'expected_revision':state['revision'],'expected_generation':task['generation'],'expected_fence':task['fence']})+input_field('reason','復原原因（寫入審計）',textarea=True)+'<label for="to_worker">重新指定接手者</label><select id="to_worker" name="to_worker"><option value="">開放重新認領</option>'+''.join('<option>'+e(w)+'</option>' for w in sorted({p.worker_id for p in hub.principals if project in p.projects}))+'</select><p><button>確認撤銷認領並復原</button></p></form></section>'
-            return page(shell('任務詳情',body,project,identity.role))
+            return page(shell('任務詳情',body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section='tasks',tab='list'))
         except HubError as exc: return error(exc)

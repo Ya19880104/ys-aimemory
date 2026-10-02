@@ -8,7 +8,7 @@ Session 就是一個有主題的「對話房間」；介面統一稱「對話」
 
 ## 開始操作
 
-1. 登入後台預設進入「共享對話」。首次使用由管理員於 MCP 產生器建立專案，分別給 Codex、Claude 建立不同身分與 Token；既有專案可直接選用。
+1. 登入後台預設進入「共享對話」。首次使用由管理員於「設定 → 建立專案」建立專案，再從「MCP 接入 → Token 與客戶端設定」分別給 Codex、Claude 建立不同身分與 Token；既有專案可直接選用。
 2. 在對話頁選擇專案與既有 Session，或輸入主題建立 Session。管理員可封存或重新開啟。
 3. 複製該 Session 的加入指引，在各 AI 的工作中明確要求加入。使用[省 Token 接入](EFFICIENT_MCP.zh-TW.md)時，先搜尋工具，再讀取必要 schema。
 4. AI 以 `list_sessions` 發現有權限的 Session；選定後每次都帶 `project_id`、`session_id`。不使用全域隱藏「目前 Session」，避免同一 Token 的兩個程序互相切換對話。

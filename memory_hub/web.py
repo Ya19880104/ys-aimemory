@@ -92,6 +92,10 @@ CSS = '''
 .management{max-width:1100px;margin:auto}:root{color-scheme:dark;--bg:#0b1019;--panel:#141c29;--line:#283346;--muted:#91a1ba;--text:#e9eff8;--accent:#a4e6cf}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 system-ui,-apple-system,"Noto Sans TC",sans-serif}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}button,input,select,textarea{font:inherit}textarea{min-height:130px;resize:vertical}button,.button{border:0;background:var(--accent);color:#10231e;padding:10px 18px;border-radius:9px;cursor:pointer;font-weight:650}button:hover{filter:brightness(1.1)}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #8bc4ff;outline-offset:3px}input,select,textarea{background:#0e1521;color:var(--text);border:1px solid #42506a;padding:11px 13px;border-radius:8px;width:100%}label{display:block;margin:16px 0 6px}.shell{max-width:1440px;margin:auto;display:grid;grid-template-columns:230px 1fr;min-height:100vh}aside{padding:30px 23px;border-right:1px solid var(--line)}.brand{font-size:21px;font-weight:750;letter-spacing:-.5px}.brand small{display:block;font-size:11px;letter-spacing:2px;color:var(--muted);margin-top:3px}nav{display:grid;gap:9px;margin:35px 0}nav a{padding:9px 12px;border-radius:8px;color:#c1cee1}nav a:hover{background:var(--panel)}.aside-note{font-size:12px;color:var(--muted);margin-top:30px}main{padding:34px 38px;min-width:0}header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:30px}h1{font-size:30px;line-height:1.3;margin:4px 0 9px;letter-spacing:-1px}h2{font-size:19px;margin:0}h3{font-size:16px;margin:0}.muted,small{color:var(--muted)}.eyebrow{color:var(--accent);font-size:11px;font-weight:750;letter-spacing:2px}.project-select{display:flex;gap:10px;max-width:350px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin:24px 0}.stat,.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:21px}.stat strong{display:block;font-size:30px;color:var(--text);line-height:1.4}.stat span{font-size:12px;color:var(--muted)}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:29px 0 13px}.badge{display:inline-block;background:#25354b;color:#c8d9f2;border:1px solid #394b66;border-radius:20px;font-size:11px;padding:2px 9px;white-space:nowrap}.badge.good{background:#183a31;border-color:#2d5749;color:#ade6cd}.badge.warn{background:#44381f;border-color:#68552d;color:#f2d79e}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.task{margin-bottom:12px}.task-head{display:flex;justify-content:space-between;gap:12px}.task p{margin:12px 0}.meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12px;color:var(--muted)}.path,code{font:12px/1.6 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere;color:#b5cce8}.empty{padding:25px;text-align:center;color:var(--muted);border:1px dashed #39465b;border-radius:12px}.empty strong{display:block;color:var(--text);font-size:15px}.row{padding:15px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}.row-title{display:flex;gap:12px;justify-content:space-between;align-items:center}.body-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;color:#c1cee1}summary{cursor:pointer;color:var(--accent);font-size:12px;margin-top:12px}.connection{display:flex;align-items:center;justify-content:space-between;gap:15px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#8badbd;margin-right:8px}.alert{background:#392b20;border:1px solid #675039;color:#ecccaa;padding:12px 16px;border-radius:9px;margin:15px 0;font-size:13px}.login{max-width:440px;margin:10vh auto;padding:0 22px}.login .panel{margin-top:26px;padding:30px}.login button{width:100%;margin-top:23px}.login h1{font-size:27px}.topline{display:flex;justify-content:space-between;gap:12px}.logout button{background:transparent;border:1px solid var(--line);color:var(--muted);font-size:12px;padding:6px 12px}.timeline{border-left:2px solid #33455d;padding-left:17px;margin:16px 0 0 7px}.timeline p{font-size:12px;margin:7px 0}.foot{margin:35px 0;font-size:12px;color:var(--muted)}@media(max-width:1000px){.shell{grid-template-columns:190px 1fr}main{padding:26px 22px}.grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}@media(max-width:640px){.shell{display:block}aside{padding:18px 20px;border-right:0;border-bottom:1px solid var(--line)}aside nav{display:flex;overflow:auto;margin:14px 0 0;gap:3px}nav a{white-space:nowrap;padding:6px 10px}.aside-note{display:none}main{padding:23px 16px}header{display:block}h1{font-size:25px}.project-select{margin-top:18px;max-width:none}.panel{padding:17px}.stats{gap:9px}.stat{padding:15px}.task-head{display:block}.task-head .badge{margin-top:8px}}
 .shell aside nav{gap:2px;margin:24px 0}.shell aside nav a{padding:7px 11px}.shell aside nav a[aria-current="page"]{background:var(--panel);color:var(--accent)}.nav-label{font-size:11px;color:var(--muted);padding:13px 11px 4px}.project-select{min-width:0;width:350px;flex-shrink:0}.project-select select{min-width:0;flex:1}.project-select button{flex:0 0 auto;white-space:nowrap}.project-context{border-left:3px solid var(--accent);padding:8px 14px;color:var(--muted);font-size:13px;overflow-wrap:anywhere}.project-context strong{color:var(--text);margin-left:8px}.project-context span{display:block;margin-top:3px}.task h3{overflow-wrap:anywhere}.management .project-context{margin:16px 0}
 @media(max-width:1000px){.shell header{align-items:flex-start;flex-direction:column}.project-select{width:100%;max-width:420px}}@media(max-width:640px){.shell aside nav{display:flex;flex-wrap:wrap;overflow:visible;gap:3px;margin:12px 0 0}.shell aside nav a{white-space:normal}.shell aside .nav-label{flex-basis:100%;padding-left:10px}.project-select{max-width:none}.project-context strong{display:block;margin:2px 0}.shell .topline{align-items:center}}
+/* Hallmark · existing dark/mint workbench · hierarchy: one project navigation, contextual tabs. */
+.workspace-shell{grid-template-columns:230px minmax(0,1fr)}.workspace-shell aside{display:flex;flex-direction:column;gap:24px;padding:28px 22px}.workspace-shell .brand small{letter-spacing:1px}.workspace-project label{margin:0 0 7px;color:var(--muted);font-size:12px}.workspace-project>div{display:flex;gap:6px;min-width:0}.workspace-project select{min-width:0;flex:1;padding:9px 8px;font-size:12px}.workspace-project button{flex:0 0 auto;padding:8px 10px;font-size:12px;white-space:nowrap}.workspace-shell aside nav{margin:0;gap:5px;display:grid}.workspace-shell aside nav a{padding:10px 12px;white-space:nowrap}.workspace-shell .workspace-utilities{margin-top:28px;padding-top:18px;border-top:1px solid var(--line)}.workspace-user{font-size:12px;color:var(--muted);overflow-wrap:anywhere;margin-top:auto}.workspace-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:26px}.workspace-context{color:var(--muted);font-size:13px;margin:0 0 6px;overflow-wrap:anywhere}.workspace-heading h1{font-size:27px;margin:0}.section-tabs{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 24px;padding-bottom:12px;border-bottom:1px solid var(--line)}.section-tabs a{white-space:nowrap;padding:8px 12px}.section-tabs a[aria-current="page"]{background:var(--panel);color:var(--accent)}.workspace-shell .section-head{margin-top:18px}.workspace-shell .stats{margin-top:24px}.workspace-shell .management{padding:0}.workspace-shell .panel+.panel{margin-top:16px}
+@media(max-width:768px){.workspace-shell{grid-template-columns:190px minmax(0,1fr)}.workspace-shell aside{padding:24px 14px}.workspace-heading h1{font-size:24px}}
+@media(max-width:640px){.workspace-shell{display:block}.workspace-shell aside{gap:14px;padding:18px 16px}.workspace-shell .brand small,.workspace-user{display:none}.workspace-shell aside nav{display:flex;flex-wrap:wrap;gap:3px}.workspace-shell aside nav a{padding:6px 10px;white-space:nowrap}.workspace-shell .workspace-utilities{margin-top:0;padding-top:8px}.workspace-project{max-width:none}.workspace-heading{margin-bottom:20px}.workspace-context{max-width:220px}.section-tabs{gap:2px}.section-tabs a{font-size:13px;padding:7px 9px}.workspace-shell .section-head{align-items:flex-start;flex-direction:column}}
 '''
 
 
@@ -138,47 +142,78 @@ def render_recovery(record):
             +e(target)+'</div><p class="muted">先前租約與脈絡包已失效，接手需重新取得脈絡並確認。</p></div>')
 
 
-def project_navigation(config, selected, identity=None):
-    query = e(urlencode({'project': selected}))
-    def item(path, label):
-        return '<a href="'+path+'?'+query+'">'+label+'</a>'
-    nav = '<nav aria-label="主要導覽"><span class="nav-label">目前專案</span><a href="#overview" aria-current="page">專案總覽</a>'
-    nav += item('/ui/chat', '共享對話')
-    nav += '<a href="#tasks">任務與交接</a><a href="#memory">來源與記憶</a>'
-    nav += item('/ui/inbox', '任務收件匣') + item('/ui/search', '搜尋記憶') + item('/ui/manage', '專案管理')
-    nav += '<a href="#connections">MCP 連線狀態</a><a href="#audit">活動紀錄</a>'
-    if config.mcp_enabled and (identity.role if identity else config.role) == 'admin':
-        nav += item('/ui/mcp', 'MCP 產生器')
-    nav += '<span class="nav-label">帳號與說明</span><a href="/ui/account/password">修改密碼</a>'
-    if identity and identity.can_manage_users:
-        nav += '<a href="/ui/users">使用者管理</a>'
-    return nav + '<a href="/help">操作教學與 CA</a></nav>'
+SECTION_NAMES = {'overview':'專案總覽', 'chat':'對話', 'tasks':'任務與交接', 'memory':'記憶', 'connections':'MCP 接入', 'settings':'設定'}
 
 
-def render_dashboard(config, selected, states, audit, principals, csrf, now, *, identity=None):
+def workspace_url(section, project):
+    path = '/ui/chat' if section == 'chat' else '/ui/account/password' if section == 'settings' else '/ui'
+    query = {'project': project}
+    if section not in ('overview', 'chat', 'settings'): query['view'] = section
+    return path+'?'+urlencode(query)
+
+
+def project_navigation(config, selected, identity=None, active='overview'):
+    def item(section):
+        return '<a href="'+e(workspace_url(section,selected))+'"'+(' aria-current="page"' if section==active else '')+'>'+SECTION_NAMES[section]+'</a>'
+    return '<nav class="workspace-nav" aria-label="主要導覽">'+''.join(item(k) for k in ('overview','chat','tasks','memory','connections'))+'</nav><nav class="workspace-utilities" aria-label="其他功能">'+item('settings')+'<a href="/help">操作教學</a></nav>'
+
+
+def section_tabs(section, active, project, config, identity):
+    def url(path, **query): return path+'?'+urlencode({'project':project,**query})
+    admin = (identity.role if identity else config.role) == 'admin'
+    rows = []
+    if section == 'tasks':
+        rows = [('list','任務清單',workspace_url('tasks',project)),('inbox','待辦與交接',url('/ui/inbox'))]
+        if admin: rows.append(('edit','建立任務',url('/ui/manage',area='tasks')))
+    elif section == 'memory':
+        rows = [('list','來源與決策',workspace_url('memory',project)),('search','搜尋',url('/ui/search'))]
+        if admin: rows.append(('edit','登錄與審核',url('/ui/manage',area='memory')))
+    elif section == 'connections':
+        rows = [('list','連線狀態',workspace_url('connections',project))]
+        if admin and config.mcp_enabled: rows.append(('edit','Token 與客戶端設定',url('/ui/mcp')))
+    elif section == 'settings':
+        rows = [('password','我的密碼',url('/ui/account/password'))]
+        if identity and identity.can_manage_users: rows.append(('users','使用者管理',url('/ui/users')))
+        if admin:
+            rows.append(('project','建立專案',url('/ui/mcp',setup='project') if config.mcp_enabled else url('/ui/manage',area='project')))
+    if not rows: return ''
+    return '<nav class="section-tabs" aria-label="'+SECTION_NAMES[section]+'功能">'+''.join('<a href="'+e(href)+'"'+(' aria-current="page"' if key==active else '')+'>'+label+'</a>' for key,label,href in rows)+'</nav>'
+
+
+def workspace_shell(title, body, project, config, identity, csrf, section='overview', tab='list', choices=None):
+    choices = choices if choices is not None else (identity.projects if identity else config.projects)
+    options = ''.join('<option value="'+e(p)+'"'+(' selected' if p==project else '')+'>'+e(p)+'</option>' for p in sorted(choices))
+    switch = ''
+    if options:
+        target = workspace_url(section, project).split('?')[0]
+        switch = '<form class="workspace-project" action="'+target+'" method="get"><label for="workspace-project">專案</label><div><select id="workspace-project" name="project" aria-label="選擇專案">'+options+'</select><button>切換</button></div>'
+        if section not in ('overview','chat','settings'): switch += '<input type="hidden" name="view" value="'+e(section)+'">'
+        switch += '</form>'
+    who = identity.display_name if identity else config.username
+    header = '<div class="workspace-heading"><div><p class="workspace-context">'+e(project or '帳號設定')+'</p><h1>'+e(title)+'</h1></div><form class="logout" action="/logout" method="post"><input type="hidden" name="csrf" value="'+e(csrf)+'"><button>登出</button></form></div>'
+    alert = '' if config.secure else '<div class="alert">目前為隔離本機 HTTP 測試。LAN 與公開環境請使用 HTTPS。</div>'
+    return '<div class="shell workspace-shell"><aside><div class="brand">ys-aimemory<small>專案協作空間</small></div>'+switch+project_navigation(config,project,identity,section)+'<p class="workspace-user">'+e(who)+'</p></aside><main>'+header+section_tabs(section,tab,project,config,identity)+alert+body+'</main></div>'
+
+
+def render_dashboard(config, selected, states, audit, principals, csrf, now, *, identity=None, view='overview', task_after=''):
     state = states.get(selected, {})
     tasks = state.get('tasks', {})
     sources = state.get('sources', {})
     decisions = state.get('decisions', {})
     active = sum(bool(t.get('owner') and t.get('lease_until', 0) > now) for t in tasks.values())
     pending = sum(bool(t.get('pending_recipient')) for t in tasks.values())
-    options = ''.join('<option value="'+e(p)+'"'+(' selected' if p == selected else '')+'>'+e(p)+'</option>' for p in sorted(states))
-    body = '''<div class="shell"><aside><div class="brand">ys-aimemory<small>PROJECT MEMORY / MCP</small></div>'''+project_navigation(config, selected, identity)+'''<div class="aside-note">共同記憶，明確交接<br>每次認領、閱讀與驗證都有依據<br><br>此介面僅供檢視<br>寫入需經授權 API / MCP</div></aside><main id="overview"><div class="topline"><span class="eyebrow">PROJECT WORKSPACE</span><form class="logout" action="/logout" method="post"><input type="hidden" name="csrf" value="'''+e(csrf)+'''"><button type="submit">登出</button></form></div><header><div><h1>專案工作區</h1><div class="muted">同一專案的對話、任務交接與記憶，集中在這裡。</div></div>'''
-    if options:
-        body += '<form class="project-select" method="get" action="/ui"><select name="project" aria-label="選擇專案">'+options+'</select><button>切換</button></form>'
-    body += '</header><p class="project-context">目前專案 <strong>'+e(selected or '尚未選擇')+'</strong><span>此頁僅顯示目前專案的內容；切換專案不會搬動或共用資料。</span></p>'
-    if not config.secure:
-        body += '<div class="alert">目前停用 Secure Cookie，僅限隔離本機 HTTP 測試。LAN 與公開環境請使用 HTTPS。</div>'
-    body += '<div class="stats">'+''.join('<div class="stat"><span>'+label+'</span><strong>'+e(value)+'</strong></div>' for label,value in [('脈絡版本', 'r'+str(state.get('revision',0))),('進行中認領',active),('等待接手',pending),('已登錄來源',len(sources))])+'</div>'
-    if not states:
-        body += empty('尚未建立可讀取的專案', '管理員透過 API / MCP 建立專案後，重新整理即可查看。')
-    body += '<section id="tasks"><div class="section-head"><h2>任務與交接</h2>'+badge(str(len(tasks))+' 個任務')+'</div>'
-    for task_id,t in tasks.items():
+    overview = '<p class="muted">先在對話中討論，再將需要執行的共識整理為任務。</p>'
+    overview += '<div class="stats">'+''.join('<div class="stat"><span>'+label+'</span><strong>'+e(value)+'</strong></div>' for label,value in [('任務總數',len(tasks)),('進行中認領',active),('等待接手',pending),('記憶來源',len(sources))])+'</div>'
+    if not states: overview += empty('尚未建立專案', '管理員可從設定建立專案，再開始對話。')
+    body = '<section id="tasks"><div class="section-head"><h2>任務清單</h2>'+badge(str(len(tasks))+' 個任務')+'</div>'
+    task_ids = sorted(tid for tid in tasks if not task_after or tid > task_after)
+    for task_id in task_ids[:20]:
+        t = tasks[task_id]
         live = bool(t.get('owner') and t.get('lease_until',0) > now)
         accepted_packet = state.get('packets', {}).get((t.get('accepted') or {}).get('packet_id'), {})
         accepted_current = bool(live and accepted_packet and accepted_packet.get('context_revision') == state.get('revision') and accepted_packet.get('task_generation') == t.get('generation') and (t.get('accepted') or {}).get('fence') == t.get('fence'))
         status = '已完成' if t['status'] == 'completed' else ('等待 '+str(t['pending_recipient'])+' 接手' if t.get('pending_recipient') else ('認領有效' if live else '等待認領'))
-        body += '<article class="panel task"><div class="task-head"><h3>'+e(task_id)+'</h3>'+badge(status, 'good' if live or t['status']=='completed' else 'warn')+'</div><p>'+e(t['goal'])+'</p><div class="meta"><span>持有者 '+e(t.get('owner') or '—')+'</span><span>Fence '+e(t.get('fence',0))+'</span><span>租約 '+e(stamp(t.get('lease_until')))+'</span><span>接手確認 '+('已接受目前脈絡' if accepted_current else '尚未接受／需重新驗證')+'</span></div><details><summary>範圍、驗收與檢查點</summary><p class="path">'+e(' · '.join(t.get('allowed_paths',[])))+'</p><ul>'+''.join('<li>'+e(x)+'</li>' for x in t.get('acceptance_criteria',[]))+'</ul>'
+        body += '<article class="panel task"><div class="task-head"><h3><a href="'+e('/ui/task?'+urlencode({'project':selected,'task':task_id}))+'">'+e(task_id)+'</a></h3>'+badge(status, 'good' if live or t['status']=='completed' else 'warn')+'</div><p>'+e(t['goal'])+'</p><div class="meta"><span>持有者 '+e(t.get('owner') or '—')+'</span><span>Fence '+e(t.get('fence',0))+'</span><span>租約 '+e(stamp(t.get('lease_until')))+'</span><span>接手確認 '+('已接受目前脈絡' if accepted_current else '尚未接受／需重新驗證')+'</span></div><details><summary>範圍、驗收與檢查點</summary><p class="path">'+e(' · '.join(t.get('allowed_paths',[])))+'</p><ul>'+''.join('<li>'+e(x)+'</li>' for x in t.get('acceptance_criteria',[]))+'</ul>'
         packets = [v for v in state.get('packets', {}).values() if v.get('task_id') == task_id]
         for packet in sorted(packets, key=lambda x:x.get('prepared_at',0), reverse=True)[:8]:
             fresh = packet.get('context_revision') == state.get('revision') and packet.get('task_generation') == t.get('generation')
@@ -193,8 +228,14 @@ def render_dashboard(config, selected, states, audit, principals, csrf, now, *, 
             body += render_recovery(recovery)
         body += '</details></article>'
     if not tasks:
-        body += empty('目前沒有任務', '透過授權的管理員 API 建立任務與必要來源。')
-    body += '</section><section id="memory"><div class="section-head"><h2>來源與記憶</h2>'+badge('保留來源版本')+'</div><div class="grid"><div class="panel"><h3>可追溯來源</h3>'
+        body += empty('目前沒有任務', '管理員可使用「建立任務」分頁；先在「記憶」登錄任務需要的來源。')
+    if task_after or len(task_ids)>20:
+        body += '<p class="pagination">'
+        if task_after: body += '<a href="'+e(workspace_url('tasks',selected))+'">← 第一頁</a> '
+        if len(task_ids)>20: body += '<a href="'+e(workspace_url('tasks',selected)+'&'+urlencode({'after':task_ids[19]}))+'">下一頁任務 →</a>'
+        body += '</p>'
+    tasks_html = body+'</section>'
+    body = '<section id="memory"><div class="section-head"><h2>來源與記憶</h2>'+badge('保留來源版本')+'</div><div class="grid"><div class="panel"><h3>可追溯來源</h3>'
     for sid,source in sources.items():
         current = source['current']
         body += '<div class="row"><div class="row-title"><strong>'+e(sid)+'</strong>'+badge(str(len(source['versions']))+' 版')+'</div><div class="path">'+e(current['uri'])+'<br>commit '+e(current['commit'])+'<br>SHA-256 '+e(current['sha256'])+'</div><details><summary>查看來源內容（未信任參考資料）</summary><div class="body-text">'+e(current['content'])+'</div></details></div>'
@@ -203,7 +244,8 @@ def render_dashboard(config, selected, states, audit, principals, csrf, now, *, 
     for did,d in decisions.items():
         body += '<div class="row">'+badge('已核准' if d['status']=='approved' else '待審・非權威記憶','good' if d['status']=='approved' else 'warn')+'<p class="body-text">'+e(d['text'])+'</p><div class="meta">'+e(d['binding']['worker_id'])+' · r'+e(d['binding']['context_revision'])+'</div><div class="path">'+e(did)+'</div></div>'
     if not decisions: body += '<p class="muted">尚無決策或提案。待審提案不會自動成為核准記憶。</p>'
-    body += '</div></div></section><section id="connections"><div class="section-head"><h2>MCP 連線</h2>'+badge('Streamable HTTP')+'</div><div class="panel"><div class="connection"><div><h3>共用服務端點</h3><code>/mcp</code><div class="muted">使用此網站的 HTTPS 網址 + /mcp；每個 AI 使用獨立 bearer 身分</div></div>'+badge('已掛載','good')+'</div><div class="alert">設定身分 ≠ 已連線。以下活動由 Hub 審計紀錄推導，不代表客戶端目前在線。登入 cookie 不能用於 MCP。</div>'
+    memory_html = body+'</div></div></section>'
+    body = '<section id="connections"><div class="section-head"><h2>MCP 連線</h2>'+badge('Streamable HTTP')+'</div><div class="panel"><div class="connection"><div><h3>共用服務端點</h3><code>/mcp</code><div class="muted">使用此網站的 HTTPS 網址 + /mcp；每個 AI 使用獨立 bearer 身分</div></div>'+badge('已掛載','good')+'</div><div class="alert">設定身分 ≠ 已連線。以下活動由 Hub 審計紀錄推導，不代表客戶端目前在線。登入 cookie 不能用於 MCP。</div>'
     seen = {row['worker_id']: row['at'] for row in audit}
     displayed = set()
     for principal in principals:
@@ -211,15 +253,16 @@ def render_dashboard(config, selected, states, audit, principals, csrf, now, *, 
         displayed.add(principal.worker_id)
         body += '<div class="row connection"><div><span class="dot"></span><strong>'+e(principal.worker_id)+'</strong><div class="meta">角色 '+e(principal.role)+' · 已設定目前專案權限</div></div><div class="meta">'+('最近活動 '+e(stamp(seen[principal.worker_id])) if principal.worker_id in seen else '尚未觀察到活動')+'</div></div>'
     if not displayed: body += '<p class="muted">此專案尚無可顯示的 AI 身分</p>'
-    body += '<details><summary>連線與交接步驟</summary><ol><li>管理員在伺服器設定獨立、專案限定的 AI 身分</li><li>在客戶端加入 HTTPS MCP 端點，透過客戶端秘密設定傳入 Bearer token</li><li>先 get_worker_inbox 找到待接手任務，再 prepare → claim → read → acknowledge → accept → validate</li><li>工作完成記錄證據、檢查點與明確接手者</li></ol><p class="muted">不在此頁顯示或輸入 token；實際客戶端設定請見專案 docs/CLIENT_SETUP.zh-TW.md。</p></details></div></section>'
-    body += '<section id="audit"><div class="section-head"><h2>最近活動</h2>'+badge('最多 200 筆')+'</div><div class="panel">'
+    body += '<details><summary>如何開始連線</summary><ol><li>管理員到「Token 與客戶端設定」，為每個 AI 建立獨立身分。</li><li>各客戶端使用自己的 Token 接入，確認身分與專案範圍。</li><li>在「對話」選擇主題，複製加入指引給 AI，即可開始討論。</li><li>需要執行工作時再進入「任務與交接」。</li></ol><p><a href="/help#clients">查看逐步接入教學</a></p></details></div></section>'
+    connections_html = body
+    body = '<section id="audit"><div class="section-head"><h2>最近活動</h2>'+badge('最近 30 筆')+'</div><div class="panel">'
     for row in reversed(audit[-30:]):
         body += '<div class="row"><div class="row-title"><strong>'+e(row['operation'])+'</strong><small>'+e(stamp(row['at']))+'</small></div><div class="meta">#'+e(row['sequence'])+' · '+e(row['worker_id'])+' · '+e(row.get('task_id') or '專案層級')+' · r'+e(row['context_revision'])+'</div></div>'
     if not audit: body += '<p class="muted">尚無活動紀錄</p>'
-    body += '</div></section><p class="foot">唯讀檢視 · '+e(identity.display_name if identity else config.username)+' · '+e(stamp(now))+'<br>重新整理取得最新狀態；此頁不取代工作前的 validate_task_context。</p></main></div>'
-    if (identity.role if identity else config.role) == 'admin':
-        body=body.replace('此介面僅供檢視<br>寫入需經授權 API / MCP','管理員檢視<br>管理操作另有確認表單').replace('唯讀檢視 · ','管理員檢視 · ')
-    return body
+    audit_html = body+'</div></section>'
+    content = {'overview':overview+'<details class="overview-activity"><summary>查看最近活動</summary>'+audit_html+'</details>', 'tasks':tasks_html, 'memory':memory_html, 'connections':connections_html}[view]
+    return workspace_shell(SECTION_NAMES[view],content,selected,config,identity,csrf,view,choices=states)
+
 
 
 def install_web(app, hub, config=None, clock=time.time):
@@ -298,13 +341,17 @@ def install_web(app, hub, config=None, clock=time.time):
         identity=auth.principal(current)
         if identity is None: return redirect('/login')
         scope=identity.projects
+        view=request.query_params.get('view','overview')
+        if view not in ('overview','tasks','memory','connections'): return page('<main>找不到此頁面</main>',404)
         with hub.store.engine.connect() as conn:
             states={row.id:row.state for row in conn.execute(select(projects).where(projects.c.id.in_(scope))).all()}
             selected=request.query_params.get('project') or next(iter(sorted(states)), '')
             if selected and selected not in states: return page('<main><h1>找不到可讀取的專案</h1><a href="/ui">返回總覽</a></main>',404)
             records=conn.execute(select(events.c.sequence,events.c.event).where(events.c.project_id==selected).order_by(events.c.sequence.desc()).limit(200)).all()
             audit=[{'sequence':row.sequence,**row.event} for row in reversed(records)]
-        output=render_dashboard(config,selected,states,audit,hub.principals,current['csrf'],clock(),identity=identity)
+        task_after=request.query_params.get('after','')
+        if len(task_after)>128: return page('<main>分頁參數格式不正確</main>',400)
+        output=render_dashboard(config,selected,states,audit,hub.principals,current['csrf'],clock(),identity=identity,view=view,task_after=task_after)
         return page(output)
 
     from .web_management import install_management

@@ -22,18 +22,23 @@ def install_accounts(app, auth, session, parse_form, redirect):
             raise HubError('forbidden', '此帳號沒有使用者管理權限。', 403)
         return current, identity
 
+    def selected_project(request, identity):
+        value=request.query_params.get('project') or next(iter(identity.projects), '')
+        if value and value not in identity.projects: raise HubError('not_found','找不到可讀取的專案。',404)
+        return value
+
     def error(exc):
         if exc.status == 401:
             return redirect('/login')
         return page(shell('帳號請求未完成', '<p class="alert">' + e(exc.message) + '</p><p><a href="/ui">返回總覽</a></p>'), exc.status)
 
-    def start(action, current, target='', version=0):
+    def start(action, current, target='', version=0, project=''):
         nonce = secrets.token_urlsafe(24)
         resource = target + ':' + str(version)
         if not auth.start_nonce(nonce, current, 'users-' + action, resource):
             raise HubError('unauthorized', '登入已失效。', 401)
         route = '/ui/account/password' if action == 'self-password' else '/ui/users/' + action
-        return '<form method="post" action="' + route + '">' + hidden('csrf', current['csrf']) + hidden('nonce', nonce) + hidden('target_id', target) + hidden('expected_version', version)
+        return '<form method="post" action="' + route + '">' + hidden('csrf', current['csrf']) + hidden('nonce', nonce) + hidden('target_id', target) + hidden('expected_version', version) + hidden('return_project', project)
 
     def password_field(name='password', label='新密碼（10–1024 字元）'):
         return '<label>' + e(label) + '<input type="password" name="' + e(name) + '" minlength="10" maxlength="1024" autocomplete="' + ('current-password' if name == 'current_password' else 'new-password') + '" required></label>'
@@ -52,22 +57,23 @@ def install_accounts(app, auth, session, parse_form, redirect):
             current, identity = guard(request)
             if identity is None:
                 return redirect('/login')
+            project = selected_project(request, identity)
             result = auth.users.list(current, request.query_params.get('after', ''))
             body = '<p class="alert">管理使用者可重設所有帳號密碼與授權專案。這項能力本身不授予專案資料可見性。帳號停用不會撤銷獨立的 AI Token；既有 private 訊息仍限參與者。</p>'
-            body += '<section class="panel"><h2>新增帳號</h2>' + start('create', current) + input_field('username', '登入名稱') + input_field('display_name', '顯示名稱') + password_field() + permissions() + '<p><button>新增帳號</button></p></form></section><h2>帳號清單</h2>'
+            body += '<section class="panel"><h2>新增帳號</h2>' + start('create', current, project=project) + input_field('username', '登入名稱') + input_field('display_name', '顯示名稱') + password_field() + permissions() + '<p><button>新增帳號</button></p></form></section><h2>帳號清單</h2>'
             for row in result['items']:
-                body += '<p><a href="' + e('/ui/users?' + urlencode({'user_id': row['user_id']})) + '">' + e(row['display_name']) + '（' + e(row['username']) + '）</a> · ' + ('已啟用' if row['enabled'] else '已停用') + ' · ' + e(row['role']) + '</p>'
+                body += '<p><a href="' + e('/ui/users?' + urlencode({'user_id': row['user_id'], 'project': selected_project(request,identity)})) + '">' + e(row['display_name']) + '（' + e(row['username']) + '）</a> · ' + ('已啟用' if row['enabled'] else '已停用') + ' · ' + e(row['role']) + '</p>'
             if result['next_after']:
-                body += '<a href="' + e('/ui/users?' + urlencode({'after': result['next_after']})) + '">下一頁 →</a>'
+                body += '<a href="' + e('/ui/users?' + urlencode({'after': result['next_after'], 'project': selected_project(request,identity)})) + '">下一頁 →</a>'
             selected = request.query_params.get('user_id', '')
             if selected:
                 row = auth.users.get(current, selected)
                 body += '<section class="panel"><h2>' + e(row['display_name']) + '</h2><p>登入名稱 ' + e(row['username']) + ' · 身份 ' + e(row['user_id']) + '</p><p>變更設定或密碼會使該帳號既有登入失效。身份不會刪除或重用。</p>'
-                body += start('update', current, selected, row['version']) + input_field('display_name', '顯示名稱', row['display_name']) + permissions(row) + '<p><button>更新角色與範圍</button></p></form>'
+                body += start('update', current, selected, row['version'], project) + input_field('display_name', '顯示名稱', row['display_name']) + permissions(row) + '<p><button>更新角色與範圍</button></p></form>'
                 action = 'disable' if row['enabled'] else 'enable'
-                body += start(action, current, selected, row['version']) + '<p><button>' + ('停用帳號' if row['enabled'] else '啟用帳號') + '</button></p></form>'
-                body += start('password', current, selected, row['version']) + password_field() + '<p><button>重設密碼</button></p></form></section>'
-            return page(shell('使用者管理', body, role=identity.role))
+                body += start(action, current, selected, row['version'], project) + '<p><button>' + ('停用帳號' if row['enabled'] else '啟用帳號') + '</button></p></form>'
+                body += start('password', current, selected, row['version'], project) + password_field() + '<p><button>重設密碼</button></p></form></section>'
+            return page(shell('使用者管理',body,selected_project(request,identity),identity.role,config=auth.config,identity=identity,csrf=current['csrf'],section='settings',tab='users'))
         except HubError as exc:
             return error(exc)
         except SQLAlchemyError:
@@ -102,6 +108,9 @@ def install_accounts(app, auth, session, parse_form, redirect):
             if action not in {'create', 'update', 'password', 'enable', 'disable'}:
                 raise HubError('not_found', '未知的帳號動作。', 404)
             values = await parse_form(request, max_bytes=24576, max_fields=12)
+            project = values.get('return_project', '')
+            if project and project not in identity.projects:
+                raise HubError('not_found', '找不到可讀取的專案。', 404)
             target, version = verify(current, action, values)
             if action == 'create':
                 if target or version:
@@ -115,7 +124,7 @@ def install_accounts(app, auth, session, parse_form, redirect):
                 await run_in_threadpool(auth.users.password, current, target, version, values.get('password', ''))
             else:
                 await run_in_threadpool(auth.users.set_enabled, current, target, version, action == 'enable')
-            return redirect('/ui/users?' + urlencode({'user_id': target}))
+            return redirect('/ui/users?' + urlencode({'user_id': target, 'project': project}))
         except HubError as exc:
             return error(exc)
         except SQLAlchemyError:
@@ -127,9 +136,9 @@ def install_accounts(app, auth, session, parse_form, redirect):
             current, identity = guard(request, manager=False)
             if identity is None:
                 return redirect('/login')
-            body = '<p>變更成功後所有既有登入失效，請用新密碼重新登入。</p>' + start('self-password', current, identity.user_id, identity.version)
+            body = '<h2>我的密碼</h2><p>變更成功後所有既有登入失效，請用新密碼重新登入。</p>' + start('self-password', current, identity.user_id, identity.version)
             body += password_field('current_password', '目前密碼') + password_field() + '<p><button>變更自己的密碼</button></p></form>'
-            return page(shell('變更密碼', body, role=identity.role))
+            return page(shell('設定',body,selected_project(request,identity),identity.role,config=auth.config,identity=identity,csrf=current['csrf'],section='settings',tab='password'))
         except HubError as exc:
             return error(exc)
         except SQLAlchemyError:
