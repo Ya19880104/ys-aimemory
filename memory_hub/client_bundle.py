@@ -8,10 +8,10 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 from fastapi.responses import Response
 
 
-BUNDLE_VERSION = '1.0.0'
+BUNDLE_VERSION = '1.1.0'
 BUNDLE_NAME = 'ys-memory-stdio-' + BUNDLE_VERSION + '.zip'
 BUNDLE_ROUTE = '/downloads/' + BUNDLE_NAME
-README = '''YS Memory stdio HTTPS adapter 1.0.0
+README = '''YS Memory stdio HTTPS adapter 1.1.0
 
 Extract into a new directory you choose. Never overwrite an existing client or
 MCP configuration. Check the public CA DER SHA-256 in connection.json against
@@ -21,12 +21,16 @@ this bundle only through verified HTTPS. The ZIP contains no worker token.
 Windows / Python 3.12: open PowerShell in that directory and run explicitly:
   py -3.12 -m venv .venv
   .\\.venv\\Scripts\\python.exe -m pip install -r requirements.lock
-  .\\.venv\\Scripts\\python.exe .\\bridge.py --print-claude-config
+  .\\.venv\\Scripts\\python.exe .\\bridge.py --compact --print-claude-config
 
 The final command is offline, needs no token, writes no files and prints the
 absolute executable/script/config paths. Merge its ys_memory entry into the
 chosen project's .mcp.json; keep all other entries. Keep this bundle directory
 in place. After moving it, regenerate and merge those paths.
+For explicit launch only, save/merge into .mcp.ys-memory.json instead and run
+claude --strict-mcp-config --mcp-config .\\.mcp.ys-memory.json from that project.
+Strict mode loads only that specified MCP configuration; include any other
+servers you intentionally need. This does not grant tool approval.
 
 Change to the project directory containing the merged .mcp.json. In that
 PowerShell session, provide YOUR OWN worker token without putting it in command
@@ -42,6 +46,16 @@ their own acceptance. This adapter handles TLS transport only, not model login,
 expired OAuth, client tool approval, or AI conversation acceptance.
 
 bridge.py defaults to connection.json beside itself; --config PATH is optional.
+--compact exposes only memory_tools and memory_call. Local initialize/tools/list
+validate the public CA but need no token or Hub connection. Connected means the
+LOCAL adapter is ready only. memory_tools(query, limit<=8) searches short names
+and descriptions; memory_tools(name) returns exactly one full schema, then use
+memory_call(name, arguments) with those exact arguments. Each explicit call
+opens a fresh verified upstream session; it does not read conversation history
+automatically. Client approvals see the generic memory_call, which may write;
+Hub role/project authorization and argument validation remain unchanged.
+Omit --compact for the original eager, full-catalog relay. The config printer
+adds --compact only when explicitly requested; old configurations keep working.
 No system CA installation, global configuration, automatic pip install, worker
 selection or protected access file is used. TLS verifies the pinned CA, host and
 name constraints; environment proxies, redirects and key logging are disabled.

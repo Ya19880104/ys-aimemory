@@ -12,9 +12,9 @@ Hub 保存工具操作與共享狀態，包含 AI 明確傳送的訊息，不會
 
 本版實作 Streamable HTTP `/mcp`。四個支援它的客戶端可連同一個 TLS URL，使用各自的 worker 身分。不能把普通 REST 路由當成 MCP；請以 initialize、tools/list、tools/call 實際確認。
 
-目前有 28 個工具，包含 `send_message` 與 `list_messages`。同一 project 的兩個有效 worker 可收發持久化訊息；訊息正文只對寄件者和收件者可見，admin 也不能旁觀其他人的對話。操作與欄位見 [訊息手冊](MCP_MESSAGES.zh-TW.md)。
+Hub 的完整工具集包含 `send_message` 與 `list_messages`；數量以目標版本 `tools/list` 為準。compact adapter 只列出 2 個入口，再按需查詢 Hub 工具。同一 project 的兩個有效 worker 可收發持久化私訊；私訊正文只對寄件者和收件者可見，admin 也不能旁觀其他人的私訊。操作與欄位見 [訊息手冊](MCP_MESSAGES.zh-TW.md)。
 
-MCP 標準的 stdio 是由客戶端啟動子程序並透過 stdin/stdout 傳遞 JSON-RPC；它不等於一個可填寫的 LAN URL。本版另提供可下載的 stdio → HTTPS 客戶端轉接器，供 Claude Code 的 CA 相容需求使用；伺服器仍接收 HTTPS Streamable HTTP。Codex 本輪維持下方 HTTP 設定。舊 HTTP+SSE 不應與 Streamable HTTP 混淆。[官方傳輸規範](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
+MCP 標準的 stdio 是由客戶端啟動子程序並透過 stdin/stdout 傳遞 JSON-RPC；它不等於一個可填寫的 LAN URL。本版另提供可下載的 stdio → HTTPS 客戶端轉接器；伺服器仍接收 HTTPS Streamable HTTP。Codex 可用下方 HTTP 設定，或採用[專案限定的 compact stdio 設定](EFFICIENT_MCP.zh-TW.md)。舊 HTTP+SSE 不應與 Streamable HTTP 混淆。[官方傳輸規範](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
 
 ## Codex
 
@@ -35,13 +35,13 @@ bearer_token_env_var = "YS_AIMEMORY_TOKEN"
 本環境的 Claude CLI 2.1.278 直接 HTTP 連線實測回報 `UNSUPPORTED_CONSTRAINT_TYPE: unsupported name constraint type`。這是 TLS runtime 對目前 CA name constraints 的相容問題，設定 `NODE_EXTRA_CA_CERTS` 不保證能解決；不可關閉 TLS、主機名驗證或移除 CA 限制來繞過。
 
 在伺服器的 `/help#clients` 或登入後 `/ui/mcp` 取得版本化安裝包：
-`https://YOUR_VERIFIED_HUB_HOST/downloads/ys-memory-stdio-1.0.0.zip`。
+`https://YOUR_VERIFIED_HUB_HOST/downloads/ys-memory-stdio-1.1.0.zip`。
 下載只走 HTTPS；HTTP bootstrap 不提供 ZIP。先透過可信通道取得並核對公開 CA 的 **DER SHA-256** 指紋。同一個 HTTP 頁面上的指紋不構成獨立信任；不要把 PEM 檔案雜湊誤當成 DER 指紋。
 
 若瀏覽器尚未信任 CA，可在放有已核對公開 CA 的 PowerShell 目錄，以它驗證 HTTPS 下載：
 
 ```powershell
-curl.exe --cacert .\ys-ai-memory-ca.crt --fail --output .\ys-memory-stdio-1.0.0.zip "https://YOUR_VERIFIED_HUB_HOST/downloads/ys-memory-stdio-1.0.0.zip"
+curl.exe --cacert .\ys-ai-memory-ca.crt --fail --output .\ys-memory-stdio-1.1.0.zip "https://YOUR_VERIFIED_HUB_HOST/downloads/ys-memory-stdio-1.1.0.zip"
 ```
 
 ZIP 平鋪包含 `bridge.py`、`connection.json`、`ys-ai-memory-ca.crt`、`requirements.lock`、`README.txt`。`connection.json` 記錄部署的 HTTPS endpoint、公開 CA 相對檔名與小寫 DER SHA-256 pin；沒有 token、TLS 私鑰或模型登入資料。轉接器固定使用這份連線配置，核對 CA pin、憑證鏈、IP／hostname 與 name constraints，不跟隨 redirect、不使用環境代理或 TLS keylog，也不自動重試寫入。
@@ -53,10 +53,12 @@ ZIP 平鋪包含 `bridge.py`、`connection.json`、`ys-ai-memory-ca.crt`、`requ
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
-.\.venv\Scripts\python.exe .\bridge.py --print-claude-config
+.\.venv\Scripts\python.exe .\bridge.py --compact --print-claude-config
 ```
 
 輸出的 `command` 使用目前虛擬環境的 Python，`args` 使用 bridge 與 connection 的本機絕對路徑。預設連線設定是 bridge 同目錄的 `connection.json`，可用 `--config PATH` 明確選擇另一份已核對的配置。安裝包不寫入任何 AI 設定；移動目錄或換電腦後須在新位置重新建立環境、產生並合併設定，不能直接沿用別台電腦的絕對路徑。
+
+1.1.0 建議加入 `--compact`：初始化只暴露 `memory_tools`／`memory_call`，不連 Hub、不需 token；只有明確呼叫工具才以嚴格 TLS 連線。**compact 的 Connected 只代表本機就緒**。省略此旗標仍是原本啟動即連線、提供完整工具集的 relay，既有配置不自動改變。工具名稱搜尋、單一 schema、原參數傳送，以及不自動載入的專案配置，見 [按需 MCP](EFFICIENT_MCP.zh-TW.md)。通用 `memory_call` 可能寫入，原本逐工具的客戶端權限規則不會自動套用到內部工具名稱。
 
 到已合併 `.mcp.json` 的專案目錄開啟自己的 PowerShell。從受保護位置取出該 AI 的 worker token，以隱藏輸入供給本次程序；不要把實值寫入指令、`.env`、設定檔或聊天：
 
@@ -65,7 +67,7 @@ $env:YS_AIMEMORY_TOKEN = [System.Net.NetworkCredential]::new('', (Read-Host 'Wor
 try { claude } finally { Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }
 ```
 
-由使用者審閱官方客戶端的 project 信任和工具權限。`--print-claude-config` 不會核可工具、啟動模型、接管已登入的聊天或喚醒另一個 AI。新程序環境不會自動注入已開啟的桌面／遠端 host；保存工作後依該客戶端的專案載入方式重新開啟。用 `/mcp` 檢查，再實際呼叫 `get_worker_inbox` 和 `get_project_summary` 核對 worker／project。各客戶端使用自己的模型登入，本安裝包不提供或複製 provider 憑證。[Claude Code MCP 官方文件](https://code.claude.com/docs/en/mcp)
+由使用者審閱官方客戶端的 project 信任和工具權限。`--print-claude-config` 不會核可工具、啟動模型、接管已登入的聊天或喚醒另一個 AI。新程序環境不會自動注入已開啟的桌面／遠端 host；保存工作後依該客戶端的專案載入方式重新開啟。用 `/mcp` 檢查，再實際呼叫 `get_worker_inbox` 和 `get_project_summary` 核對 worker／project；compact 模式先用 `memory_tools(name=...)` 取得 schema，再經 `memory_call` 呼叫。各客戶端使用自己的模型登入，本安裝包不提供或複製 provider 憑證。[Claude Code MCP 官方文件](https://code.claude.com/docs/en/mcp)
 
 CA 輪替時重新取得安裝包及可信通道的指紋，核對後在新目錄安裝並更新專案設定；不自動更新 pin 或全域信任庫。Linux／macOS 可依同一腳本與依賴使用 `.venv/bin/python`，但仍須獨立驗證依賴安裝、原生 host 及權限；本文件不宣稱它們已通過原生驗收。
 
@@ -97,6 +99,6 @@ CA 輪替時重新取得安裝包及可信通道的指紋，核對後在新目�
 
 ## Skills 與四個工作區
 
-`skills/` 中的三個資料夾是 portable Skill 原始檔，不代表客戶端已自動安裝。保留在專案並以 `AGENTS.md`／`CLAUDE.md` 明確引導讀取即可；要自動發現，依各客戶端當前官方 Skill 安裝方式，經使用者同意複製到它所支援的專案目錄。不要自動覆寫使用者全域設定。
+`skills/` 中的資料夾是 portable Skill 原始檔，不代表客戶端已自動安裝。`ys-memory-chat` 只在使用者要求聊天或記憶查詢時適用，不會啟用已停用的 MCP 或背景輪詢。保留在專案並以 `AGENTS.md`／`CLAUDE.md` 明確引導讀取即可；要自動發現，依各客戶端當前官方 Skill 安裝方式，經使用者同意複製到它所支援的專案目錄。不要自動覆寫使用者全域設定。
 
 每個 clone 都應有相同版本的協作檔案與 Skills，但使用不同 worker 身分、branch 和本機目錄。先做兩個身分的接手驗證，再擴至四個；不可把「可連線」當成「已證明四客戶端端到端協作」。

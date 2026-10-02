@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 
-DOWNLOAD = '/downloads/ys-memory-stdio-1.0.0.zip'
+DOWNLOAD = '/downloads/ys-memory-stdio-1.1.0.zip'
 TOKEN = 'synthetic-bundle-worker-token-123456'
 
 
@@ -48,7 +48,7 @@ def test_download_is_public_deterministic_and_contains_only_client_assets(bundle
     assert response.headers['content-type'] == 'application/zip'
     assert response.headers['cache-control'] == 'no-store'
     assert response.headers['x-content-type-options'] == 'nosniff'
-    assert response.headers['content-disposition'] == 'attachment; filename="ys-memory-stdio-1.0.0.zip"'
+    assert response.headers['content-disposition'] == 'attachment; filename="ys-memory-stdio-1.1.0.zip"'
     assert response.content == client.get(DOWNLOAD).content
     head = client.head(DOWNLOAD)
     assert head.status_code == 200 and head.content == b''
@@ -56,6 +56,9 @@ def test_download_is_public_deterministic_and_contains_only_client_assets(bundle
     with ZipFile(BytesIO(response.content)) as archive:
         assert set(archive.namelist()) == {'bridge.py', 'connection.json', 'ys-ai-memory-ca.crt', 'requirements.lock', 'README.txt'}
         assert archive.read('ys-ai-memory-ca.crt') == pem
+        readme = archive.read('README.txt').decode('utf-8')
+        assert '--compact --print-claude-config' in readme
+        assert 'LOCAL adapter is ready only' in readme
         config = json.loads(archive.read('connection.json'))
         assert config == {'version': 1, 'endpoint': 'https://memory.example.test:8443/mcp',
                           'ca_file': 'ys-ai-memory-ca.crt', 'ca_sha256': cert.fingerprint(hashes.SHA256()).hex()}
