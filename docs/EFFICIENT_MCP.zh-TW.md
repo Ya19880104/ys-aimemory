@@ -103,6 +103,8 @@ finally { Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }
 
 ## 驗收分開記錄
 
+原生接入的操作與常見核准／登入錯誤見 [原生客戶端驗收](NATIVE_CLIENT_CHECK.zh-TW.md)。
+
 1. `initialize`／`tools/list` 成功：compact 本機就緒，預期只有 2 個工具、0 Hub 請求。
 2. `memory_tools`／身份工具成功：驗證 HTTPS、token、工具發現與 project 範圍。
 3. 原生模型真的呼叫工具：須看該客戶端當次證據，不能由 SDK 或 Connected 代替。
