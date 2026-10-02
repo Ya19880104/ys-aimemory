@@ -4,7 +4,7 @@ ys-aimemory 的交接是系統功能：任務、讀取確認、租約、fence、
 
 ## 啟用
 
-沒有預設帳號密碼。首次啟用由部署者自行設定以下 bootstrap 帳號；升級至 schema 5 後一次性匯入資料庫，後续透過線上帳號管理更新：
+沒有預設帳號密碼。首次啟用由部署者自行設定以下 bootstrap 帳號；升級至 schema 5 後一次性匯入資料庫，後續透過線上帳號管理更新：
 
 - `HUB_WEB_USERNAME`：網頁登入名稱
 - `HUB_WEB_PASSWORD_HASH`：互動式執行 `python -m memory_hub.web_password` 產生；密碼 12–1024 字元，不將明文放入環境檔

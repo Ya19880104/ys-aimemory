@@ -286,7 +286,8 @@ class SessionService:
             for item in items:
                 if item['type'] == 'artifact':
                     item['artifact_id'] = conn.execute(select(artifacts.c.artifact_id).where(
-                        artifacts.c.project_id == a['project_id'], artifacts.c.sequence == item['sequence'])).scalar_one()
+                        artifacts.c.project_id == a['project_id'], artifacts.c.session_id == item['session_id'],
+                        artifacts.c.sequence == item['sequence'])).scalar_one()
             return self._page(items, a, {'project_id': a['project_id']})
         if name == 'read_session':
             rows = conn.execute(select(events.c.payload).where(
