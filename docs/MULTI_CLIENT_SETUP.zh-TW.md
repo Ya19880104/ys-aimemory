@@ -39,8 +39,8 @@ if (Test-Path -LiteralPath .\ys-memory-client) { throw '安裝目錄已存在，
 if (Test-Path -LiteralPath .\ys-memory-stdio-1.1.0.zip) { throw '下載檔已存在，請另選目錄' }
 curl.exe --cacert .\ys-ai-memory-ca.crt --fail --output .\ys-memory-stdio-1.1.0.zip 'https://YOUR_VERIFIED_HUB_HOST/downloads/ys-memory-stdio-1.1.0.zip'
 if ($LASTEXITCODE -ne 0) { throw 'HTTPS 下載失敗' }
-Expand-Archive -LiteralPath .\ys-memory-stdio-1.1.0.zip -DestinationPath .\ys-memory-client
-Set-Location .\ys-memory-client
+Expand-Archive -LiteralPath .\ys-memory-stdio-1.1.0.zip -DestinationPath .\ys-memory-client -ErrorAction Stop
+Set-Location .\ys-memory-client -ErrorAction Stop
 py -3.12 -m venv .venv
 if ($LASTEXITCODE -ne 0) { throw '建立 Python 環境失敗' }
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
