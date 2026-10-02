@@ -8,6 +8,7 @@ Repository：[Ya19880104/ys-aimemory](https://github.com/Ya19880104/ys-aimemory)
 
 ## 安裝入口
 
+- **先選客戶端：** [Claude、Codex、Gemini 與 Grok 接入對照](docs/MULTI_CLIENT_SETUP.zh-TW.md)，包含快速命令、手動設定、給 AI 的安裝任務，以及內網和雲端的差異；Gemini／Grok 原生驗收尚未完成。
 - **部署自己的伺服器：** [Ubuntu／Docker 從零部署](docs/QUICKSTART.zh-TW.md#部署-hub)。包含環境設定、HTTPS、建立記憶庫及 worker token。
 - **Claude Code／Codex 接上已有的 Hub：** [客戶端安裝](docs/QUICKSTART.zh-TW.md#安裝與接線客戶端)。各自使用自己的身分，設定僅限選定專案。
 - **讓 AI 協助安裝：** [可直接貼給 Claude／Codex 的安裝任務](docs/QUICKSTART.zh-TW.md#交給-claude-codex-協助安裝)。先填非秘密的環境資訊。
