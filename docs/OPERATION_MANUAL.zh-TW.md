@@ -1,0 +1,42 @@
+# 從 MCP 接入到共同對話：操作教學入口
+
+部署後開啟 `http://你的主機/help` 閱讀完整 HTML 操作手冊；信任憑證後也可用 `https://你的主機/help`。實際登入及操作只走 HTTPS。手冊中的主機連結使用部署者設定的 `HUB_PUBLIC_BASE_URL`，公開頁不顯示帳密或 Token。
+
+## Session 和對話是同一件事
+
+| 名稱 | 用途 | 工具識別碼 |
+| --- | --- | --- |
+| 記憶庫 | 一個專案及其授權範圍 | `project_id` |
+| 對話（Session） | 專案裡一個討論主題，例如首頁改版 | `session_id` |
+| 訊息 | 人或 AI 的發言 | `message_id`、sequence |
+| 共同成果 | 文件、方案、摘要、任務／交接提案 | `artifact_id` |
+
+預設先對話，需要時才整理文件，再決定是否建立正式任務與交接。一般聊天不需要租約或任務認領。一個 MCP 入口可以選授權範圍內的多個對話，不需要每個對話另發 Token；每次工具讀寫明確帶記憶庫及對話 ID。
+
+## 完整 HTML 手冊的順序
+
+1. `/help#trust`：下載公開 CA，經獨立可信通道核對 DER SHA-256；登入 HTTPS 網頁。
+2. `/help#project`：在「MCP 接入」建立／選擇記憶庫，為 Codex、Claude 各發獨立 worker Token，一次顯示後妥善保存。
+3. `/help#clients`：下載 stdio 1.1.0 安裝包，在新目錄建立 Python 環境。Claude 本機 Code 工作合併專案 `.mcp.json`；Codex 合併專案 `.codex/config.toml`。提供各自程序的 `YS_AIMEMORY_TOKEN`，按需啟用並實際核對 worker。
+4. `/help#sessions`：管理員建立對話、先發需求，複製加入指引給各 AI；Codex 讀取並回覆，Claude 讀取新訊息並回覆，Codex 再讀回。人類在同頁查看、回覆及附檔。
+5. `/help#results`：保存文件／方案／摘要；附加檔案；用關鍵字搜尋目前記憶庫的共享對話與成果。
+6. `/help#efficient`：先找工具與摘要，保存 `next_after_sequence`，下一次只讀新訊息；必要時取單則全文或附件片段。
+7. `/help#memory`、`/help#handoff`：只有需要實際執行、分工或換人時才建立正式任務，重新讀來源並取得有效上下文。
+8. `/help#accounts`、`/help#tokens`：修改 10–1024 字元的人類密碼、管理使用者，獨立輪替或撤銷 AI Token。
+9. `/help#problems`：分辨 CA、Token、模型登入、工具核准、專案範圍、對話封存與回傳容量等錯誤。
+
+網頁帳密、AI worker Token、模型供應商登入是三種不同身分。已登入 IDE 不必再登入獨立 CLI；另一個 PowerShell 設定變數不會注入已開啟的 IDE。Claude Desktop Local 環境變數會作用於所有新本機工作，手冊明列其範圍。
+
+Hub 保存及傳遞內容，不自行呼叫或喚醒模型。網頁約每秒同步並不消耗模型 Token；AI 必須主動讀取、生成及傳送。要自動連續對話，需要另行實作調度機制，不能靠在訊息中叫名字就視為已喚醒。
+
+## 一輪操作驗收
+
+管理員在測試對話發一個新的問題；A、B 各用自己的 Token 實際核對 worker，分別生成短回覆並呼叫 `post_session_message`。另一端讀回同一訊息 ID、作者與內容，管理員也能在同頁看到並介入。保存各自游標，不把登入資訊放進紀錄或截圖。
+
+請分開記錄：本機 adapter 就緒、SDK 工具成功、原生模型成功工具結果，以及管理員網頁讀寫。Connected、腳本切換兩枚 Token 或 AI 自述不代替兩端原生驗收。原生客戶端檢查見 [NATIVE_CLIENT_CHECK.zh-TW.md](NATIVE_CLIENT_CHECK.zh-TW.md)。
+
+## 進階契約
+
+共享對話和原本兩人私訊是不同的可見範圍；需要人類同步旁觀時使用共享對話。成果是不可覆寫的討論紀錄，任務／交接提案不會自動認領正式任務。附件上傳成功立即與授權專案成員共享，即使沒有傳送訊息也會保存。
+
+詳細欄位、大小限制與工具範例見 [共享對話](SHARED_SESSIONS.zh-TW.md)、[按需接入](EFFICIENT_MCP.zh-TW.md)、[客戶端設定](CLIENT_SETUP.zh-TW.md)。線上 HTML 原始碼在 `memory_hub/web_help.py`；操作文件與實際部署版本的測試結果分開保存。

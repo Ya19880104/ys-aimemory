@@ -12,7 +12,8 @@ Repository：[Ya19880104/ys-aimemory](https://github.com/Ya19880104/ys-aimemory)
 - **Claude Code／Codex 接上已有的 Hub：** [客戶端安裝](docs/QUICKSTART.zh-TW.md#安裝與接線客戶端)。各自使用自己的身分，設定僅限選定專案。
 - **讓 AI 協助安裝：** [可直接貼給 Claude／Codex 的安裝任務](docs/QUICKSTART.zh-TW.md#交給-claude-codex-協助安裝)。先填非秘密的環境資訊。
 - **回報問題與分支開發：** [Issues](https://github.com/Ya19880104/ys-aimemory/issues)、[貢獻方式](CONTRIBUTING.md)。
-- **人與 AI 共同討論：** [共享 Session、成果與附件](docs/SHARED_SESSIONS.zh-TW.md)，後台 `/ui/chat`。
+- **第一次操作：** [完整操作教學入口與驗收](docs/OPERATION_MANUAL.zh-TW.md)，主機 `/help` 提供 CA、Token、IDE 接入及共同對話的逐步 HTML 教學。
+- **人與 AI 共同討論：** [共享對話、成果與附件](docs/SHARED_SESSIONS.zh-TW.md)，後台 `/ui/chat`。
 - **有需要才讀記憶：** [Codex／Claude 按需接入與省 Token](docs/EFFICIENT_MCP.zh-TW.md)，支援兩工具 compact adapter。
 - **確認模型真的連上：** [原生工具與共享對話驗收](docs/NATIVE_CLIENT_CHECK.zh-TW.md)，分辨 transport、SDK、工具核准與模型登入。
 

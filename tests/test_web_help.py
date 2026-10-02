@@ -91,7 +91,7 @@ def test_help_message_examples_can_be_copied_as_tool_arguments(tmp_path, monkeyp
     with client(monkeypatch, tmp_path / "missing.crt") as browser:
         parsed = Examples()
         parsed.feed(browser.get("/help").text)
-    assert {"message-send-example", "message-list-example"} <= parsed.code.keys()
+    assert {"message-send-example", "message-list-example", "session-read-example"} <= parsed.code.keys()
     send = json.loads(parsed.code["message-send-example"])
     receive = json.loads(parsed.code["message-list-example"])
     assert send == {
@@ -103,6 +103,13 @@ def test_help_message_examples_can_be_copied_as_tool_arguments(tmp_path, monkeyp
         "project_id": "conversation-sandbox", "thread_id": "hello-20261002",
         "after_sequence": 0, "limit": 20,
     }
+    # The published compact example must survive HTML rendering and validate
+    # against the actual Hub contract, including its nested envelope.
+    from memory_hub.models import MODELS
+    compact = json.loads(parsed.code["session-read-example"])
+    assert compact["name"] == "read_session"
+    request = MODELS[compact["name"]].model_validate(compact["arguments"]["arguments"])
+    assert request.limit == 5 and request.max_bytes == 4096 and not request.full_text
 
 
 @pytest.mark.parametrize("base", ["https://192.0.2.10", "https://hub.example.test:9443"])
