@@ -56,7 +56,7 @@ function documentFrom(html) {
     const options = select.querySelectorAll('option');
     select.value = (options.find(option => Object.hasOwn(option.attributes, 'selected')) || options[0])?.value || '';
   }
-  document.getElementById = id => { assert.ok(ids.has(id), `Missing rendered element: ${id}`); return ids.get(id); };
+  document.getElementById = id => ids.get(id) || null;
   document.createElement = tag => new Element(tag);
   return document;
 }
@@ -122,6 +122,12 @@ async function projectChangeDuringDeepLink() {
   await settle();
   const query = new URLSearchParams(ui.location.search);
   assert.equal(query.get('project'), 'beta'); assert.equal(query.has('session'), false);
+  for (const [id, path, hash] of [['project-home-link', '/ui', ''], ['project-tasks-link', '/ui/manage', ''],
+    ['project-memory-link', '/ui', '#memory'], ['task-link', '/ui/manage', '']]) {
+    const target = new URL(ui.get(id).href, 'http://example.test');
+    assert.equal(target.pathname, path); assert.equal(target.searchParams.get('project'), 'beta');
+    assert.equal(target.hash, hash);
+  }
   assert.equal(ui.get('active-room').textContent, '選擇一個對話');
   assert.ok(ui.get('room-list').textContent.includes(roomC.title));
   assert.ok(!ui.get('room-list').textContent.includes(roomB.title), 'Late response must not select the old project room');
@@ -163,9 +169,30 @@ async function closePendingArtifact() {
   assert.equal(ui.get('chat-error').hidden, true);
 }
 
+async function projectChangeClearsOldRooms() {
+  const pending = deferred();
+  const ui = boot(q => {
+    if (q.op === 'list') return q.project === 'alpha' ? listing([roomA]) : pending.promise;
+    assert.fail('Changing project without choosing a room must not read messages');
+  }, '');
+  await settle();
+  assert.equal(ui.get('room-list').querySelectorAll('button').length, 1);
+  ui.get('chat-project').value = 'beta';
+  const changing = ui.get('chat-project').onchange();
+  await settle();
+  assert.equal(ui.get('room-list').querySelectorAll('button').length, 0, 'Old project rooms must disappear before the new list arrives');
+  assert.equal(ui.get('more-rooms').hidden, true);
+  assert.equal(ui.get('task-link').href, '/ui/manage?project=beta');
+  pending.resolve(listing([roomC]));
+  await changing;
+  assert.ok(ui.get('room-list').textContent.includes(roomC.title));
+  assert.ok(!ui.get('room-list').textContent.includes(roomA.title));
+}
+
 const scenarios = {
   deep_link_outside_first_page: deepLinkOutsideFirstPage,
   project_change_during_deep_link: projectChangeDuringDeepLink,
+  project_change_clears_old_rooms: projectChangeClearsOldRooms,
   close_pending_artifact: closePendingArtifact,
 };
 (async () => {

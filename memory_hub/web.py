@@ -11,7 +11,7 @@ import os
 import secrets
 import time
 from uuid import UUID
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -90,6 +90,8 @@ CSS = '''
 .manual nav{display:flex;flex-wrap:wrap;gap:6px 14px;margin:24px 0}.manual section.panel{margin:20px 0;scroll-margin-top:20px}.manual pre{white-space:pre-wrap;overflow-wrap:anywhere}.manual header>.button{flex-shrink:0;display:inline-block}.manual li+li{margin-top:8px}
 .manual h3{margin:20px 0 8px}.manual h4{margin:14px 0 4px}.manual table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px}.manual th,.manual td{text-align:left;vertical-align:top;padding:9px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.manual th{color:var(--accent)}
 .management{max-width:1100px;margin:auto}:root{color-scheme:dark;--bg:#0b1019;--panel:#141c29;--line:#283346;--muted:#91a1ba;--text:#e9eff8;--accent:#a4e6cf}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 system-ui,-apple-system,"Noto Sans TC",sans-serif}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}button,input,select,textarea{font:inherit}textarea{min-height:130px;resize:vertical}button,.button{border:0;background:var(--accent);color:#10231e;padding:10px 18px;border-radius:9px;cursor:pointer;font-weight:650}button:hover{filter:brightness(1.1)}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #8bc4ff;outline-offset:3px}input,select,textarea{background:#0e1521;color:var(--text);border:1px solid #42506a;padding:11px 13px;border-radius:8px;width:100%}label{display:block;margin:16px 0 6px}.shell{max-width:1440px;margin:auto;display:grid;grid-template-columns:230px 1fr;min-height:100vh}aside{padding:30px 23px;border-right:1px solid var(--line)}.brand{font-size:21px;font-weight:750;letter-spacing:-.5px}.brand small{display:block;font-size:11px;letter-spacing:2px;color:var(--muted);margin-top:3px}nav{display:grid;gap:9px;margin:35px 0}nav a{padding:9px 12px;border-radius:8px;color:#c1cee1}nav a:hover{background:var(--panel)}.aside-note{font-size:12px;color:var(--muted);margin-top:30px}main{padding:34px 38px;min-width:0}header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:30px}h1{font-size:30px;line-height:1.3;margin:4px 0 9px;letter-spacing:-1px}h2{font-size:19px;margin:0}h3{font-size:16px;margin:0}.muted,small{color:var(--muted)}.eyebrow{color:var(--accent);font-size:11px;font-weight:750;letter-spacing:2px}.project-select{display:flex;gap:10px;max-width:350px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin:24px 0}.stat,.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:21px}.stat strong{display:block;font-size:30px;color:var(--text);line-height:1.4}.stat span{font-size:12px;color:var(--muted)}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:29px 0 13px}.badge{display:inline-block;background:#25354b;color:#c8d9f2;border:1px solid #394b66;border-radius:20px;font-size:11px;padding:2px 9px;white-space:nowrap}.badge.good{background:#183a31;border-color:#2d5749;color:#ade6cd}.badge.warn{background:#44381f;border-color:#68552d;color:#f2d79e}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.task{margin-bottom:12px}.task-head{display:flex;justify-content:space-between;gap:12px}.task p{margin:12px 0}.meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12px;color:var(--muted)}.path,code{font:12px/1.6 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere;color:#b5cce8}.empty{padding:25px;text-align:center;color:var(--muted);border:1px dashed #39465b;border-radius:12px}.empty strong{display:block;color:var(--text);font-size:15px}.row{padding:15px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}.row-title{display:flex;gap:12px;justify-content:space-between;align-items:center}.body-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;color:#c1cee1}summary{cursor:pointer;color:var(--accent);font-size:12px;margin-top:12px}.connection{display:flex;align-items:center;justify-content:space-between;gap:15px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#8badbd;margin-right:8px}.alert{background:#392b20;border:1px solid #675039;color:#ecccaa;padding:12px 16px;border-radius:9px;margin:15px 0;font-size:13px}.login{max-width:440px;margin:10vh auto;padding:0 22px}.login .panel{margin-top:26px;padding:30px}.login button{width:100%;margin-top:23px}.login h1{font-size:27px}.topline{display:flex;justify-content:space-between;gap:12px}.logout button{background:transparent;border:1px solid var(--line);color:var(--muted);font-size:12px;padding:6px 12px}.timeline{border-left:2px solid #33455d;padding-left:17px;margin:16px 0 0 7px}.timeline p{font-size:12px;margin:7px 0}.foot{margin:35px 0;font-size:12px;color:var(--muted)}@media(max-width:1000px){.shell{grid-template-columns:190px 1fr}main{padding:26px 22px}.grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}@media(max-width:640px){.shell{display:block}aside{padding:18px 20px;border-right:0;border-bottom:1px solid var(--line)}aside nav{display:flex;overflow:auto;margin:14px 0 0;gap:3px}nav a{white-space:nowrap;padding:6px 10px}.aside-note{display:none}main{padding:23px 16px}header{display:block}h1{font-size:25px}.project-select{margin-top:18px;max-width:none}.panel{padding:17px}.stats{gap:9px}.stat{padding:15px}.task-head{display:block}.task-head .badge{margin-top:8px}}
+.shell aside nav{gap:2px;margin:24px 0}.shell aside nav a{padding:7px 11px}.shell aside nav a[aria-current="page"]{background:var(--panel);color:var(--accent)}.nav-label{font-size:11px;color:var(--muted);padding:13px 11px 4px}.project-select{min-width:0;width:350px;flex-shrink:0}.project-select select{min-width:0;flex:1}.project-select button{flex:0 0 auto;white-space:nowrap}.project-context{border-left:3px solid var(--accent);padding:8px 14px;color:var(--muted);font-size:13px;overflow-wrap:anywhere}.project-context strong{color:var(--text);margin-left:8px}.project-context span{display:block;margin-top:3px}.task h3{overflow-wrap:anywhere}.management .project-context{margin:16px 0}
+@media(max-width:1000px){.shell header{align-items:flex-start;flex-direction:column}.project-select{width:100%;max-width:420px}}@media(max-width:640px){.shell aside nav{display:flex;flex-wrap:wrap;overflow:visible;gap:3px;margin:12px 0 0}.shell aside nav a{white-space:normal}.shell aside .nav-label{flex-basis:100%;padding-left:10px}.project-select{max-width:none}.project-context strong{display:block;margin:2px 0}.shell .topline{align-items:center}}
 '''
 
 
@@ -136,6 +138,23 @@ def render_recovery(record):
             +e(target)+'</div><p class="muted">先前租約與脈絡包已失效，接手需重新取得脈絡並確認。</p></div>')
 
 
+def project_navigation(config, selected, identity=None):
+    query = e(urlencode({'project': selected}))
+    def item(path, label):
+        return '<a href="'+path+'?'+query+'">'+label+'</a>'
+    nav = '<nav aria-label="主要導覽"><span class="nav-label">目前專案</span><a href="#overview" aria-current="page">專案總覽</a>'
+    nav += item('/ui/chat', '共享對話')
+    nav += '<a href="#tasks">任務與交接</a><a href="#memory">來源與記憶</a>'
+    nav += item('/ui/inbox', '任務收件匣') + item('/ui/search', '搜尋記憶') + item('/ui/manage', '專案管理')
+    nav += '<a href="#connections">MCP 連線狀態</a><a href="#audit">活動紀錄</a>'
+    if config.mcp_enabled and (identity.role if identity else config.role) == 'admin':
+        nav += item('/ui/mcp', 'MCP 產生器')
+    nav += '<span class="nav-label">帳號與說明</span><a href="/ui/account/password">修改密碼</a>'
+    if identity and identity.can_manage_users:
+        nav += '<a href="/ui/users">使用者管理</a>'
+    return nav + '<a href="/help">操作教學與 CA</a></nav>'
+
+
 def render_dashboard(config, selected, states, audit, principals, csrf, now, *, identity=None):
     state = states.get(selected, {})
     tasks = state.get('tasks', {})
@@ -144,10 +163,10 @@ def render_dashboard(config, selected, states, audit, principals, csrf, now, *, 
     active = sum(bool(t.get('owner') and t.get('lease_until', 0) > now) for t in tasks.values())
     pending = sum(bool(t.get('pending_recipient')) for t in tasks.values())
     options = ''.join('<option value="'+e(p)+'"'+(' selected' if p == selected else '')+'>'+e(p)+'</option>' for p in sorted(states))
-    body = '''<div class="shell"><aside><div class="brand">ys-aimemory<small>PROJECT MEMORY / MCP</small></div><nav><a href="#overview">◈ 專案總覽</a><a href="#tasks">▦ 任務與交接</a><a href="#memory">▤ 來源與記憶</a><a href="#connections">↗ MCP 連線</a><a href="#audit">◷ 活動紀錄</a></nav><div class="aside-note">共同記憶，明確交接<br>每次認領、閱讀與驗證都有依據<br><br>此介面僅供檢視<br>寫入需經授權 API / MCP</div></aside><main id="overview"><div class="topline"><span class="eyebrow">YOUR PROJECT, IN CONTEXT</span><form class="logout" action="/logout" method="post"><input type="hidden" name="csrf" value="'''+e(csrf)+'''"><button type="submit">登出</button></form></div><header><div><h1>專案記憶中樞</h1><div class="muted">一眼掌握進度、脈絡與下一位接手者</div></div>'''
+    body = '''<div class="shell"><aside><div class="brand">ys-aimemory<small>PROJECT MEMORY / MCP</small></div>'''+project_navigation(config, selected, identity)+'''<div class="aside-note">共同記憶，明確交接<br>每次認領、閱讀與驗證都有依據<br><br>此介面僅供檢視<br>寫入需經授權 API / MCP</div></aside><main id="overview"><div class="topline"><span class="eyebrow">PROJECT WORKSPACE</span><form class="logout" action="/logout" method="post"><input type="hidden" name="csrf" value="'''+e(csrf)+'''"><button type="submit">登出</button></form></div><header><div><h1>專案工作區</h1><div class="muted">同一專案的對話、任務交接與記憶，集中在這裡。</div></div>'''
     if options:
         body += '<form class="project-select" method="get" action="/ui"><select name="project" aria-label="選擇專案">'+options+'</select><button>切換</button></form>'
-    body += '</header>'
+    body += '</header><p class="project-context">目前專案 <strong>'+e(selected or '尚未選擇')+'</strong><span>此頁僅顯示目前專案的內容；切換專案不會搬動或共用資料。</span></p>'
     if not config.secure:
         body += '<div class="alert">目前停用 Secure Cookie，僅限隔離本機 HTTP 測試。LAN 與公開環境請使用 HTTPS。</div>'
     body += '<div class="stats">'+''.join('<div class="stat"><span>'+label+'</span><strong>'+e(value)+'</strong></div>' for label,value in [('脈絡版本', 'r'+str(state.get('revision',0))),('進行中認領',active),('等待接手',pending),('已登錄來源',len(sources))])+'</div>'
@@ -286,16 +305,6 @@ def install_web(app, hub, config=None, clock=time.time):
             records=conn.execute(select(events.c.sequence,events.c.event).where(events.c.project_id==selected).order_by(events.c.sequence.desc()).limit(200)).all()
             audit=[{'sequence':row.sequence,**row.event} for row in reversed(records)]
         output=render_dashboard(config,selected,states,audit,hub.principals,current['csrf'],clock(),identity=identity)
-        from urllib.parse import urlencode
-        navigation = '<a href="/ui/chat?' + e(urlencode({'project': selected})) + '">共享對話</a><a href="/ui/account/password">修改密碼</a>'
-        if config.mcp_enabled and identity.role == 'admin':
-            navigation += '<a href="/ui/mcp">MCP 產生器</a>'
-        if identity.can_manage_users:
-            navigation += '<a href="/ui/users">使用者管理</a>'
-        output = output.replace('<nav><a href="#overview">◈ 專案總覽</a>', '<nav aria-label="主要導覽"><a href="#overview">◈ 專案總覽</a>' + navigation, 1)
-        links='<div class="panel"><a href="/ui/manage?'+urlencode({'project':selected})+'">專案管理</a> · <a href="/ui/search?'+urlencode({'project':selected})+'">搜尋記憶</a> · <a href="/ui/inbox?'+urlencode({'project':selected})+'">任務收件匣</a></div>'
-        links=links.replace('</div>', ' · <a href="/ui/chat">共享 Chat</a> · <a href="/ui/account/password">變更密碼</a> · <a href="/help">操作教學與 CA 下載</a>'+(' · <a href="/ui/mcp">MCP 產生器</a>' if config.mcp_enabled and identity.role=='admin' else '')+(' · <a href="/ui/users">使用者管理</a>' if identity.can_manage_users else '')+'</div>')
-        output=output.replace('<div class="stats">', links+'<div class="stats">',1)
         return page(output)
 
     from .web_management import install_management

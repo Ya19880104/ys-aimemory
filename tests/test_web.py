@@ -65,6 +65,21 @@ def test_login_csrf_and_throttle(setup):
     for _ in range(5): assert login(client,password='wrong').status_code==401
     assert login(client).status_code==429
 
+
+def test_dashboard_has_one_project_scoped_sidebar(setup):
+    client, _ = setup
+    login(client)
+    html = client.get('/ui?project=visible').text
+    sidebar, main = html.split('</aside>', 1)
+    for path in ['/ui/chat', '/ui/manage', '/ui/search', '/ui/inbox']:
+        href = 'href="' + path + '?project=visible"'
+        assert sidebar.count(href) == 1
+        assert href not in main
+    assert 'href="/help"' in sidebar
+    assert 'href="/ui/account/password"' in sidebar
+    assert '目前專案 <strong>visible</strong>' in main
+    assert '共享 Chat' not in html
+
 def test_logout_and_expiry(setup):
     client,now=setup
     login(client)

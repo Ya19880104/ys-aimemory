@@ -21,6 +21,7 @@ pytestmark = pytest.mark.skipif(NODE is None, reason="Node.js is required for ch
 @pytest.mark.parametrize("scenario", [
     "deep_link_outside_first_page",
     "project_change_during_deep_link",
+    "project_change_clears_old_rooms",
     "close_pending_artifact",
 ])
 def test_chat_navigation(tmp_path, monkeypatch, scenario):

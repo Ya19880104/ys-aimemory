@@ -68,7 +68,7 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
     def scoped(project, current):
         identity = auth.principal(current)
         if identity is None or project not in identity.projects:
-            raise HubError('forbidden', '此記憶庫不在網頁帳號授權範圍。', 403)
+            raise HubError('forbidden', '此專案不在網頁帳號授權範圍。', 403)
 
     def start(action, current, project='', extra=None):
         nonce = secrets.token_urlsafe(24)
@@ -93,22 +93,22 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
             scope = identity.projects
             project = request.query_params.get('project') or next(iter(scope), '')
             if project: scoped(project, current)
-            body = '<p>一個記憶庫對應一個專案 ID；每個 AI 使用獨立 worker 與 Token。新增 Token 的角色固定為 worker，不會取得管理員權限。</p><p><a href="/help">操作教學</a> · <a href="/downloads/ys-ai-memory-ca.crt">下載公開 CA 憑證</a></p>'
-            body += '<section class="panel task"><h2>1. 建立記憶庫</h2><p>使用英文字母、數字、點、底線或連字號。已存在的記憶庫不能被重新認領。</p>'+start('project', current)+input_field('new_project_id','新記憶庫 ID')+'<p><button>建立記憶庫</button></p></form></section>'
+            body = '<p>每個專案有自己的對話、任務交接與記憶，以 project_id 識別；每個 AI 使用獨立 worker 與 Token。新增 Token 的角色固定為 worker，不會取得管理員權限。</p><p><a href="/help">操作教學</a> · <a href="/downloads/ys-ai-memory-ca.crt">下載公開 CA 憑證</a></p>'
+            body += '<section class="panel task"><h2>1. 建立專案</h2><p>使用英文字母、數字、點、底線或連字號。已存在的專案不能被重新認領。</p>'+start('project', current)+input_field('new_project_id','新專案 ID')+'<p><button>建立專案</button></p></form></section>'
             if project:
-                body += '<form method="get"><label for="project">目前記憶庫</label><select id="project" name="project">'+''.join('<option'+(' selected' if p == project else '')+'>'+e(p)+'</option>' for p in scope)+'</select><p><button>切換記憶庫</button></p></form>'
+                body += '<form method="get"><label for="project">目前專案</label><select id="project" name="project">'+''.join('<option'+(' selected' if p == project else '')+'>'+e(p)+'</option>' for p in scope)+'</select><p><button>切換專案</button></p></form>'
                 body += '<section class="panel task"><h2>2. 產生 MCP Token</h2>'+start('issue',current,project)+input_field('worker_id','AI 身分 ID（例如 claude-design 或 codex-api）')+'<p>身分 ID 不可重用。Token 只顯示一次；遺失時請重新產生。</p><p><button>產生專屬 Token</button></p></form></section><h2>已建立的連線身分</h2>'
             else:
-                body += '<p>目前沒有授權專案。可先建立新的記憶庫，或請使用者管理員授予專案範圍。</p>'
+                body += '<p>目前沒有授權專案。可先建立新的專案，或請使用者管理員授予專案範圍。</p>'
             records = hub.credentials.list_credentials([project]) if project else []
             for row in records:
-                body += '<section class="panel task"><h3>'+e(row['worker_id'])+'</h3><p>記憶庫 '+e(row['project_id'])+' · worker · '+('已撤銷' if row['revoked_at'] is not None else '有效')+'</p><p class="muted">建立於 '+e(stamp(row['created_at']))+' · 版本 '+e(row['version'])+'</p>'
+                body += '<section class="panel task"><h3>'+e(row['worker_id'])+'</h3><p>專案 '+e(row['project_id'])+' · worker · '+('已撤銷' if row['revoked_at'] is not None else '有效')+'</p><p class="muted">建立於 '+e(stamp(row['created_at']))+' · 版本 '+e(row['version'])+'</p>'
                 if row['revoked_at'] is None:
                     extra = {'token_id':row['token_id'],'expected_version':row['version']}
                     body += '<p>重新產生會立即使舊 Token 失效。撤銷後無法恢復；尚未完成的任務需由管理頁另行復原。</p>'+start('rotate',current,project,extra)+'<p><button>重新產生 Token</button></p></form>'+start('revoke',current,project,extra)+'<p><button>撤銷此 Token</button></p></form>'
                 body += '</section>'
             if project and not records:
-                body += '<p class="muted">此記憶庫尚未從產生器建立 Token。</p>'
+                body += '<p class="muted">此專案尚未從產生器建立 Token。</p>'
             body += '<p class="muted">環境配置中的既有身分由伺服器管理員維護，不會在此顯示 Token。關閉產生器不會撤銷已簽發的 Token。</p>'+config_cards(public_base_url())
             return page(shell('MCP 產生器',body,project,'admin'), script=COPY_SCRIPT)
         except HubError as exc:
@@ -129,7 +129,7 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
             if action != 'project':
                 scoped(project, current)
             elif project:
-                raise HubError('invalid_project','建立表單不接受既有記憶庫範圍。',400)
+                raise HubError('invalid_project','建立表單不接受既有專案範圍。',400)
             if not hmac.compare_digest(values.get('csrf','').encode(),current['csrf'].encode()):
                 raise HubError('csrf','表單驗證失敗，請重新載入。',403)
             if not auth.consume_nonce(values.get('nonce',''),current,'mcp-'+action,project):
@@ -155,7 +155,7 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
                     registry.revoke(*args)
                     return redirect('/ui/mcp?'+urlencode({'project':project}))
                 issued = registry.rotate(*args)
-            body = '<div class="alert">Token 僅在本次回應顯示。請立即複製到安全的秘密儲存位置；勿貼入聊天、Git、網址或截圖。遺失時請重新產生。</div><p>記憶庫 <strong>'+e(issued['project_id'])+'</strong> · AI 身分 <strong>'+e(issued['worker_id'])+'</strong> · worker</p><label for="issued-token">專屬 Token</label><textarea id="issued-token" readonly rows="3" spellcheck="false" autocomplete="off">'+e(issued['token'])+'</textarea><p><button type="button" data-copy="issued-token">複製 Token</button></p>'+config_cards(base)+'<p><a href="/ui/mcp?'+e(urlencode({'project':project}))+'">已保存 Token，返回連線身分清單</a></p>'
+            body = '<div class="alert">Token 僅在本次回應顯示。請立即複製到安全的秘密儲存位置；勿貼入聊天、Git、網址或截圖。遺失時請重新產生。</div><p>專案 <strong>'+e(issued['project_id'])+'</strong> · AI 身分 <strong>'+e(issued['worker_id'])+'</strong> · worker</p><label for="issued-token">專屬 Token</label><textarea id="issued-token" readonly rows="3" spellcheck="false" autocomplete="off">'+e(issued['token'])+'</textarea><p><button type="button" data-copy="issued-token">複製 Token</button></p>'+config_cards(base)+'<p><a href="/ui/mcp?'+e(urlencode({'project':project}))+'">已保存 Token，返回連線身分清單</a></p>'
             return page(shell('已產生 MCP Token',body,project,'admin'), script=COPY_SCRIPT)
         except HubError as exc:
             return error(exc)
