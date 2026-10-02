@@ -156,3 +156,6 @@ MODELS = {
     "renew_lease": Renew, "complete_task": Checkpoint,
     "get_worker_inbox": Project, "search_knowledge": Search, "audit_log": Project,
 }
+
+from .session_models import SESSION_MODELS
+MODELS.update(SESSION_MODELS)

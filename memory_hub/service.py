@@ -6,6 +6,8 @@ from .models import MODELS, Principal
 from .store import HubError, requests, messages
 from .credential_store import Registry
 from .message_store import MessageStore
+from .session_models import SESSION_MODELS
+from .session_service import SessionActor, SessionService
 from sqlalchemy import select
 
 
@@ -20,6 +22,7 @@ class Hub:
         self._principals = tuple(principals or [])
         self.credentials = Registry(store, self._principals)
         self.messages = MessageStore(messages)
+        self.sessions = SessionService(store, clock=lambda: self.clock())
 
     @property
     def principals(self):
@@ -30,6 +33,8 @@ class Hub:
 
     def call(self, name, arguments, principal: Principal):
         require(name in MODELS, "unknown_tool", "Unknown tool", 404)
+        if name in SESSION_MODELS:
+            return self.sessions.call(name, arguments, SessionActor.from_principal(principal))
         a = MODELS[name].model_validate(arguments).model_dump()
         project = a["project_id"]
         require(project in principal.projects, "forbidden", "Project not authorized", 403)

@@ -130,6 +130,8 @@ def create_app(*, database_url=None, auth_tokens=None, allow_sqlite=None):
         "propose_memory_change":"Append a proposed decision; never promotes it to approved knowledge.",
         "approve_memory_change":"Approver/admin only: promote a current proposal and invalidate all old context packets.",
     }
+    from .session_models import SESSION_DESCRIPTIONS
+    descriptions.update(SESSION_DESCRIPTIONS)
     def register(name, model):
         def invoke(arguments):
             try:

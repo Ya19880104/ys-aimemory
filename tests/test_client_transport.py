@@ -120,7 +120,8 @@ def test_downloaded_stdio_adapter_relays_live_tools_identity_and_error_without_p
                     listed = await session.list_tools()
                     expected = await app.state.mcp.list_tools()
                     assert [tool.model_dump() for tool in listed.tools] == [tool.model_dump() for tool in expected]
-                    assert {'send_message', 'list_messages'} <= {tool.name for tool in listed.tools}
+                    assert {'send_message', 'list_messages', 'read_session'} <= {tool.name for tool in listed.tools}
+                    assert len(listed.tools) == 38
                     inbox = await session.call_tool('get_worker_inbox', {'arguments': {'project_id': 'only'}})
                     assert not inbox.isError
                     payload = inbox.structuredContent or json.loads(inbox.content[0].text)
