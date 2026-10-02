@@ -169,7 +169,7 @@ finally {{ Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }}</c
 
 <section id="sessions" class="panel"><h2>4. 開始一個人與 AI 共同對話</h2>
 <h3>4.1 在後台建立主題</h3>
-<ol><li>開啟 <a href="{e(base)}/ui/chat">共享對話</a>，左側先選「記憶庫」。</li><li>管理員在「新增對話」輸入主題，例如「首頁改版討論」，按「建立對話」。也可直接點左側既有對話；成員使用管理員已建立的對話。</li><li>確認中央標題是要討論的主題，在下方輸入需求並按「傳送訊息」。例如：「請 Codex 提出兩個首頁方向，Claude 評估取捨；先討論，不改檔案。」</li><li>右側「讓 AI 加入」按「複製加入指引」，分別貼到 Codex、Claude 自己的工作中。指引帶有這個記憶庫和對話 ID，不帶 Token。</li></ol>
+<ol><li>開啟 <a href="{e(base)}/ui/chat">共享對話</a>，左側先選「記憶庫」。</li><li>管理員在「新增對話」輸入主題，例如「首頁改版討論」，按「建立對話」。也可直接點左側既有對話；成員使用管理員已建立的對話。</li><li>確認中央標題是要討論的主題，在下方輸入需求並按「傳送訊息」。例如：「請 Codex 提出兩個首頁方向，Claude 評估取捨；先討論，不改檔案。」</li><li>右側「讓 AI 加入討論」按「複製加入指引」，分別貼到 Codex、Claude 自己的工作中。指引帶有這個記憶庫和對話 ID，不帶 Token。</li></ol>
 <p>AI 可用 <code>list_sessions</code> 找授權範圍內的對話；選定後每次讀寫明確帶 <code>project_id</code>、<code>session_id</code>。這樣同一 Token 的不同程序不會互相切換隱藏的「目前對話」。</p>
 <h3>4.2 給 AI 的開始指示</h3>
 <pre class="path"><code>使用自己的 YS Memory MCP 身分加入指定記憶庫和對話。
@@ -198,14 +198,15 @@ finally {{ Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }}</c
 }}</code></pre></details></section>
 
 <section id="results" class="panel"><h2>5. 保存文件、附加檔案與搜尋紀錄</h2>
+<p>右欄依序收納共同成果、共享檔案、AI 加入指引與搜尋。成果與檔案以目前載入的訊息為範圍；更早資料可載入歷史或用搜尋尋找。</p>
 <h3>把有用的討論整理成共同成果</h3>
-<ol><li>選定對話，在右側展開「建立文件／提案」。</li><li>選文件、方案、對話摘要、任務提案或交接提案，輸入標題及內容。建議寫清目標、已決定事項、來源訊息、未完成事項與下一步。</li><li>按「保存成果」。系統保存作者及內容雜湊，並標示涵蓋到目前已讀的訊息序號。若正回覆某則訊息，也會記錄該訊息引用。</li><li>點成果標題查看內容；長文件用「讀取下一段」。內容不可直接覆寫，修正時建立新成果，註明取代哪份及修正原因。</li></ol>
+<ol><li>選定對話，在右側展開「建立文件／提案」。</li><li>選文件、方案、對話摘要、任務提案或交接提案，輸入標題及內容。建議寫清目標、已決定事項、來源訊息、未完成事項與下一步。</li><li>按「保存成果」。系統保存作者及內容雜湊，並標示涵蓋到目前已讀的訊息序號。若正回覆某則訊息，也會記錄該訊息引用。</li><li>點成果標題，畫面會定位到成果內容；讀完按「返回對話」。長文件用「讀取下一段」。內容不可直接覆寫，修正時建立新成果，註明取代哪份及修正原因。</li></ol>
 <p>AI 也可用 <code>create_session_artifact</code> 保存成果，並帶來源訊息 ID 和涵蓋序號。摘要是作者的整理，不會自動成為核准記憶；摘要之後的新訊息仍需另外讀。</p>
 <h3>附加檔案</h3>
 <p>在輸入區「附加檔案」選擇檔案，完成上傳後可與訊息或成果一起引用。<strong>上傳成功立即對此記憶庫的授權成員共享</strong>，不是私人的待傳草稿；即使不傳送訊息，檔案仍會保存。</p>
 <p>每檔最多 512 KiB，每對話合計 25 MiB，每則訊息或成果最多引用 10 檔。目前沒有附件刪除／回收介面。不要上傳 Token、密碼、私鑰或不適合整個專案看見的資料。檔案只作附件下載，不直接執行 HTML／SVG，不自動解壓；AI 要明確分段讀取，傳輸成功不代表模型能理解所有格式。</p>
 <h3>搜尋對話與成果</h3>
-<ol><li>在右側「搜尋本記憶庫的對話與成果」輸入關鍵字，按「搜尋紀錄」，也可在欄位按 Enter。</li><li>搜尋範圍是目前記憶庫內的共享對話和成果，包含其他主題；不搜尋私人訊息或附件正文。英文字母區分大小寫，按輸入的字面內容比對。</li><li>點結果會切換至對應對話並定位紀錄；成果結果可開啟該文件。需要更多時按「更多搜尋結果」。</li></ol></section>
+<ol><li>在右側展開「搜尋整個記憶庫」，於「搜尋本記憶庫的對話與成果」輸入關鍵字，按「搜尋紀錄」，也可在欄位按 Enter。</li><li>搜尋範圍是目前記憶庫內的共享對話和成果，包含其他主題；不搜尋私人訊息或附件正文。英文字母區分大小寫，按輸入的字面內容比對。</li><li>點結果會切換至對應對話並定位紀錄；成果結果可開啟該文件。需要更多時按「更多搜尋結果」。</li></ol></section>
 
 <section id="efficient" class="panel"><h2>6. 讓 AI 少讀紀錄，避免每次載入全部歷史</h2>
 <ol><li><strong>有需要才啟用：</strong>compact 初始只有兩個入口，實際工具請求才連 Hub。若 MCP 本身停用，先由操作者按客戶端方式啟用；自然語言提到它不保證生效。</li><li><strong>先找工具：</strong><code>memory_tools</code> 搜尋少量名稱及簡述；需要哪個工具才取它的完整 schema。通用 <code>memory_call</code> 可能寫入，不要視為唯讀而一律核准。</li><li><strong>先看索引與摘要：</strong><code>list_sessions</code> 只取對話標題、最新序號及摘要索引。有相關摘要先讀所需段落，確認涵蓋到哪個序號，再讀較新的訊息。</li><li><strong>保存游標：</strong>成功後記住 <code>next_after_sequence</code>，下次填 <code>after_sequence</code>。各 worker、記憶庫、對話各有自己的游標，不自行猜下一筆。僅在需要而且 <code>has_more=true</code> 時續讀。</li><li><strong>先讀片段：</strong>預設訊息正文最多 512 UTF-8 bytes；推薦先用 <code>limit=5</code>、<code>max_bytes=4096</code>。收到 <code>response_budget_too_small</code> 時保留原游標，提高 budget 後重讀，上限 65536。</li><li><strong>需要才精讀：</strong>要讀某則完整訊息，使用該序號減一的 <code>after_sequence</code>、<code>limit=1</code>、<code>full_text=true</code>、<code>max_bytes=65536</code>。文件分段預設 2,000 字元，附件每段最多 65,536 bytes。</li></ol>
