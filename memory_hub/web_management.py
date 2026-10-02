@@ -29,7 +29,7 @@ def hidden(name, value):
 
 
 def shell(title, body, project='', role='read_only'):
-    return '<main class="management"><div class="eyebrow">YS-AIMEMORY / '+e(role)+'</div><h1>'+e(title)+'</h1><p><a href="'+link('/ui',project=project)+'">← 總覽</a> · <a href="'+link('/ui/manage',project=project)+'">管理</a> · <a href="'+link('/ui/search',project=project)+'">搜尋</a> · <a href="'+link('/ui/inbox',project=project)+'">收件匣</a> · <a href="/ui/chat">共享 Chat</a> · <a href="/ui/account/password">變更密碼</a></p>'+body+'</main>'
+    return '<main class="management"><div class="eyebrow">YS-AIMEMORY / '+e(role)+'</div><h1>'+e(title)+'</h1>'+('<p class="project-context">目前專案 <strong>'+e(project)+'</strong></p>' if project else '')+'<p><a href="'+link('/ui',project=project)+'">← 總覽</a> · <a href="'+link('/ui/manage',project=project)+'">管理</a> · <a href="'+link('/ui/search',project=project)+'">搜尋</a> · <a href="'+link('/ui/inbox',project=project)+'">收件匣</a> · <a href="'+link('/ui/chat',project=project)+'">共享對話</a> · <a href="/ui/account/password">變更密碼</a></p>'+body+'</main>'
 
 
 def install_management(app, hub, config, session, parse_form, redirect, auth, clock):

@@ -50,6 +50,18 @@ def source_form(client,source_id='guide'):
 def task_form(client):
     return {**fields(client,'task'),'task_id':'task-a','goal':'Build memory hub','allowed_paths':'src/**\ntests/**','acceptance_criteria':'Tests pass','source_ids':'guide'}
 
+
+@pytest.mark.parametrize('path', ['/ui/manage', '/ui/search', '/ui/inbox'])
+def test_management_navigation_preserves_selected_project(managed, path):
+    make, hub, admin, _ = managed
+    hub.call('create_project', {'project_id': 'new'}, admin)
+    client = make('admin')
+    html = client.get(path + '?project=new').text
+    assert '目前專案 <strong>new</strong>' in html
+    assert 'href="/ui/chat?project=new"' in html
+    assert 'href="/ui?project=new"' in html
+    assert 'href="/ui/chat"' not in html
+
 def test_create_project_source_task_and_double_submission(managed):
     make,hub,_,_=managed; client=make('admin')
     values=fields(client,'project','/ui/manage?project=new')

@@ -71,6 +71,8 @@ def test_create_library_scope_and_issue_once(generator):
     assert response.status_code == 303
     assert 'new-memory' in client.get('/ui').text
     assert client.get('/ui/manage?project=new-memory').status_code == 200
+    assert 'href="/ui/mcp?project=new-memory"' in client.get('/ui?project=new-memory').text
+    assert 'href="/ui/chat?project=new-memory"' in client.get('/ui/mcp?project=new-memory').text
     fields = {**form(client, 'issue', 'new-memory'), 'worker_id': 'claude-library'}
     issued = post(client, 'issue', fields)
     raw = token(issued)

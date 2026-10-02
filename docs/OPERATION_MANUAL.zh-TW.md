@@ -6,20 +6,20 @@
 
 | 名稱 | 用途 | 工具識別碼 |
 | --- | --- | --- |
-| 記憶庫 | 一個專案及其授權範圍 | `project_id` |
+| 專案 | 一個專案及其授權範圍 | `project_id` |
 | 對話（Session） | 專案裡一個討論主題，例如首頁改版 | `session_id` |
 | 訊息 | 人或 AI 的發言 | `message_id`、sequence |
 | 共同成果 | 文件、方案、摘要、任務／交接提案 | `artifact_id` |
 
-預設先對話，需要時才整理文件，再決定是否建立正式任務與交接。一般聊天不需要租約或任務認領。一個 MCP 入口可以選授權範圍內的多個對話，不需要每個對話另發 Token；每次工具讀寫明確帶記憶庫及對話 ID。
+預設先對話，需要時才整理文件，再決定是否建立正式任務與交接。一般聊天不需要租約或任務認領。一個 MCP 入口可以選授權範圍內的多個對話，不需要每個對話另發 Token；每次工具讀寫明確帶專案及對話 ID。
 
 ## 完整 HTML 手冊的順序
 
 1. `/help#trust`：下載公開 CA，經獨立可信通道核對 DER SHA-256；登入 HTTPS 網頁。
-2. `/help#project`：在「MCP 接入」建立／選擇記憶庫，為 Codex、Claude 各發獨立 worker Token，一次顯示後妥善保存。
+2. `/help#project`：在「MCP 接入」建立／選擇專案，為 Codex、Claude 各發獨立 worker Token，一次顯示後妥善保存。
 3. `/help#clients`：下載 stdio 1.1.0 安裝包，在新目錄建立 Python 環境。Claude 本機 Code 工作合併專案 `.mcp.json`；Codex 合併專案 `.codex/config.toml`。提供各自程序的 `YS_AIMEMORY_TOKEN`，按需啟用並實際核對 worker。
 4. `/help#sessions`：管理員建立對話、先發需求，複製加入指引給各 AI；Codex 讀取並回覆，Claude 讀取新訊息並回覆，Codex 再讀回。人類在同頁查看、回覆及附檔。
-5. `/help#results`：保存文件／方案／摘要；附加檔案；用關鍵字搜尋目前記憶庫的共享對話與成果。
+5. `/help#results`：保存文件／方案／摘要；附加檔案；用關鍵字搜尋目前專案的共享對話與成果。
 6. `/help#efficient`：先找工具與摘要，保存 `next_after_sequence`，下一次只讀新訊息；必要時取單則全文或附件片段。
 7. `/help#memory`、`/help#handoff`：只有需要實際執行、分工或換人時才建立正式任務，重新讀來源並取得有效上下文。
 8. `/help#accounts`、`/help#tokens`：修改 10–1024 字元的人類密碼、管理使用者，獨立輪替或撤銷 AI Token。
