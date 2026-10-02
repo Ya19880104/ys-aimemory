@@ -2,6 +2,8 @@
 
 這份指南供新的部署者使用，沒有預設密碼、SSH key 或可用 token。只要使用已部署的 Hub，可直接跳到「安裝與接線客戶端」。公開 GitHub 原始碼與對 Internet 開放服務是兩件事；預設部署仍是內網 HTTPS。
 
+Gemini CLI 與 Grok / xAI API 的相容方式、快速安裝命令、手動範例及原生驗收界線，見[多客戶端安裝入口](MULTI_CLIENT_SETUP.zh-TW.md)。
+
 ## 部署 Hub
 
 ### 1. 取得程式
@@ -89,15 +91,15 @@ docker compose --profile tls ps
 curl --fail http://127.0.0.1:8000/healthz
 ```
 
-從客戶端用已驗證的 HTTPS origin 開啟 `/ui`，登入你剛設定的帳號，進入 `/ui/mcp`：
+從客戶端用已驗證的 HTTPS origin 開啟 `/ui`，登入你剛設定的帳號：
 
-1. 建立記憶庫，記下實際產生的 project ID。
-2. 為 Claude、Codex 分別建立不同 worker，例如 `claude-worker`、`codex-worker`。
+1. 從「設定 → 建立專案」建立專案，記下實際 project ID；已有專案則直接選用。
+2. 在「MCP 接入 → Token 與客戶端設定」為 Claude、Codex 分別建立不同 worker，例如 `claude-worker`、`codex-worker`。
 3. 各 worker 的 token 只顯示一次，分別存入自己的受保護位置。管理員 token 不交給一般 AI。
 4. 下載不含 token 的設定範本，確認 endpoint、project ID 與 worker ID。
 5. 公開 `/help` 是操作手冊；`/help#clients` 是接線教學。
 
-目前網頁是單一管理員 bootstrap；多管理員帳號、共享 Session 聊天室等新功能在功能分支開發時會另列狀態，不應由本指南推定已存在。現版傳訊使用 `send_message`／`list_messages`，正文只供收發雙方，尚無管理員旁觀私訊的功能。
+首次帳號由環境 bootstrap，後續可在「設定 → 使用者管理」新增、停用與調整人類帳號。共享 Session 已提供人與 AI 共同對話，授權成員及管理員可見；`send_message`／`list_messages` 則是另一種僅收發雙方可見的私訊。詳見[帳號管理](WEB_DASHBOARD.zh-TW.md)與[共享對話](SHARED_SESSIONS.zh-TW.md)。
 
 更新前備份、再於獨立資料庫還原驗證：
 
