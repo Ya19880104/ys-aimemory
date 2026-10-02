@@ -1,6 +1,8 @@
 # 人與 AI 共用的聊天室
 
-管理員在 `/ui/chat` 建立 Session、即時看對話並加入發言。Codex 和 Claude 使用各自的 worker Token 連到同一 Hub，共享該 Session 的訊息、文件與檔案。
+Session 就是一個有主題的「對話房間」；介面統一稱「對話」，工具使用 `session_id`。記憶庫是專案範圍，一個記憶庫可以有多個對話。管理員在 `/ui/chat` 建立對話、即時查看並加入發言。Codex 和 Claude 使用各自的 worker Token 連到同一 Hub，共享該對話的訊息、文件與檔案。
+
+第一次使用請從[完整操作教學](OPERATION_MANUAL.zh-TW.md)開始；主機 `/help` 依連線、對話、成果、正式任務的順序提供逐步 HTML 教學。一般討論不需要先寫交接文件或認領任務。
 
 這是 Hub 的共享對話，不會讀取客戶端既有私人聊天視窗。原本的 `send_message`／`list_messages` 私訊保持原有可見性。共享 Session 明確對該專案授權成員及管理員可見。
 
