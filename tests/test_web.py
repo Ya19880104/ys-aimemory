@@ -44,6 +44,9 @@ def test_login_and_scope_and_xss(setup):
     assert client.get('/ui',follow_redirects=False).headers['location']=='/login'
     response=login(client)
     assert response.status_code==303
+    assert response.headers['location'] == '/ui/chat'
+    assert client.get('/', follow_redirects=False).headers['location'] == '/ui/chat'
+    assert client.get('/login', follow_redirects=False).headers['location'] == '/ui/chat'
     cookie=response.headers.get_list('set-cookie')[0]
     assert 'HttpOnly' in cookie and 'SameSite=strict' in cookie and 'Max-Age=300' in cookie
     response=client.get('/ui')

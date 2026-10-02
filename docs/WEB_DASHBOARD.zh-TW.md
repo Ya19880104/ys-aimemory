@@ -1,5 +1,7 @@
 # 網頁管理與帳號密碼
 
+登入預設進入共享對話 `/ui/chat`：先選擇記憶庫與 Session，讓人與 AI 討論，再視需要保存方案、文件或任務／交接提案。一般聊天不需要任務認領；正式執行與交接才走 Hub 的任務流程。省 Token 透過按需接入、增量游標、片段與摘要完成，不要求先建立交接。
+
 ys-aimemory 的交接是系統功能：任務、讀取確認、租約、fence、指定接手者與稽核都在 Hub 保存，不只是本專案開發時的約定。網頁讓人類檢視這些狀態；AI 使用同一個服務的 MCP／REST。
 
 ## 啟用
@@ -7,7 +9,7 @@ ys-aimemory 的交接是系統功能：任務、讀取確認、租約、fence、
 沒有預設帳號密碼。首次啟用由部署者自行設定以下 bootstrap 帳號；升級至 schema 5 後一次性匯入資料庫，後續透過線上帳號管理更新：
 
 - `HUB_WEB_USERNAME`：網頁登入名稱
-- `HUB_WEB_PASSWORD_HASH`：互動式執行 `python -m memory_hub.web_password` 產生；密碼 12–1024 字元，不將明文放入環境檔
+- `HUB_WEB_PASSWORD_HASH`：互動式執行 `python -m memory_hub.web_password` 產生；密碼 10–1024 字元，不將明文放入環境檔
 - `HUB_WEB_PROJECTS`：明確逗號分隔可操作 project IDs，不支援 `*`
 - `HUB_WEB_ROLE=read_only`：預設唯讀；部署者明確設 `admin` 才能透過網頁寫入指定專案
 - `HUB_WEB_COOKIE_SECURE=true`：預設開啟，LAN 必須 HTTPS；只有隔離本機 HTTP 測試可設 false
@@ -15,7 +17,7 @@ ys-aimemory 的交接是系統功能：任務、讀取確認、租約、fence、
 
 雜湊包含 `$`，在 Compose `.env` 中使用單引號保留原字元，不要讓插值破壞雜湊。雜湊同樣是敏感設定，別加入 Git。本交付沒有建立任何可用的登入密碼。
 
-HTTPS 開啟 `/ui`，未登入會導向 `/login`。可檢視：
+HTTPS 開啟 `/` 或登入成功後，預設到 `/ui/chat`；未登入會導向 `/login`。Chat 頂部可開啟「修改密碼」，有帳號管理能力時也會顯示「使用者管理」。透過品牌連結可回到 `/ui` 專案總覽，其側欄同樣提供共享對話和帳號入口。總覽可檢視：
 
 1. 專案上下文版本、來源與記憶提案狀態
 2. 任務範圍、租約、接受狀態、checkpoint 與待接手人

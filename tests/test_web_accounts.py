@@ -395,6 +395,27 @@ def test_maximum_unicode_password_can_actually_login(accounts):
     assert login(other, 'unicode-password', password).status_code == 303
 
 
+def test_ten_character_password_boundary_and_self_change(accounts):
+    client, _, _, _, make = accounts
+    login(client)
+    values = {'username': 'ten-character-user', 'display_name': 'Human',
+              'role': 'member', 'projects': 'one'}
+    rejected = post(client, 'create', {**fields(client, 'create'), **values, 'password': 'TooShort9'})
+    assert rejected.status_code == 400
+    accepted = post(client, 'create', {**fields(client, 'create'), **values, 'password': 'Fixture10!'})
+    assert accepted.status_code == 303
+    other, _ = make()
+    assert login(other, 'ten-character-user', 'Fixture10!').status_code == 303
+    page = other.get('/ui/account/password')
+    assert 'minlength="10"' in page.text
+    changed = other.post('/ui/account/password', data={**fields(other, 'self-password'),
+        'current_password': 'Fixture10!', 'password': 'Changed10!'}, follow_redirects=False)
+    assert changed.status_code == 303 and changed.headers['location'] == '/login'
+    assert other.get('/ui', follow_redirects=False).headers['location'] == '/login'
+    assert login(other, 'ten-character-user', 'Fixture10!').status_code == 401
+    assert login(other, 'ten-character-user', 'Changed10!').status_code == 303
+
+
 def test_new_library_cannot_expand_identity_beyond_bounded_grants(accounts):
     client, app, hub, _, _ = accounts
     login(client)
