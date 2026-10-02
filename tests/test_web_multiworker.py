@@ -77,16 +77,17 @@ def test_shared_throttling_and_no_forwarded_ip_trust(shared):
     response=two.post('/login',data={'csrf':csrf,'username':'fixture','password':'fixture-shared-password'},headers={'X-Forwarded-For':'8.8.8.8'},follow_redirects=False)
     assert response.status_code==429
 
-def test_changed_role_scope_password_and_expiry_invalidate_session(shared):
+def test_environment_changes_cannot_overwrite_accounts_and_expiry_still_applies(shared):
     one,two,_,_,make,config,now=shared
     assert login(one).status_code==303
     for changed in [replace(config,role='read_only'),replace(config,projects=('one',)),replace(config,password_hash=hash_password('changed-fixture-password')),replace(config,username='renamed')]:
         other,_=make(changed);other.cookies.update(one.cookies)
-        assert other.get('/ui',follow_redirects=False).headers['location']=='/login'
+        assert other.get('/ui',follow_redirects=False).status_code==200
+        identity=other.app.state.web_auth.principal(other.app.state.web_auth.session(other.cookies.get(COOKIE)))
+        assert identity.role=='admin' and identity.projects==('one','two') and identity.username=='fixture'
     restored,_=make(config)
     restored.cookies.update(one.cookies)
-    assert restored.get('/ui',follow_redirects=False).headers['location']=='/login'
-    assert login(restored).status_code==303
+    assert restored.get('/ui',follow_redirects=False).status_code==200
     now[0]+=3601
     assert restored.get('/ui',follow_redirects=False).headers['location']=='/login'
 
@@ -108,7 +109,8 @@ def test_atomic_parallel_throttle_and_nonce(shared):
         results=list(pool.map(lambda i:auths[i%2].allow_attempt('parallel-peer'),range(20)))
     assert sum(results)==5
     session_token=secrets.token_urlsafe(32);nonce=secrets.token_urlsafe(24)
-    auths[0].start_session(session_token,'csrf','')
+    identity=auths[0].users.authenticate('fixture','fixture-shared-password')
+    auths[0].start_session(session_token,'csrf','',identity)
     current=auths[0].session(session_token)
     auths[0].start_nonce(nonce,current,'project','one')
     with ThreadPoolExecutor(max_workers=8) as pool:
@@ -118,7 +120,9 @@ def test_atomic_parallel_throttle_and_nonce(shared):
 def test_expired_nonce_and_bounded_entry_cleanup(shared):
     _,_,hub,_,_,config,now=shared
     auth=WebAuthStore(hub.store,config,lambda:now[0])
-    raw=secrets.token_urlsafe(32);auth.start_session(raw,'csrf','');current=auth.session(raw)
+    raw=secrets.token_urlsafe(32)
+    auth.start_session(raw,'csrf','',auth.users.authenticate('fixture','fixture-shared-password'))
+    current=auth.session(raw)
     auth.start_nonce('nonce',current,'project','one')
     now[0]+=901
     assert not auth.consume_nonce('nonce',current,'project','one')

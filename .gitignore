@@ -31,6 +31,7 @@ id_ed25519*
 *-access.json
 *-known_hosts
 .mcp.json
+.mcp.*.json
 .codex/
 .claude/
 verification/

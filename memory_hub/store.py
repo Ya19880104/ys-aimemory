@@ -12,6 +12,7 @@ from .index import KnowledgeIndex, index_tables
 from .web_store import define_tables
 from .credential_store import define_tables as define_credential_tables
 from .message_store import define_table as define_message_table
+from .session_store import define_tables as define_session_tables
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -23,6 +24,7 @@ index_schema = index_tables(metadata)
 WEB_TABLES = define_tables(metadata)
 CREDENTIAL_TABLES = define_credential_tables(metadata)
 messages = define_message_table(metadata)
+SESSION_TABLES = define_session_tables(metadata)
 requests = Table("idempotent_requests", metadata, Column("project_id", String(128), primary_key=True), Column("worker_id", String(128), primary_key=True), Column("request_key", String(128), primary_key=True), Column("payload_hash", String(64), nullable=False), Column("result", JSON, nullable=False))
 
 class HubError(Exception):
@@ -47,12 +49,12 @@ class Store:
             try:
                 versions = (conn.execute(select(self.index.migrations.c.version)).scalars().all()
                             if inspect(conn).has_table(self.index.migrations.name) else [])
-                if versions and max(versions) > 4:
+                if versions and max(versions) > 5:
                     raise RuntimeError("Database schema is newer than this server; use a compatible version")
                 metadata.create_all(conn)
                 self.index.install(conn)
                 insert = sqlite_insert if self.sqlite else pg_insert
-                for version in (1, 2, 3, 4):
+                for version in (1, 2, 3, 4, 5):
                     conn.execute(insert(self.index.migrations).values(version=version,applied_at=time.time()).on_conflict_do_nothing())
                 conn.commit()
             except BaseException:

@@ -1,5 +1,6 @@
 """Exercise the shipped standalone adapter without real credentials or services."""
 from datetime import datetime, timedelta, timezone
+import asyncio
 import importlib.util
 import json
 from pathlib import Path
@@ -125,3 +126,66 @@ def test_print_config_handles_unicode_install_path_with_ascii_console(adapter, c
                             capture_output=True, text=True, timeout=15)
     assert result.returncode == 0 and result.stderr == ''
     assert json.loads(result.stdout)['mcpServers']['ys_memory']['args'][-1] == str(config.resolve())
+
+
+def test_compact_print_config_is_opt_in_and_offline(adapter, connection, monkeypatch):
+    path, _ = connection
+    monkeypatch.delenv('YS_AIMEMORY_TOKEN', raising=False)
+    result = subprocess.run([sys.executable, '-B', adapter.__file__, '--config', str(path),
+                             '--compact', '--print-claude-config'], capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0 and result.stderr == ''
+    server = json.loads(result.stdout)['mcpServers']['ys_memory']
+    assert server['args'] == ['-B', str(Path(adapter.__file__).resolve()), '--config', str(path.resolve()), '--compact']
+    assert server['env'] == {'YS_AIMEMORY_TOKEN': '${YS_AIMEMORY_TOKEN}'}
+
+
+def test_compact_discovery_follows_pages_but_returns_only_one_schema(adapter):
+    from mcp import types
+    calls = []
+    target = types.Tool(name='target', description='Target only', inputSchema={'type': 'object'})
+
+    class Upstream:
+        async def list_tools(self, cursor=None):
+            calls.append(cursor)
+            if cursor is None:
+                return types.ListToolsResult(tools=[types.Tool(name='other', inputSchema={'type': 'object'})], nextCursor='second')
+            return types.ListToolsResult(tools=[target])
+
+    result = asyncio.run(adapter.compact_discover(Upstream(), {'name': 'target'}))
+    assert not result.isError and calls == [None, 'second']
+    assert result.structuredContent == {'tool': target.model_dump(mode='json', by_alias=True, exclude_none=True)}
+    assert 'other' not in result.model_dump_json()
+
+
+def test_compact_discovery_bounds_descriptions_and_detects_cursor_loop(adapter):
+    from mcp import types
+
+    class Upstream:
+        async def list_tools(self, cursor=None):
+            return types.ListToolsResult(tools=[types.Tool(name='read', description='long ' * 200, inputSchema={'type': 'object'})])
+
+    result = asyncio.run(adapter.compact_discover(Upstream(), {'query': 'READ'}))
+    assert len(result.structuredContent['items'][0]['description']) == 240
+    assert result.structuredContent['has_more'] is False
+
+    class Loop:
+        calls = 0
+
+        async def list_tools(self, cursor=None):
+            self.calls += 1
+            return types.ListToolsResult(tools=[], nextCursor='again')
+
+    upstream = Loop()
+    result = asyncio.run(adapter.compact_discover(upstream, {'name': 'absent'}))
+    assert result.isError and upstream.calls == 2
+
+
+def test_compact_discovery_refuses_unbounded_single_schema(adapter):
+    from mcp import types
+
+    class Upstream:
+        async def list_tools(self, cursor=None):
+            return types.ListToolsResult(tools=[types.Tool(name='oversized', description='x' * 65536, inputSchema={'type': 'object'})])
+
+    result = asyncio.run(adapter.compact_discover(Upstream(), {'name': 'oversized'}))
+    assert result.isError and len(result.model_dump_json()) < 300

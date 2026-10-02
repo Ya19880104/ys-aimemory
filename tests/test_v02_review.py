@@ -221,25 +221,32 @@ def test_index_missing_row_is_reported_and_repaired(protocol):
     assert call('one', 'search_knowledge', {'query': 'healthunique'})['matches']
 
 
-def test_web_config_rotation_permanently_revokes_sessions_and_nonces(protocol):
+def test_db_password_rotation_revokes_sessions_and_stale_environment_cannot_restore_them(protocol):
     _, app = protocol
     from memory_hub.web import WebConfig
     from memory_hub.web_auth import WebAuthStore
+    from memory_hub.web_password import hash_password
     store = app.state.hub.store
-    config_a = WebConfig('review-operator', 'synthetic-hash-A', ('review',), False, 3600, 'admin')
-    config_b = WebConfig('review-operator', 'synthetic-hash-B', ('review',), False, 3600, 'read_only')
+    config_a = WebConfig('review-operator', hash_password('synthetic-password-A'), ('review',), False, 3600, 'admin')
+    config_b = WebConfig('review-operator', hash_password('synthetic-password-B'), ('review',), False, 3600, 'read_only')
     first = WebAuthStore(store, config_a, lambda: 1000)
-    first.start_session('synthetic-session-A', 'synthetic-csrf-A', '')
+    identity = first.users.authenticate('review-operator', 'synthetic-password-A')
+    first.start_session('synthetic-session-A', 'synthetic-csrf-A', '', identity)
     session_a = first.session('synthetic-session-A')
     assert session_a
     assert first.start_nonce('synthetic-form-A', session_a, 'source', 'review')
     second = WebAuthStore(store, config_b, lambda: 1001)
+    assert second.session('synthetic-session-A')
+    assert second.principal(session_a).role == 'admin'
+    second.users.password(session_a, identity.user_id, identity.version, 'synthetic-password-B')
     assert second.session('synthetic-session-A') is None
     assert first.session('synthetic-session-A') is None
     assert not first.consume_nonce('synthetic-form-A', session_a, 'source', 'review')
-    second.start_session('synthetic-session-B', 'synthetic-csrf-B', '')
+    assert first.users.authenticate('review-operator', 'synthetic-password-A') is None
+    second.start_session('synthetic-session-B', 'synthetic-csrf-B', '', second.users.authenticate('review-operator', 'synthetic-password-B'))
     assert second.session('synthetic-session-B')
     restored = WebAuthStore(store, config_a, lambda: 1002)
     assert restored.session('synthetic-session-A') is None
-    assert restored.session('synthetic-session-B') is None
+    assert restored.session('synthetic-session-B')
+    assert restored.users.authenticate('review-operator', 'synthetic-password-A') is None
     assert not restored.consume_nonce('synthetic-form-A', session_a, 'source', 'review')

@@ -4,7 +4,7 @@
 `/downloads/ys-ai-memory-ca.crt`；登入後的 `/ui/mcp` 提供建立記憶庫、
 簽發 worker token、輪替、撤銷，以及 Codex／Claude Code 設定範本。
 Claude stdio 安裝包下載為 HTTPS 的
-`/downloads/ys-memory-stdio-1.0.0.zip`；公開手冊與後台提供入口。
+`/downloads/ys-memory-stdio-1.1.0.zip`；公開手冊與後台提供入口。
 
 部署需設定 `HUB_WEB_ROLE=admin`、`HUB_WEB_MCP_ENABLED=true`，以及固定的
 `HUB_WEB_OWNER_ID` UUID。這個 UUID 代表本安裝的單一網頁管理帳號，
@@ -24,16 +24,18 @@ Claude stdio 安裝包使用官方 Python MCP SDK 將本機 stdio 轉送到此 H
 HTTPS `/mcp`，保留 CA pin、憑證鏈與 hostname／name constraints 驗證。
 本環境 Claude CLI 2.1.278 直接 HTTP 已遇到 `UNSUPPORTED_CONSTRAINT_TYPE`；
 `NODE_EXTRA_CA_CERTS` 不能保證修復 TLS runtime 的限制，不可關閉 TLS。
-Codex 本輪保持 HTTP 範本；不由此宣稱 Codex stdio 已驗收。
+Codex 的 HTTP 範本繼續提供；[按需 MCP](EFFICIENT_MCP.zh-TW.md) 另有專案限定 stdio 範例。設定範本不代表原生客戶端已驗收。
 
 ZIP 包含 `bridge.py`、`connection.json`、公開 CA、`requirements.lock`、
 `README.txt`。endpoint 與 CA 來自部署設定，不取自請求 Host，不帶 worker
 token；CA 缺失或無效時下載不可用。Windows 使用者在自選新目錄解壓，
 建立 Python 3.12 `.venv` 並安裝 `requirements.lock`，再執行
-`.\.venv\Scripts\python.exe .\bridge.py --print-claude-config`。
+`.\.venv\Scripts\python.exe .\bridge.py --compact --print-claude-config`。
 此命令不連線、不需 token，只印出本機絕對路徑的設定；使用者手動合併到
 自己專案 `.mcp.json` 的 `ys_memory` 項目，不覆寫其他 server 或全域設定。
 完整步驟見 [客戶端接線](CLIENT_SETUP.zh-TW.md)。
+
+`--compact` 使生成的設定加入相同旗標，本機只列 `memory_tools` 與 `memory_call`，初始化不連 Hub。只有明確工具請求才驗證上游與 worker token。compact 的 Connected 僅表示本機 adapter 就緒；需實際呼叫身份工具驗收。省略旗標仍為原本完整 relay；不要把通用 `memory_call` 標成唯讀，它也能轉送 token 已獲准的寫入。
 
 啟動官方客戶端的程序需持有自己的 `YS_AIMEMORY_TOKEN`；設定只引用環境
 變數名稱。下載或產生設定不會核准工具、替模型登入、修改既有聊天或自動
@@ -41,7 +43,7 @@ token；CA 缺失或無效時下載不可用。Windows 使用者在自選新目�
 設定、CLI Connected、SDK 唯讀、原生模型工具呼叫及雙 AI 對話須分別驗收。
 
 同一記憶庫的兩個 AI 可各以自己的 token 呼叫 `send_message`／`list_messages`。
-目前工具集共 28 個；請以目標 MCP 的 `tools/list` 核對版本。寄件者由 token
+Hub 完整工具集請以目標 MCP 的 `tools/list` 核對版本；compact 本機列表則固定為 2 個入口。寄件者由 token
 決定，所有角色都只能讀本人寄出／收到的訊息，admin 不會取得旁觀權限。
 操作步驟見公開 `/help#messages` 與 [訊息手冊](MCP_MESSAGES.zh-TW.md)。
 

@@ -25,6 +25,10 @@ def generator(tmp_path, monkeypatch):
     for project in operator.projects:
         hub.call('create_project', {'project_id': project}, operator)
     password = hash_password('fixture-password-for-generator')
+    bootstrap_app = FastAPI()
+    bootstrap = install_web(bootstrap_app, hub, WebConfig('fixture', password, ('visible',), False, 300, 'admin', True, OWNER))
+    bootstrap.start_session('fixture-admin-session', 'fixture-csrf', '', bootstrap.users.authenticate('fixture', 'fixture-password-for-generator'))
+    bootstrap.users.create(bootstrap.session('fixture-admin-session'), 'fixture-reader', 'Reader', 'fixture-password-for-generator', 'read_only', ('visible',))
 
     def make(role='admin', enabled=True, username='fixture'):
         app = FastAPI()
@@ -33,7 +37,7 @@ def generator(tmp_path, monkeypatch):
         install_web(app, hub, config)
         client = TestClient(app)
         csrf = re.search('name="csrf" value="([^"]+)"', client.get('/login').text)[1]
-        client.post('/login', data={'csrf': csrf, 'username': username,
+        client.post('/login', data={'csrf': csrf, 'username': 'fixture-reader' if role == 'read_only' else 'fixture',
                                   'password': 'fixture-password-for-generator'})
         return client
 
@@ -115,15 +119,14 @@ def test_role_scope_csrf_and_cannot_claim_existing_library(generator):
     assert 'private' not in hub.credentials.owned_projects(OWNER)
     assert post(client, 'issue', {**form(client, 'issue'), 'worker_id': 'operator'}).status_code in (400, 409)
     assert post(client, 'issue', {**form(client, 'issue'), 'worker_id': '<script>'}).status_code in (400, 422)
-    # Switching the single web configuration invalidates earlier sessions; test
-    # each configuration before installing the next one into the shared store.
+    # The role comes from the separate DB account, not the bootstrap environment.
     for settings in ({'role':'read_only'}, {'enabled':False}):
         client = make(**settings)
         assert client.get('/ui/mcp').status_code == 403
         assert post(client, 'issue', {'project_id': 'visible', 'role': 'admin'}).status_code == 403
 
 
-def test_owner_is_stable_across_username_change_but_reader_gets_no_owned_scope(generator):
+def test_owner_and_explicit_grants_survive_environment_change_but_reader_gets_no_owned_scope(generator):
     make, hub = generator
     client = make()
     post(client, 'project', {**form(client, 'project'), 'new_project_id': 'stable-owner'})

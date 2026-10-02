@@ -37,6 +37,7 @@ def test_password_hash(password_hash):
     assert not verify_password('incorrect',password_hash)
     assert not verify_password('fixture-only-password','bad')
     with pytest.raises(ValueError): hash_password('short')
+    with pytest.raises(ValueError): hash_password('x' * 1025)
 
 def test_login_and_scope_and_xss(setup):
     client,_=setup

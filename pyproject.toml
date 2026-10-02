@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ys-ai-memory-hub"
-version = "0.2.0"
-description = "Transactional project memory and explicit AI handoff prototype"
+version = "0.3.0"
+description = "Project memory, shared human and AI sessions, and explicit task handoffs"
 requires-python = ">=3.11"
 dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.34,<1", "sqlalchemy>=2.0,<3", "psycopg[binary]>=3.2,<4", "mcp==1.29.0", "pydantic>=2.10,<3", "cryptography>=46,<51"]
 

@@ -4,6 +4,8 @@ Run only against a disposable cluster (local runner or official CI service).
 The regular suite still collects these tests, but skips without that opt-in.
 """
 import os
+import base64
+import hashlib
 import subprocess
 import uuid
 
@@ -72,6 +74,18 @@ def test_logical_backup_restore_preserves_hub_state_and_audit(postgres_url, tmp_
             conn.execute(text(f'CREATE SCHEMA "{schema}"'))
         source_store = Store(scoped_url.render_as_string(hide_password=False))
         hub = Hub(source_store, clock=lambda: 1000.0, principals=principals)
+        from memory_hub.web import WebConfig
+        from memory_hub.web_auth import WebAuthStore
+        from memory_hub.web_password import hash_password
+        config = WebConfig('restore-admin', hash_password('synthetic-restore-password'),
+                           ('backup-proof',), False, 300, 'admin')
+        auth = WebAuthStore(source_store, config, lambda: 1000.0)
+        identity = auth.users.authenticate('restore-admin', 'synthetic-restore-password')
+        assert identity is not None
+        assert auth.start_session('synthetic-restore-cookie', 'synthetic-csrf', '', identity)
+        current = auth.session('synthetic-restore-cookie')
+        member_id = auth.users.create(current, 'restore-member', '還原成員',
+            'synthetic-member-password', 'member', ('backup-proof',), False)
         hub.call("create_project", {"project_id": "backup-proof"}, admin)
         hub.call("register_source", {
             "project_id": "backup-proof", "source_id": "backup-spec",
@@ -129,6 +143,19 @@ def test_logical_backup_restore_preserves_hub_state_and_audit(postgres_url, tmp_
         assert latest_handoff["evidence"] == evidence
         assert latest_handoff["result_commit"] == "fixture-result-commit"
         assert latest_handoff["test_results"][0]["status"] == "not_run"
+        session = hub.call('create_session', {'project_id':'backup-proof', 'title':'Restore shared room',
+                            'idempotency_key':'room'}, admin)
+        room_args = {'project_id':'backup-proof', 'session_id':session['session_id']}
+        post_args = {**room_args, 'body':'Shared restore message 中文', 'idempotency_key':'message'}
+        message = hub.call('post_session_message', post_args, sender)
+        content = bytes(range(256)) * 512
+        attachment = hub.call('upload_session_attachment', {**room_args, 'filename':'restore.bin',
+            'content_base64':base64.b64encode(content).decode(), 'idempotency_key':'attachment'}, sender)
+        artifact = hub.call('create_session_artifact', {**room_args, 'kind':'summary', 'title':'Backup summary',
+            'content':'Shared summary 中文', 'covered_through_sequence':message['sequence'],
+            'reference_message_ids':[message['message_id']], 'attachment_ids':[attachment['attachment_id']],
+            'idempotency_key':'artifact'}, sender)
+        before_room = hub.call('read_session', {**room_args, 'full_text':True}, recipient)
         with source_store.transaction("backup-proof") as (state, conn):
             before_state = state.copy()
             before_audit = source_store.read_audit(conn, "backup-proof")
@@ -138,12 +165,23 @@ def test_logical_backup_restore_preserves_hub_state_and_audit(postgres_url, tmp_
         assert archive.stat().st_size > 0
         listing = run("pg_restore", "--list", data=archive.read_bytes()).decode()
         assert "projects" in listing and "audit_events" in listing
+        assert all(name in listing for name in ('collab_sessions','collab_events','collab_artifacts',
+                                                'collab_attachments','collab_requests'))
+        assert all(name in listing for name in ('web_users','web_user_projects',
+                                                'web_account_bootstrap','web_user_audit'))
         run("createdb", target)
         target_created = True
         run("pg_restore", "--dbname", target, "--no-owner", "--no-acl",
             "--exit-on-error", "--single-transaction", data=archive.read_bytes())
         restored_url = scoped_url.set(database=target)
         restored_store = Store(restored_url.render_as_string(hide_password=False))
+        restored_auth = WebAuthStore(restored_store, config, lambda: 1000.0)
+        restored_member = restored_auth.users.authenticate('restore-member', 'synthetic-member-password')
+        assert restored_member.user_id == member_id
+        assert restored_member.projects == ('backup-proof',) and restored_member.role == 'member'
+        assert not restored_member.can_manage_users
+        restored_login = restored_auth.principal(restored_auth.session('synthetic-restore-cookie'))
+        assert restored_login.user_id == identity.user_id and restored_login.can_manage_users
         with restored_store.transaction("backup-proof") as (state, conn):
             assert state == before_state
             assert restored_store.read_audit(conn, "backup-proof") == before_audit
@@ -161,6 +199,19 @@ def test_logical_backup_restore_preserves_hub_state_and_audit(postgres_url, tmp_
         }, admin)["matches"]
         assert matches
         assert "還原證據" in str(matches)
+        assert restored_hub.call('read_session', {**room_args, 'full_text':True}, recipient) == before_room
+        assert restored_hub.call('post_session_message', post_args, sender) == message
+        restored_artifact = restored_hub.call('get_session_artifact', {**room_args,
+            'artifact_id':artifact['artifact_id']}, recipient)
+        assert restored_artifact['content']=='Shared summary 中文'
+        assert restored_artifact['reference_message_ids']==[message['message_id']]
+        chunks = []
+        for offset in (0,65536):
+            chunk = restored_hub.call('read_session_attachment', {**room_args,
+                'attachment_id':attachment['attachment_id'], 'offset':offset}, recipient)
+            chunks.append(base64.b64decode(chunk['content_base64']))
+        assert b''.join(chunks)==content
+        assert chunk['sha256']==hashlib.sha256(content).hexdigest() and not chunk['has_more']
     finally:
         if source_store is not None:
             source_store.engine.dispose()

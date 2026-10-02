@@ -130,18 +130,18 @@ bearer_token_env_var = "YS_AIMEMORY_TOKEN"
 
 ### Claude Code：stdio 安裝包
 
-从 Hub 的 `/help#clients` 或 `/ui/mcp` 取得 HTTPS `/downloads/ys-memory-stdio-1.0.0.zip`。私有 CA 先經可信通道核對；在已放好公開 CA 的 PowerShell 可用：
+从 Hub 的 `/help#clients` 或 `/ui/mcp` 取得 HTTPS `/downloads/ys-memory-stdio-1.1.0.zip`。私有 CA 先經可信通道核對；在已放好公開 CA 的 PowerShell 可用：
 
 ```powershell
-curl.exe --cacert .\ys-ai-memory-ca.crt --fail --output .\ys-memory-stdio-1.0.0.zip 'https://hub.example.test:8443/downloads/ys-memory-stdio-1.0.0.zip'
-Expand-Archive -LiteralPath .\ys-memory-stdio-1.0.0.zip -DestinationPath .\ys-memory-client
+curl.exe --cacert .\ys-ai-memory-ca.crt --fail --output .\ys-memory-stdio-1.1.0.zip 'https://hub.example.test:8443/downloads/ys-memory-stdio-1.1.0.zip'
+Expand-Archive -LiteralPath .\ys-memory-stdio-1.1.0.zip -DestinationPath .\ys-memory-client
 Set-Location .\ys-memory-client
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
-.\.venv\Scripts\python.exe .\bridge.py --print-claude-config
+.\.venv\Scripts\python.exe .\bridge.py --compact --print-claude-config
 ```
 
-使用尚不存在的解壓目錄；核對 connection.json 的 CA DER pin。最後命令離線印出本機設定，不需 token。把其 `mcpServers.ys_memory` 合併至工作專案 `.mcp.json`，保留 `${YS_AIMEMORY_TOKEN}`。不要把安裝包目錄移走；換位置後需重新產生路徑。
+使用尚不存在的解壓目錄；核對 connection.json 的 CA DER pin。最後命令離線印出本機 compact 設定，不需 token。把其 `mcpServers.ys_memory` 合併至工作專案 `.mcp.json`，保留 `${YS_AIMEMORY_TOKEN}`。不要把安裝包目錄移走；換位置後需重新產生路徑。若要本次才啟用，使用[按需 MCP](EFFICIENT_MCP.zh-TW.md) 的獨立專案配置；提到記憶庫不會自動開啟停用的 MCP。
 
 ### Codex：可選 stdio 設定
 
@@ -150,7 +150,7 @@ py -3.12 -m venv .venv
 ```toml
 [mcp_servers.ys_memory]
 command = 'C:\Tools\ys-memory-client\.venv\Scripts\python.exe'
-args = ['-B', 'C:\Tools\ys-memory-client\bridge.py', '--config', 'C:\Tools\ys-memory-client\connection.json']
+args = ['-B', 'C:\Tools\ys-memory-client\bridge.py', '--config', 'C:\Tools\ys-memory-client\connection.json', '--compact']
 env_vars = ['YS_AIMEMORY_TOKEN']
 startup_timeout_sec = 60
 ```
@@ -168,7 +168,7 @@ try { codex } finally { Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyC
 
 Claude 使用同一流程，將 `codex` 改為 `claude`。模型登入與專案信任／工具核准由該客戶端正常處理；已開啟的桌面程序不會自動取得新終端的環境。
 
-在新對話要求 AI：「從 ys_memory 呼叫 get_worker_inbox，project_id 使用我的記憶庫 ID；回報實際 worker/project，不要建立任務或傳訊。」確認後再依 [雙 AI 訊息演練](MCP_MESSAGES.zh-TW.md)收發新驗證碼。記錄 `tools/list` 的28工具、實際呼叫結果及兩端回覆；Connected、SDK 成功和原生模型實際呼叫是不同驗收層級。
+在新對話要求 AI：「從 ys_memory 呼叫 get_worker_inbox，project_id 使用我的記憶庫 ID；回報實際 worker/project，不要建立任務或傳訊。若為 compact，先用 memory_tools 取得單一 schema，再用 memory_call 傳送原 arguments。」確認後再依 [雙 AI 訊息演練](MCP_MESSAGES.zh-TW.md)收發新驗證碼。記錄實際工具列表與呼叫結果；compact 的 2 個入口和 Hub 完整工具集不同。compact Connected 只代表本機就緒，SDK 成功和原生模型實際呼叫仍是不同驗收層級。
 
 | 狀況 | 處理 |
 | --- | --- |

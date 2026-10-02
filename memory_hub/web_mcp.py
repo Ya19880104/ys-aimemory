@@ -48,8 +48,8 @@ def config_cards(base_url):
         field = 'config-' + name
         body += '<section class="panel task"><label for="'+field+'">'+e(title)+'</label><textarea id="'+field+'" readonly rows="8" spellcheck="false">'+e(content)+'</textarea><p><button type="button" data-copy="'+field+'">複製設定</button> <button type="button" data-download="'+field+'" data-filename="'+filename+'">下載設定</button></p></section>'
     from .client_bundle import BUNDLE_ROUTE
-    setup = 'py -3.12 -m venv .venv\n.\\.venv\\Scripts\\python.exe -m pip install -r requirements.lock\n.\\.venv\\Scripts\\python.exe .\\bridge.py --print-claude-config'
-    body += '<section class="panel task"><h3>Claude Code：stdio HTTPS adapter</h3><p>若直接 HTTP 出現 <code>UNSUPPORTED_CONSTRAINT_TYPE</code>，可使用 Python 嚴格 TLS adapter。它不處理模型登入、OAuth 過期或客戶端工具核准。</p><p><a class="button" href="'+e(base_url+BUNDLE_ROUTE)+'">下載 stdio 套件 1.0.0（不含 Token）</a></p><p>先核對公開 CA 指紋，將套件解壓至自選的新目錄，在該目錄的 PowerShell 執行：</p><pre class="path"><code>'+e(setup)+'</code></pre><p>最後一行不需 Token、不連線、不寫檔；它輸出這個目錄的完整路徑。將輸出的 ys_memory 設定合併至專案 .mcp.json，保留其他 MCP。套件移動後須重新產生路徑。接著切換到該專案目錄，將自己的 Token 提供給同一程序的 YS_AIMEMORY_TOKEN，再啟動 Claude；Connected 不代表模型對話已通過。</p></section>'
+    setup = 'py -3.12 -m venv .venv\n.\\.venv\\Scripts\\python.exe -m pip install -r requirements.lock\n.\\.venv\\Scripts\\python.exe .\\bridge.py --compact --print-claude-config'
+    body += '<section class="panel task"><h3>Claude Code：stdio HTTPS adapter</h3><p>若直接 HTTP 出現 <code>UNSUPPORTED_CONSTRAINT_TYPE</code>，可使用 Python 嚴格 TLS adapter。它不處理模型登入、OAuth 過期或客戶端工具核准。</p><p><a class="button" href="'+e(base_url+BUNDLE_ROUTE)+'">下載 stdio 套件 1.1.0（不含 Token）</a></p><p>先核對公開 CA 指紋，將套件解壓至自選的新目錄，在該目錄的 PowerShell 執行：</p><pre class="path"><code>'+e(setup)+'</code></pre><p>最後一行不需 Token、不連線、不寫檔；它輸出這個目錄的完整路徑。將輸出的 ys_memory 設定合併至專案 .mcp.json，保留其他 MCP。套件移動後須重新產生路徑。接著切換到該專案目錄，將自己的 Token 提供給同一程序的 YS_AIMEMORY_TOKEN，再啟動 Claude；compact 初始只提供兩個工具，實際呼叫才連 Hub；Connected 僅代表本機就緒，不代表模型對話已通過。</p></section>'
     body += '<p>將 Token 安全提供至啟動客戶端的 <code>YS_AIMEMORY_TOKEN</code> 環境變數。直接 HTTP 設定的私有 CA 另以 <code>CODEX_CA_CERTIFICATE</code>（Codex）或 <code>NODE_EXTRA_CA_CERTS</code>（Claude Code）指向下載的 PEM 憑證；重新啟動客戶端才會套用。stdio adapter 使用套件內經指紋核對的 CA，不需要 Node CA 環境變數。</p><p><a href="/help#clients">完整設定與測試步驟 →</a></p><p id="copy-status" role="status" aria-live="polite"></p>'
     return body
 
@@ -59,12 +59,15 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
         current = session(request)
         if not current:
             return None
-        if not config or config.role != 'admin' or not config.mcp_enabled:
+        identity = auth.principal(current)
+        if identity is None: return None
+        if identity.role != 'admin' or not config.mcp_enabled:
             raise HubError('forbidden', 'MCP 產生器僅供已啟用此功能的管理員使用。', 403)
         return current
 
-    def scoped(project):
-        if project not in config.project_scope(hub):
+    def scoped(project, current):
+        identity = auth.principal(current)
+        if identity is None or project not in identity.projects:
             raise HubError('forbidden', '此記憶庫不在網頁帳號授權範圍。', 403)
 
     def start(action, current, project='', extra=None):
@@ -85,21 +88,26 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
             if current is None:
                 return redirect('/login')
             from .web_help import public_base_url
-            scope = config.project_scope(hub)
-            project = request.query_params.get('project') or scope[0]
-            scoped(project)
+            identity = auth.principal(current)
+            if identity is None: return redirect('/login')
+            scope = identity.projects
+            project = request.query_params.get('project') or next(iter(scope), '')
+            if project: scoped(project, current)
             body = '<p>一個記憶庫對應一個專案 ID；每個 AI 使用獨立 worker 與 Token。新增 Token 的角色固定為 worker，不會取得管理員權限。</p><p><a href="/help">操作教學</a> · <a href="/downloads/ys-ai-memory-ca.crt">下載公開 CA 憑證</a></p>'
             body += '<section class="panel task"><h2>1. 建立記憶庫</h2><p>使用英文字母、數字、點、底線或連字號。已存在的記憶庫不能被重新認領。</p>'+start('project', current)+input_field('new_project_id','新記憶庫 ID')+'<p><button>建立記憶庫</button></p></form></section>'
-            body += '<form method="get"><label for="project">目前記憶庫</label><select id="project" name="project">'+''.join('<option'+(' selected' if p == project else '')+'>'+e(p)+'</option>' for p in scope)+'</select><p><button>切換記憶庫</button></p></form>'
-            body += '<section class="panel task"><h2>2. 產生 MCP Token</h2>'+start('issue',current,project)+input_field('worker_id','AI 身分 ID（例如 claude-design 或 codex-api）')+'<p>身分 ID 不可重用。Token 只顯示一次；遺失時請重新產生。</p><p><button>產生專屬 Token</button></p></form></section><h2>已建立的連線身分</h2>'
-            records = hub.credentials.list_credentials([project])
+            if project:
+                body += '<form method="get"><label for="project">目前記憶庫</label><select id="project" name="project">'+''.join('<option'+(' selected' if p == project else '')+'>'+e(p)+'</option>' for p in scope)+'</select><p><button>切換記憶庫</button></p></form>'
+                body += '<section class="panel task"><h2>2. 產生 MCP Token</h2>'+start('issue',current,project)+input_field('worker_id','AI 身分 ID（例如 claude-design 或 codex-api）')+'<p>身分 ID 不可重用。Token 只顯示一次；遺失時請重新產生。</p><p><button>產生專屬 Token</button></p></form></section><h2>已建立的連線身分</h2>'
+            else:
+                body += '<p>目前沒有授權專案。可先建立新的記憶庫，或請使用者管理員授予專案範圍。</p>'
+            records = hub.credentials.list_credentials([project]) if project else []
             for row in records:
                 body += '<section class="panel task"><h3>'+e(row['worker_id'])+'</h3><p>記憶庫 '+e(row['project_id'])+' · worker · '+('已撤銷' if row['revoked_at'] is not None else '有效')+'</p><p class="muted">建立於 '+e(stamp(row['created_at']))+' · 版本 '+e(row['version'])+'</p>'
                 if row['revoked_at'] is None:
                     extra = {'token_id':row['token_id'],'expected_version':row['version']}
                     body += '<p>重新產生會立即使舊 Token 失效。撤銷後無法恢復；尚未完成的任務需由管理頁另行復原。</p>'+start('rotate',current,project,extra)+'<p><button>重新產生 Token</button></p></form>'+start('revoke',current,project,extra)+'<p><button>撤銷此 Token</button></p></form>'
                 body += '</section>'
-            if not records:
+            if project and not records:
                 body += '<p class="muted">此記憶庫尚未從產生器建立 Token。</p>'
             body += '<p class="muted">環境配置中的既有身分由伺服器管理員維護，不會在此顯示 Token。關閉產生器不會撤銷已簽發的 Token。</p>'+config_cards(public_base_url())
             return page(shell('MCP 產生器',body,project,'admin'), script=COPY_SCRIPT)
@@ -119,7 +127,7 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
             values = await parse_form(request, max_bytes=8192, max_fields=8)
             project = values.get('project_id','')
             if action != 'project':
-                scoped(project)
+                scoped(project, current)
             elif project:
                 raise HubError('invalid_project','建立表單不接受既有記憶庫範圍。',400)
             if not hmac.compare_digest(values.get('csrf','').encode(),current['csrf'].encode()):
@@ -131,15 +139,18 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
             # cannot mint a token and then fail while rendering its only response.
             base = public_base_url()
             registry = hub.credentials
+            identity = auth.principal(current)
+            if identity is None: return redirect('/login')
+            if identity.role != 'admin': raise HubError('forbidden', '此帳號沒有專案管理權限。', 403)
             if action == 'project':
                 project = values.get('new_project_id','')
-                registry.create_project(project,config.owner_id,config.username,clock())
+                auth.users.create_project(current,project,registry)
                 return redirect('/ui/mcp?'+urlencode({'project':project}))
             if action == 'issue':
-                issued = registry.issue(project,values.get('worker_id',''),config.username,clock())
+                issued = registry.issue(project,values.get('worker_id',''),'human:' + identity.user_id,clock())
             else:
                 version = int(values.get('expected_version',''))
-                args = (project,values.get('token_id',''),version,config.username,clock())
+                args = (project,values.get('token_id',''),version,'human:' + identity.user_id,clock())
                 if action == 'revoke':
                     registry.revoke(*args)
                     return redirect('/ui/mcp?'+urlencode({'project':project}))

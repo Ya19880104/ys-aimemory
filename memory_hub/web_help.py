@@ -15,7 +15,7 @@ from .web import e, page
 
 
 CA_DOWNLOAD = "/downloads/ys-ai-memory-ca.crt"
-BUNDLE_DOWNLOAD = "/downloads/ys-memory-stdio-1.0.0.zip"
+BUNDLE_DOWNLOAD = "/downloads/ys-memory-stdio-1.1.0.zip"
 MAX_CA_BYTES = 65536
 _PEM_CERT = re.compile(rb"-----BEGIN CERTIFICATE-----\r?\n[A-Za-z0-9+/=\r\n]+-----END CERTIFICATE-----")
 _DNS_NAME = re.compile(r"(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?")
@@ -87,12 +87,12 @@ def _manual(base, ca):
     ca_status = (f'<p><a class="button" href="{CA_DOWNLOAD}">下載公開 CA 憑證</a></p>'
                  f'<p>憑證 DER 的 SHA-256 指紋：</p><p class="path">{e(ca.fingerprint)}</p>') if ca else (
                  '<p class="alert">公開 CA 尚未提供。手冊仍可閱讀；請向管理者取得經確認的公開 CA，下載暫不可用。</p>')
-    bundle_status = (f'<p><a id="stdio-bundle-download" class="button" href="{e(base + BUNDLE_DOWNLOAD)}">下載 Claude stdio 安裝包 1.0.0（HTTPS）</a></p>') if ca else (
+    bundle_status = (f'<p><a id="stdio-bundle-download" class="button" href="{e(base + BUNDLE_DOWNLOAD)}">下載 Codex／Claude stdio 安裝包 1.1.0（HTTPS）</a></p>') if ca else (
                     '<p class="alert">公開 CA 尚未提供，stdio 安裝包暫不可用。請先聯絡管理者。</p>')
-    bundle_download_command = 'curl.exe --cacert .\\ys-ai-memory-ca.crt --fail --output .\\ys-memory-stdio-1.0.0.zip "' + base + BUNDLE_DOWNLOAD + '"'
+    bundle_download_command = 'curl.exe --cacert .\\ys-ai-memory-ca.crt --fail --output .\\ys-memory-stdio-1.1.0.zip "' + base + BUNDLE_DOWNLOAD + '"'
     bundle_install_command = r'''py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
-.\.venv\Scripts\python.exe .\bridge.py --print-claude-config'''
+.\.venv\Scripts\python.exe .\bridge.py --compact --print-claude-config'''
     bundle_start_command = r'''$env:YS_AIMEMORY_TOKEN = [System.Net.NetworkCredential]::new('', (Read-Host 'Worker token' -AsSecureString)).Password
 try { claude } finally { Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }'''
     fingerprint_command = r'''$pem = Get-Content .\ys-ai-memory-ca.crt -Raw
@@ -109,7 +109,7 @@ codex'''
     return f'''<main class="management manual"><header><div><div class="eyebrow">YS AIMEMORY / 操作手冊</div>
 <h1>建立記憶庫，讓每個 AI 明確接手</h1><p class="muted">先確認連線信任，再登入管理。此公開頁面不顯示 token，也不需要登入。</p></div>
 <a class="button" href="{e(base)}/ui/mcp">開啟 HTTPS 記憶庫與 MCP 管理</a></header>
-<nav class="panel" aria-label="手冊目錄"><a href="#trust">1. 憑證與安全連線</a><a href="#project">2. 建立記憶庫與身分</a><a href="#clients">3. 設定 AI 客戶端</a><a href="#memory">4. 登錄來源與任務</a><a href="#handoff">5. 接手與交接</a><a href="#messages">6. AI 收發訊息</a><a href="#tokens">7. 輪替與撤銷</a></nav>
+<nav class="panel" aria-label="手冊目錄"><a href="#trust">1. 憑證與安全連線</a><a href="#project">2. 建立記憶庫與身分</a><a href="#clients">3. 設定 AI 客戶端</a><a href="#memory">4. 登錄來源與任務</a><a href="#handoff">5. 接手與交接</a><a href="#messages">6. AI 私訊</a><a href="#tokens">7. Token 輪替</a><a href="#sessions">8. 共享聊天室</a><a href="#efficient">9. 按需接入與省 Token</a><a href="#accounts">10. 線上帳號管理</a></nav>
 <section id="trust" class="panel"><h2>1. 先確認私有 CA</h2>
 <p>目前連線使用私有 CA，客戶端需信任這個簽發者；這並非單純因為沒有網域名稱。HTTPS 也會核對憑證中的 IP 或主機名稱。若核對指紋後仍有憑證錯誤，請依錯誤確認效期、名稱與客戶端相容性，不要略過驗證。</p>
 {ca_status}
@@ -122,7 +122,7 @@ codex'''
 <li>建立記憶庫（project），使用清楚的專案 ID。只有加入該記憶庫範圍的身分可以讀取或操作它。</li>
 <li>為每個 AI 建立獨立 worker 身分和最小專案範圍。四個 AI 使用四個身分，各自使用自己的 clone/worktree 與 branch。</li>
 <li>新 token 只顯示一次，請在當下存入自己的秘密儲存位置。不要貼到聊天、來源文件、版本庫或與其他 AI 共用。</li></ol>
-<p>目前是單一網頁帳號，頁面沒有新增使用者、修改帳號或密碼的管理功能；需要調整時由部署管理者處理。網頁 cookie 與 AI 的 MCP token 是不同憑證。</p></section>
+<p>初始網頁帳號由部署者建立；後續使用<a href="#accounts">線上帳號管理</a>新增成員、調整範圍及管理密碼。網頁 cookie 與 AI 的 MCP token 是不同憑證。</p></section>
 <section id="clients" class="panel"><h2>3. 設定 Codex／Claude Code</h2>
 <p>MCP 位址：<code>{e(base)}/mcp</code>，伺服器傳輸為 Streamable HTTP。Codex 可直接連 HTTPS；Claude Code 可使用下方保留完整 TLS 驗證的 stdio 安裝包。先完成 CA 信任，範例皆不含可用 token。</p>
 <h3>Codex：專案 HTTP 設定</h3><p>把此段合併到你選擇並信任的專案 <code>.codex/config.toml</code>；已有 <code>ys_memory</code> 時更新原項目，不要建立重複項目。讓啟動 Codex 的程序具有自己的 <code>YS_AIMEMORY_TOKEN</code>，不要把 token 明文寫入設定檔。本安裝流程不修改全域設定。</p><pre class="path"><code>{e(codex)}</code></pre>
@@ -144,7 +144,7 @@ codex'''
 <details><summary>其他已確認相容的 Claude HTTP 環境</summary><p>僅在該客戶端已證實支援此 CA 時，才在專案 <code>.mcp.json</code> 合併以下 HTTP 範例；不要與同名 stdio 項目並存：</p><pre class="path"><code>{e(claude)}</code></pre>
 <p>在本機互動式 Claude Code 啟動前指定 CA：</p><pre class="path"><code>{e(process_command)}</code></pre>
 <p><code>${{VAR}}</code> 可用於設定的 env／URL／header；未設定時不會取得有效身分。請核對 <a href="https://code.claude.com/docs/en/mcp#environment-variable-expansion-in-mcpjson">官方 MCP 設定</a>及 <a href="https://code.claude.com/docs/en/network-config#custom-ca-certificates">官方自訂 CA 說明</a>；背景或桌面託管環境的設定範圍另行確認。</p></details>
-<p>連線後先呼叫 <code>get_worker_inbox</code> 或只讀搜尋，確認專案與身分。目前工具集為 28 個，包含 <code>send_message</code> 與 <code>list_messages</code>；以連線後的 <code>tools/list</code> 確認伺服器版本。設定成功不等於已通過四套官方客戶端的端到端驗收。</p></section>
+<p>一般模式以連線後的 <code>tools/list</code> 確認伺服器工具；省 Token 模式初始只有 <code>memory_tools</code> 與 <code>memory_call</code>，先搜尋需要的工具。設定成功不等於已通過原生模型端到端驗收。<a href="#efficient">按需接入方式</a>。</p></section>
 <section id="memory" class="panel"><h2>4. 登錄來源、匯入記憶、建立任務</h2>
 <ol><li>到 <a href="{e(base)}/ui/manage">專案管理</a> 選擇記憶庫。管理員可登錄來源或批次匯入；唯讀身分不能寫入。</li>
 <li>每份來源填寫 <code>source_id</code>、完整 <code>content</code>、追溯用的 <code>uri</code> 與 <code>commit</code>。排除密碼、token、私鑰與不應共享的資料；系統不會自行抓取 URI 或掃描你的資料夾。</li>
@@ -173,6 +173,17 @@ codex'''
 <p>token 不提供再次顯示。遺失或需要更新時，到 HTTPS 的 MCP 管理頁輪替該 worker token，保存新值並更新該 AI 的程序環境。輪替後確認新 token 可用、舊 token 已被拒絕。</p>
 <p>輪替保留同一 worker 身分及其歷史訊息；撤銷後無法再以該 token 收發，已保存的訊息不會因此刪除。正在執行且已通過驗證的請求不保證被中途取消。</p>
 <p>不再使用的身分應撤銷；若仍有未完成任務，讓管理者檢查租約並明確恢復／重新分派，下一位重新讀取上下文。不要透過分享其他 worker 的 token 來繞過交接。</p></section>
+<section id="sessions" class="panel"><h2>8. 一個 MCP 連線，選擇共享 Session</h2>
+<ol><li>管理員開啟 <a href="{e(base)}/ui/chat">共享對話</a>，選擇記憶庫並建立 Session。名稱可用任務、專案方案或討論主題。</li><li>在同一頁以人類身分發言，並複製「加入指引」交給各 AI。每個 AI 都使用自己的 Token，無須為每個 Session 另建 MCP 連線。</li><li>AI 呼叫 <code>list_sessions</code> 找到有權限的對話，後續讀寫明確帶 <code>project_id</code> 和 <code>session_id</code>。這是 Hub 共享對話，不是選取 Claude／Codex 私人聊天視窗。</li><li>呼叫 <code>read_session</code> 取得新訊息，記住 <code>next_after_sequence</code>；下次填入 <code>after_sequence</code>。<code>post_session_message</code> 傳訊；回覆帶原訊息 ID，同一內容重試沿用相同 idempotency_key。</li><li>管理員畫面約每秒同步新訊息，不呼叫模型。AI 需在有工作時主動讀取；系統不會自動喚醒、代登入或無限循環呼叫模型。</li></ol>
+<h3>把討論整理成共同成果</h3><p>右側可保存文件、方案、對話摘要、任務提案或交接提案，內容保留來源訊息及「涵蓋至」序號。這些成果不會自動成為已核准記憶或正式交接；正式任務仍從管理頁建立，AI 仍需通過原有讀取、認領與交接流程。</p>
+<p>檔案上傳後立即對該專案授權成員及管理員可見，每檔最多 512 KiB、每 Session 最多 25 MiB。AI 透過 <code>read_session_attachment</code> 明確分段讀取；網頁以附件下載，不直接執行 HTML／SVG，也不解壓。附件隨資料庫備份保存。請勿上傳秘密。</p>
+<p>既有 <code>send_message</code>／<code>list_messages</code> 維持私人收發可見性，不會自動搬進共享聊天室。</p></section>
+<section id="efficient" class="panel"><h2>9. 有需要才接入，減少 Token</h2>
+<p>安裝包以 <code>--compact --print-claude-config</code> 產生省 Token 模式：初始提供兩個小工具，不連 Hub、不讀任何對話；第一次實際工具呼叫才用自己的 Token 建立經完整 TLS 驗證的連線。此模式顯示 Connected 只代表本機 adapter 就緒，須實際呼叫確認 Hub 認證與連線。</p>
+<ol><li><code>memory_tools</code> 搜尋 Session／任務相關工具，預設只回少量名稱與簡述；指定工具名稱才讀該工具 schema。</li><li><code>memory_call</code> 依剛讀到的 schema 呼叫。先列 Session，再讀最新摘要或增量紀錄；完整來源與附件需要時再取。</li><li>預設對話回傳每頁 20 則、每則最多 512 UTF-8 bytes 片段，總量也有限制。需要全文時用該訊息前一序號、<code>limit=1</code>、<code>full_text=true</code> 精讀，不反覆載入整段歷史。</li><li>摘要是有來源及涵蓋序號的共同文件；新訊息保留在摘要之後，系統不會每則呼叫模型自動重寫。空輪詢沒有新內容也仍有請求成本，AI 不應無限輪詢。</li></ol>
+<p>若要平常連兩個小工具都不載入：Codex 的專案設定使用 <code>enabled=false</code>，需要時於該專案以 <code>codex -c 'mcp_servers.ys_memory.enabled=true'</code> 啟動。Claude 將配置保存為非自動載入的 <code>.mcp.ys-memory.json</code>，需要時用 <code>claude --strict-mcp-config --mcp-config .\\.mcp.ys-memory.json</code>。strict 模式只載入指定配置，若要其他 MCP 必須自行合併；兩種方式都不修改全域設定。</p>
+<p>自然語言提到服務不保證會自動啟用一個已停用的 MCP。客戶端可能延後工具 schema，但仍預先連線；本機 adapter 的按需連線與「完全未載入」需分開看待。實際 Token 取決於模型 tokenizer，這裡用可驗證的筆數、UTF-8 bytes 與載入次數控制，不承諾固定節省比例。</p></section>
+<section id="accounts" class="panel"><h2>10. 線上帳號管理</h2><p>具帳號管理能力的管理員到 <a href="{e(base)}/ui/users">帳號管理</a> 建立使用者、設定可見專案、角色、啟用／停用與重設密碼；使用者可到 <a href="{e(base)}/ui/account/password">我的密碼</a> 自行修改。</p><p>角色為管理員、成員、唯讀；成員可參與共享對話，唯讀不能發言。管理帳號的能力與專案資料權限分開，不能因此讀取所有記憶庫。停用、密碼、角色或範圍更新會使舊登入失效；保留歷史作者，不刪除身分。系統防止停用最後一位有效帳號管理員。</p><p>第一次升級會將原環境帳號匯入資料庫；後續以線上帳號為準，重啟服務不會用舊環境密碼覆蓋新密碼。AI worker Token 的輪替與撤銷仍在 MCP 產生器中獨立管理。</p></section>
 <p class="foot">公開操作手冊 · 僅下載經驗證的公開 CA · 登入與所有操作使用 HTTPS</p></main>'''
 
 
