@@ -35,6 +35,8 @@ def managed(tmp_path):
     store.engine.dispose()
 
 def fields(client,action,url='/ui/manage?project=visible'):
+    if '/ui/manage?' in url and 'area=' not in url:
+        url+='&area='+('memory' if action in ('source','import','approve') else 'tasks')
     html=client.get(url).text
     body=re.search('<form method="post" action="/ui/action/'+action+'">(.*?)</form>',html,re.S)[1]
     return {name:unescape(value) for name,value in re.findall('<input type="hidden" name="([^"]+)" value="([^"]*)">',body)}
@@ -57,7 +59,7 @@ def test_management_navigation_preserves_selected_project(managed, path):
     hub.call('create_project', {'project_id': 'new'}, admin)
     client = make('admin')
     html = client.get(path + '?project=new').text
-    assert '目前專案 <strong>new</strong>' in html
+    assert '<p class="workspace-context">new</p>' in html
     assert 'href="/ui/chat?project=new"' in html
     assert 'href="/ui?project=new"' in html
     assert 'href="/ui/chat"' not in html
@@ -165,10 +167,27 @@ def test_task_list_cursor(managed):
     submit(client,'source',source_form(client))
     for i in range(21):
         hub.call('create_task',{'project_id':'visible','task_id':f'task-{i:02d}','goal':'Fixture task','allowed_paths':['src/**'],'acceptance_criteria':['tests'],'source_ids':['guide']},admin)
-    response=client.get('/ui/manage?project=visible')
+    response=client.get('/ui?project=visible&view=tasks')
     assert '下一頁任務' in response.text and 'task-20' not in response.text
     response=client.get('/ui/manage?project=visible&after=task-19')
     assert 'task-20' in response.text and '下一頁任務' not in response.text
+
+
+def test_management_forms_have_one_domain_and_safe_returns(managed):
+    make,_,_,_=managed;client=make('admin')
+    memory=client.get('/ui/manage?project=visible&area=memory').text
+    tasks=client.get('/ui/manage?project=visible&area=tasks').text
+    assert '/ui/action/source' in memory and '/ui/action/import' in memory
+    assert '/ui/action/task' not in memory
+    assert '/ui/action/task' in tasks and '/ui/action/source' not in tasks and '/ui/action/import' not in tasks
+    assert client.get('/ui/manage?project=visible&area=unknown').status_code==404
+    saved=submit(client,'source',source_form(client))
+    assert saved.headers['location']=='/ui/manage?project=visible&area=memory'
+    saved=submit(client,'task',task_form(client))
+    assert saved.headers['location']=='/ui/manage?project=visible&area=tasks'
+    readonly=make('read_only').get('/ui/manage?project=visible&area=memory').text
+    assert '/ui/action/source' not in readonly
+    assert '登錄與審核</a>' not in readonly
 
 def test_integrated_app_cookie_isolation_and_management(monkeypatch,tmp_path):
     from memory_hub.app import create_app

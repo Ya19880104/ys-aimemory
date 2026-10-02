@@ -88,9 +88,11 @@ def login(client, username='operator', password=PASSWORD):
     return client.post('/login', data={'csrf': csrf, 'username': username, 'password': password}, follow_redirects=False)
 
 
-def fields(client, action, user_id=None):
+def fields(client, action, user_id=None, project=None):
     path = '/ui/account/password' if action == 'self-password' else '/ui/users'
-    response = client.get(path, params={'user_id': user_id} if user_id else {})
+    params = {'user_id': user_id} if user_id else {}
+    if project is not None: params['project'] = project
+    response = client.get(path, params=params)
     assert response.status_code == 200
     route = '/ui/account/password' if action == 'self-password' else '/ui/users/' + action
     body = re.search(r'<form method="post" action="' + re.escape(route) + r'">(.*?)</form>', response.text, re.S)
@@ -329,7 +331,7 @@ def test_no_grants_admin_can_create_first_library_without_issue_form(accounts, m
     login(client)
     create(client, username='empty-admin', role='admin', projects='')
     empty, _ = make(); login(empty, 'empty-admin', 'synthetic-member-password')
-    result = empty.get('/ui/mcp')
+    result = empty.get('/ui/mcp?setup=project')
     assert result.status_code == 200
     assert 'action="/ui/mcp/project"' in result.text
     assert 'action="/ui/mcp/issue"' not in result.text
@@ -435,3 +437,38 @@ def test_user_page_rejects_invalid_id_before_database(accounts, field):
     client, _, _, _, _ = accounts
     login(client)
     assert client.get('/ui/users', params={field: '\x00'}).status_code == 400
+
+
+def test_account_mutations_keep_selected_project_separate_from_grants(accounts):
+    client, _, hub, _, make = accounts
+    login(client)
+    create(client, 'two-scope-manager', role='admin', projects='one,two', manager=True)
+    other, _ = make()
+    login(other, 'two-scope-manager', 'synthetic-member-password')
+    response = post(other, 'create', {**fields(other, 'create', project='two'),
+        'username': 'scoped-member', 'display_name': 'Member', 'password': 'synthetic-member-password',
+        'role': 'member', 'projects': 'one', 'can_manage_users': 'false'})
+    assert response.status_code == 303 and 'project=two' in response.headers['location']
+    target = lookup(hub, 'scoped-member')
+    for action in ('update', 'password', 'disable', 'enable'):
+        values = fields(other, action, target['user_id'], project='two')
+        assert values['return_project'] == 'two'
+        if action == 'update': values.update(display_name='Updated', role='member', projects='one', can_manage_users='false')
+        if action == 'password': values['password'] = 'synthetic-replacement-password'
+        response = post(other, action, values)
+        assert response.status_code == 303 and 'project=two' in response.headers['location']
+    rejected = post(other, 'disable', {**fields(other, 'disable', target['user_id'], project='two'), 'return_project': 'outside'})
+    assert rejected.status_code == 404
+    assert lookup(hub, 'scoped-member')['enabled']
+
+
+def test_settings_available_without_project_scope(accounts):
+    client, _, _, _, make = accounts
+    login(client)
+    create(client, 'unscoped-manager', role='read_only', projects='', manager=True)
+    other, _ = make()
+    login(other, 'unscoped-manager', 'synthetic-member-password')
+    response = other.get('/ui/account/password')
+    assert response.status_code == 200 and '我的密碼' in response.text
+    assert '使用者管理' in response.text and '建立專案' not in response.text
+    assert other.get('/ui/users').status_code == 200

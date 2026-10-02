@@ -93,13 +93,14 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
             scope = identity.projects
             project = request.query_params.get('project') or next(iter(scope), '')
             if project: scoped(project, current)
-            body = '<p>每個專案有自己的對話、任務交接與記憶，以 project_id 識別；每個 AI 使用獨立 worker 與 Token。新增 Token 的角色固定為 worker，不會取得管理員權限。</p><p><a href="/help">操作教學</a> · <a href="/downloads/ys-ai-memory-ca.crt">下載公開 CA 憑證</a></p>'
-            body += '<section class="panel task"><h2>1. 建立專案</h2><p>使用英文字母、數字、點、底線或連字號。已存在的專案不能被重新認領。</p>'+start('project', current)+input_field('new_project_id','新專案 ID')+'<p><button>建立專案</button></p></form></section>'
+            if request.query_params.get('setup') == 'project':
+                body='<section class="panel"><p>建立獨立的對話、任務與記憶空間。專案 ID 使用英文字母、數字、點、底線或連字號；已存在的專案不能重新認領。</p>'+start('project',current)+input_field('new_project_id','新專案 ID')+'<p><button>建立專案</button></p></form></section>'
+                return page(shell('建立專案',body,project,'admin',config=config,identity=identity,csrf=current['csrf'],section='settings',tab='project'))
+            body='<p>每個 AI 使用自己的 worker Token，只能存取指定專案。Token 只顯示一次，請存入各自的秘密設定。</p>'
             if project:
-                body += '<form method="get"><label for="project">目前專案</label><select id="project" name="project">'+''.join('<option'+(' selected' if p == project else '')+'>'+e(p)+'</option>' for p in scope)+'</select><p><button>切換專案</button></p></form>'
-                body += '<section class="panel task"><h2>2. 產生 MCP Token</h2>'+start('issue',current,project)+input_field('worker_id','AI 身分 ID（例如 claude-design 或 codex-api）')+'<p>身分 ID 不可重用。Token 只顯示一次；遺失時請重新產生。</p><p><button>產生專屬 Token</button></p></form></section><h2>已建立的連線身分</h2>'
+                body+='<section class="panel task"><h2>產生 MCP Token</h2>'+start('issue',current,project)+input_field('worker_id','AI 身分 ID（例如 claude-design 或 codex-api）')+'<p><button>產生專屬 Token</button></p></form></section><h2>已建立的連線身分</h2>'
             else:
-                body += '<p>目前沒有授權專案。可先建立新的專案，或請使用者管理員授予專案範圍。</p>'
+                body+='<p>尚無授權專案。請先到「設定 → 建立專案」。</p>'
             records = hub.credentials.list_credentials([project]) if project else []
             for row in records:
                 body += '<section class="panel task"><h3>'+e(row['worker_id'])+'</h3><p>專案 '+e(row['project_id'])+' · worker · '+('已撤銷' if row['revoked_at'] is not None else '有效')+'</p><p class="muted">建立於 '+e(stamp(row['created_at']))+' · 版本 '+e(row['version'])+'</p>'
@@ -110,7 +111,7 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
             if project and not records:
                 body += '<p class="muted">此專案尚未從產生器建立 Token。</p>'
             body += '<p class="muted">環境配置中的既有身分由伺服器管理員維護，不會在此顯示 Token。關閉產生器不會撤銷已簽發的 Token。</p>'+config_cards(public_base_url())
-            return page(shell('MCP 產生器',body,project,'admin'), script=COPY_SCRIPT)
+            return page(shell('MCP 接入',body,project,'admin',config=config,identity=identity,csrf=current['csrf'],section='connections',tab='edit'), script=COPY_SCRIPT)
         except HubError as exc:
             return error(exc)
         except SQLAlchemyError:
@@ -156,7 +157,7 @@ def install_mcp_management(app, hub, config, session, parse_form, redirect, auth
                     return redirect('/ui/mcp?'+urlencode({'project':project}))
                 issued = registry.rotate(*args)
             body = '<div class="alert">Token 僅在本次回應顯示。請立即複製到安全的秘密儲存位置；勿貼入聊天、Git、網址或截圖。遺失時請重新產生。</div><p>專案 <strong>'+e(issued['project_id'])+'</strong> · AI 身分 <strong>'+e(issued['worker_id'])+'</strong> · worker</p><label for="issued-token">專屬 Token</label><textarea id="issued-token" readonly rows="3" spellcheck="false" autocomplete="off">'+e(issued['token'])+'</textarea><p><button type="button" data-copy="issued-token">複製 Token</button></p>'+config_cards(base)+'<p><a href="/ui/mcp?'+e(urlencode({'project':project}))+'">已保存 Token，返回連線身分清單</a></p>'
-            return page(shell('已產生 MCP Token',body,project,'admin'), script=COPY_SCRIPT)
+            return page(shell('已產生 MCP Token',body,project,'admin',config=config,identity=identity,csrf=current['csrf'],section='connections',tab='edit'), script=COPY_SCRIPT)
         except HubError as exc:
             return error(exc)
         except (ValueError, TypeError):

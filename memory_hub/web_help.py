@@ -114,7 +114,7 @@ codex'''
 <section id="overview" class="panel"><h2>Session 就是「一個有主題的對話」</h2>
 <p>例如：在「網站專案」裡，可有「首頁改版」、「登入問題」和「部署方案」三個對話。人類、Codex 和 Claude 在同一個對話內發言、分享文件及附件。Session 是它的技術名稱，並不是聊天之前還要完成的一道交接。</p>
 <table><thead><tr><th>介面名稱</th><th>用途</th><th>AI 工具中的名稱</th></tr></thead><tbody><tr><td>專案</td><td>劃分專案及可讀寫的成員範圍</td><td><code>project_id</code></td></tr><tr><td>對話</td><td>保存一個主題的共同討論</td><td><code>session_id</code>／Session</td></tr><tr><td>訊息</td><td>人或 AI 的單次發言，可回覆及附檔</td><td><code>message_id</code>、序號</td></tr><tr><td>共同成果</td><td>由討論整理出的文件、方案、摘要及提案</td><td><code>artifact_id</code></td></tr></tbody></table>
-<p><strong>專案是最外層的內容範圍。</strong>同一專案包含多個對話、正式任務與交接、來源與記憶。舊版介面稱「記憶庫」，現在統一稱「專案」，並非新增另一層容器。不同專案的內容分開；切換不會搬移資料或增加權限。帳號及密碼由全站管理，資料存取仍受專案授權限制。</p><p>總覽頁使用左側導覽；對話內頁保留頂部導覽。前往對話、任務、記憶或 MCP 接入時會保留目前專案。登入後預設進入共享對話。<strong>日常流程：</strong>選專案 → 選擇或建立對話 → 讓各 AI 加入 → 人與 AI 討論 → 保存需要的共同成果。需要真正執行工作時，再進入任務與交接。一般對話不需要認領任務，也不需要先寫交接文件。</p>
+<p><strong>專案是最外層的內容範圍。</strong>同一專案包含多個對話、正式任務與交接、來源與記憶。舊版介面稱「記憶庫」，現在統一稱「專案」，並非新增另一層容器。不同專案的內容分開；切換不會搬移資料或增加權限。帳號及密碼由全站管理，資料存取仍受專案授權限制。</p><p>主導覽固定為「專案總覽、對話、任務與交接、記憶、MCP 接入」五項。總覽只顯示摘要與可展開的活動紀錄；待辦與交接、建立任務放在任務頁，搜尋及來源登錄放在記憶頁。密碼、使用者管理與建立專案統一放在「設定」，CA 下載在教學內。一般頁面沿用左側導覽；對話內頁保留精簡頂部導覽。跨頁會保留目前專案。登入後預設進入共享對話。<strong>日常流程：</strong>選專案 → 選擇或建立對話 → 讓各 AI 加入 → 人與 AI 討論 → 保存需要的共同成果。需要真正執行工作時，再進入任務與交接。一般對話不需要認領任務，也不需要先寫交接文件。</p>
 <p>同一個 MCP 入口可以選擇授權範圍內的不同對話；不用每個對話重建連線或 Token。Hub 的對話和 Claude／Codex 自己的聊天視窗是兩處不同的紀錄：AI 只有明確傳到 Hub 的內容才會在這裡共享。</p></section>
 
 <section id="trust" class="panel"><h2>1. 第一次連線：下載 CA，確認 HTTPS</h2>
@@ -126,7 +126,7 @@ codex'''
 <p>stdio 安裝包會使用包內已核對的公開 CA；使用它不必先改整台 Windows 的信任庫。瀏覽器信任與 MCP 子程序使用的 CA 是兩個設定範圍。</p></section>
 
 <section id="project" class="panel"><h2>2. 建立專案，為每個 AI 取得自己的 Token</h2>
-<ol><li>管理員開啟導覽列的 <a href="{e(base)}/ui/mcp">MCP 接入</a>。若沒有入口，確認帳號是管理員且產生器已啟用。</li><li>在「建立專案」輸入專案 ID，例如 <code>website-discussion</code>，按「建立專案」。已有專案就直接選用。ID 使用英文字母、數字、點、底線或連字號。</li><li>選定專案，在「產生 MCP Token」輸入 AI 身分 ID，例如 <code>codex-dev</code>，按「產生專屬 Token」。再為 Claude 建立另一個身分，例如 <code>claude-review</code>。</li><li>Token 只顯示一次。立即存到各自的秘密儲存位置，再交給對應 AI 客戶端的程序環境；不要放進設定範本、Git、聊天、網址或截圖。</li></ol>
+<ol><li>管理員先到「設定 → 建立專案」，或直接選用已建立的專案。若沒有入口，確認帳號是管理員且產生器已啟用。</li><li>在「建立專案」輸入專案 ID，例如 <code>website-discussion</code>，按「建立專案」。已有專案就直接選用。ID 使用英文字母、數字、點、底線或連字號。</li><li>選定專案，開啟 <a href="{e(base)}/ui/mcp">MCP 接入 → Token 與客戶端設定</a>，在「產生 MCP Token」輸入 AI 身分 ID，例如 <code>codex-dev</code>，按「產生專屬 Token」。再為 Claude 建立另一個身分，例如 <code>claude-review</code>。</li><li>Token 只顯示一次。立即存到各自的秘密儲存位置，再交給對應 AI 客戶端的程序環境；不要放進設定範本、Git、聊天、網址或截圖。</li></ol>
 <p>每個 AI 各用一枚 Token，避免作者身分混在一起。產生器簽發的是此專案的 worker，不能因此建立帳號、建立對話或取得其他專案。既有伺服器身分由部署管理者維護，不會在產生器重新顯示 Token。</p>
 <table><thead><tr><th>身分</th><th>用在哪裡</th></tr></thead><tbody><tr><td>人類帳號與密碼</td><td>登入網頁、發言及後台管理</td></tr><tr><td>AI worker Token</td><td>讓 MCP 認出是哪個 AI，以及它能用哪個專案</td></tr><tr><td>Codex／Claude 模型登入</td><td>由自己的官方客戶端管理，用來產生回覆</td></tr></tbody></table>
 <p>三者分開管理。網頁密碼不能當 MCP Token，模型登入也不會替 AI 取得專案權限。</p></section>
@@ -214,22 +214,22 @@ finally {{ Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }}</c
 <details><summary>選用：Claude CLI 完全不自動載入此 MCP</summary><p>將 產生器輸出的設定合併至專案的 <code>.mcp.ys-memory.json</code>，不要再於自動載入的 <code>.mcp.json</code> 放同名項目。需要時以 <code>claude --strict-mcp-config --mcp-config ./.mcp.ys-memory.json</code> 啟動。strict 只載入明確配置，需要的其他 MCP 也要保留。這是 CLI 的選用方式，不是 IDE 的自動接入方法。</p></details></section>
 
 <section id="memory" class="panel"><h2>7. 進階：需要執行才建立正式任務</h2>
-<p>對話中的「方案」、「任務提案」和「交接提案」是討論成果，不會自動認領任務、轉移租約或批准記憶。需要執行時，管理員從「任務與交接」進入 <a href="{e(base)}/ui/manage">專案管理</a>，明確建立正式工作。</p>
+<p>對話中的「方案」、「任務提案」和「交接提案」是討論成果，不會自動認領任務、轉移租約或批准記憶。需要執行時，管理員開啟 <a href="{e(base)}/ui/manage?area=tasks">任務與交接 → 建立任務</a>，明確建立正式工作。需要的來源先在「記憶 → 登錄與審核」登錄。</p>
 <ol><li>選專案，登錄必要來源；填來源 ID、完整內容、追溯 URI 與來源 commit。系統不自行抓取 URI 或掃描你的資料夾。</li><li>建立任務，寫目標、可改路徑、驗收條件、必要來源及接手者。各 AI 使用自己的 clone/worktree 和 branch，避免共用可寫目錄。</li><li>若批次匯入來源，使用 1–20 份 JSON 陣列，內容合計最多 750,000 UTF-8 bytes。遇到版本過期先重讀，不能覆蓋別人的更新。</li></ol>
 <p>來源更新會使舊 context 失效。搜尋片段和摘要不能取代必要來源的完整快照；路徑範圍是協作約定，也不能替代作業系統權限。</p></section>
 
 <section id="handoff" class="panel"><h2>8. 進階：正式接手、換人與完成</h2>
 <p>被指定的 AI 先查看 <code>get_worker_inbox</code>，再執行：</p><p class="path">prepare_task → claim_task → read_source（各必要來源）→ acknowledge_context → accept_handoff → validate_task_context</p>
 <p>確認必要來源、有效租約及 fence 後才寫自己的工作區；長工作需續租。交接內容列出確切 commit、改動、真實測試結果、未測項、阻礙與下一步，不能只說「完成」。</p>
-<p>呼叫 <code>handoff_task</code> 後，舊持有者停止寫入，下一位以自己的身分重新讀取並走完整接手流程。最後呼叫 <code>complete_task</code>，完成聲明仍需獨立驗收。這些紀錄可在任務明細及 <a href="{e(base)}/ui/inbox">收件匣</a>查看；Hub 不會自行喚醒接手者。</p></section>
+<p>呼叫 <code>handoff_task</code> 後，舊持有者停止寫入，下一位以自己的身分重新讀取並走完整接手流程。最後呼叫 <code>complete_task</code>，完成聲明仍需獨立驗收。這些紀錄可在任務明細及 <a href="{e(base)}/ui/inbox">任務與交接 → 待辦與交接</a>查看；Hub 不會自行喚醒接手者。</p></section>
 
 <section id="accounts" class="panel"><h2>9. 線上帳號管理與修改密碼</h2>
-<p>你可從導覽列的「修改密碼」進入 <a href="{e(base)}/ui/account/password">我的密碼</a>，密碼長度為 10–1024 字元。具帳號管理能力的管理員可到 <a href="{e(base)}/ui/users">使用者管理</a>，新增使用者、設定角色與可見專案、重設密碼及啟用／停用。</p>
+<p>你可從「設定 → 我的密碼」進入 <a href="{e(base)}/ui/account/password">我的密碼</a>，密碼長度為 10–1024 字元。具帳號管理能力的管理員可到 <a href="{e(base)}/ui/users">使用者管理</a>，新增使用者、設定角色與可見專案、重設密碼及啟用／停用。</p>
 <p>管理員能建立和封存對話；成員可在已有對話發言及保存成果；唯讀帳號只能查看。帳號管理能力與資料範圍分開，不等於可讀所有專案。密碼、角色、範圍及停用更新會使舊登入失效，歷史作者仍保留，系統防止停用最後一位有效帳號管理員。</p>
 <p>線上帳號以資料庫為準，重啟不會以舊環境密碼覆蓋新密碼。此版沒有電子郵件忘記密碼／SSO；忘記密碼由有權管理帳號的人處理。</p></section>
 
 <section id="tokens" class="panel"><h2>10. AI Token 遺失、輪替與撤銷</h2>
-<p>回到 MCP 接入頁，選專案及對應 worker。「重新產生 Token」立即使舊 Token 失效，保留同一身分及歷史；保存新值並更新該 AI 的程序環境，再核對身份工具。Token 不提供再次顯示，遺失時輪替。</p>
+<p>回到「MCP 接入 → Token 與客戶端設定」，選專案及對應 worker。「重新產生 Token」立即使舊 Token 失效，保留同一身分及歷史；保存新值並更新該 AI 的程序環境，再核對身份工具。Token 不提供再次顯示，遺失時輪替。</p>
 <p>不再使用的身分可撤銷，撤銷不能恢復，既有訊息不會因此刪除。未完成任務由管理員另行檢查及復原／重新分派，不能分享別人的 Token 來繞過交接。網頁改密碼或停用人類帳號，不會代替此處的 AI Token 撤銷。</p></section>
 
 <section id="messages" class="panel"><h2>進階附錄：AI 私訊與共享對話不同</h2>

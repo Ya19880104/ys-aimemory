@@ -46,7 +46,7 @@ def generator(tmp_path, monkeypatch):
 
 
 def form(client, action, project='visible', token_id=None):
-    html = client.get('/ui/mcp', params={'project': project}).text
+    html = client.get('/ui/mcp', params={'project': project, **({'setup':'project'} if action=='project' else {})}).text
     forms = re.findall(r'<form method="post" action="/ui/mcp/' + action + r'">(.*?)</form>', html, re.S)
     for body in forms:
         fields = {name: unescape(value) for name, value in re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]*)">', body)}
@@ -71,7 +71,7 @@ def test_create_library_scope_and_issue_once(generator):
     assert response.status_code == 303
     assert 'new-memory' in client.get('/ui').text
     assert client.get('/ui/manage?project=new-memory').status_code == 200
-    assert 'href="/ui/mcp?project=new-memory"' in client.get('/ui?project=new-memory').text
+    assert 'href="/ui/mcp?project=new-memory"' in client.get('/ui?project=new-memory&view=connections').text
     assert 'href="/ui/chat?project=new-memory"' in client.get('/ui/mcp?project=new-memory').text
     fields = {**form(client, 'issue', 'new-memory'), 'worker_id': 'claude-library'}
     issued = post(client, 'issue', fields)
@@ -107,6 +107,30 @@ def test_rotate_revoke_scope_and_no_secret_in_state(generator):
         state = conn.execute(select(projects.c.state).where(projects.c.id == 'visible')).scalar_one()
         audit = hub.store.read_audit(conn, 'visible')
     assert first not in json.dumps([state, audit]) and second not in json.dumps([state, audit])
+
+
+@pytest.mark.parametrize('action', ['issue', 'rotate'])
+def test_token_only_response_does_not_read_identity_after_commit(generator, monkeypatch, action):
+    from memory_hub.web_auth import WebAuthStore
+    from sqlalchemy.exc import SQLAlchemyError
+    make, hub = generator
+    client = make()
+    old = None
+    if action == 'rotate':
+        old = token(post(client, 'issue', {**form(client, 'issue'), 'worker_id': 'response-check'}))
+    values = form(client, action)
+    if action == 'issue': values['worker_id'] = 'response-check'
+    mutate = getattr(hub.credentials, action)
+    def fail_identity(*args, **kwargs):
+        raise SQLAlchemyError('synthetic identity read outage after commit')
+    def commit_then_fail_reads(*args, **kwargs):
+        issued = mutate(*args, **kwargs)
+        monkeypatch.setattr(WebAuthStore, 'principal', fail_identity)
+        return issued
+    monkeypatch.setattr(hub.credentials, action, commit_then_fail_reads)
+    raw = token(post(client, action, values))
+    assert hub.credentials.authenticate(raw).worker_id == 'response-check'
+    if old: assert hub.credentials.authenticate(old) is None
 
 
 def test_role_scope_csrf_and_cannot_claim_existing_library(generator):

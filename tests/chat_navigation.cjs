@@ -122,11 +122,12 @@ async function projectChangeDuringDeepLink() {
   await settle();
   const query = new URLSearchParams(ui.location.search);
   assert.equal(query.get('project'), 'beta'); assert.equal(query.has('session'), false);
-  for (const [id, path, hash] of [['project-home-link', '/ui', ''], ['project-tasks-link', '/ui/manage', ''],
-    ['project-memory-link', '/ui', '#memory'], ['task-link', '/ui/manage', '']]) {
+  for (const [id, path, view] of [['project-home-link', '/ui', null], ['project-tasks-link', '/ui', 'tasks'],
+    ['project-memory-link', '/ui', 'memory'], ['project-mcp-link', '/ui', 'connections'],
+    ['project-settings-link','/ui/account/password',null], ['task-link', '/ui', 'tasks']]) {
     const target = new URL(ui.get(id).href, 'http://example.test');
     assert.equal(target.pathname, path); assert.equal(target.searchParams.get('project'), 'beta');
-    assert.equal(target.hash, hash);
+    assert.equal(target.searchParams.get('view'), view);
   }
   assert.equal(ui.get('active-room').textContent, '選擇一個對話');
   assert.ok(ui.get('room-list').textContent.includes(roomC.title));
@@ -182,7 +183,7 @@ async function projectChangeClearsOldRooms() {
   await settle();
   assert.equal(ui.get('room-list').querySelectorAll('button').length, 0, 'Old project rooms must disappear before the new list arrives');
   assert.equal(ui.get('more-rooms').hidden, true);
-  assert.equal(ui.get('task-link').href, '/ui/manage?project=beta');
+  assert.equal(ui.get('task-link').href, '/ui?project=beta&view=tasks');
   pending.resolve(listing([roomC]));
   await changing;
   assert.ok(ui.get('room-list').textContent.includes(roomC.title));

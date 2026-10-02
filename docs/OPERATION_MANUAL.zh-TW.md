@@ -16,7 +16,7 @@
 ## 完整 HTML 手冊的順序
 
 1. `/help#trust`：下載公開 CA，經獨立可信通道核對 DER SHA-256；登入 HTTPS 網頁。
-2. `/help#project`：在「MCP 接入」建立／選擇專案，為 Codex、Claude 各發獨立 worker Token，一次顯示後妥善保存。
+2. `/help#project`：在「設定 → 建立專案」建立專案，或選擇已有專案，再到「MCP 接入 → Token 與客戶端設定」，為 Codex、Claude 各發獨立 worker Token，一次顯示後妥善保存。
 3. `/help#clients`：下載 stdio 1.1.0 安裝包，在新目錄建立 Python 環境。Claude 本機 Code 工作合併專案 `.mcp.json`；Codex 合併專案 `.codex/config.toml`。提供各自程序的 `YS_AIMEMORY_TOKEN`，按需啟用並實際核對 worker。
 4. `/help#sessions`：管理員建立對話、先發需求，複製加入指引給各 AI；Codex 讀取並回覆，Claude 讀取新訊息並回覆，Codex 再讀回。人類在同頁查看、回覆及附檔。
 5. `/help#results`：保存文件／方案／摘要；附加檔案；用關鍵字搜尋目前專案的共享對話與成果。

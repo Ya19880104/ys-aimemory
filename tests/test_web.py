@@ -49,7 +49,7 @@ def test_login_and_scope_and_xss(setup):
     assert client.get('/login', follow_redirects=False).headers['location'] == '/ui/chat'
     cookie=response.headers.get_list('set-cookie')[0]
     assert 'HttpOnly' in cookie and 'SameSite=strict' in cookie and 'Max-Age=300' in cookie
-    response=client.get('/ui')
+    response=client.get('/ui?view=memory')
     assert response.status_code==200
     assert 'visible' in response.text and 'private' not in response.text
     assert '<script>' not in response.text and '&lt;script&gt;' in response.text
@@ -71,14 +71,31 @@ def test_dashboard_has_one_project_scoped_sidebar(setup):
     login(client)
     html = client.get('/ui?project=visible').text
     sidebar, main = html.split('</aside>', 1)
-    for path in ['/ui/chat', '/ui/manage', '/ui/search', '/ui/inbox']:
-        href = 'href="' + path + '?project=visible"'
-        assert sidebar.count(href) == 1
-        assert href not in main
+    primary=re.search('<nav class="workspace-nav"[^>]*>(.*?)</nav>',sidebar,re.S)[1]
+    assert primary.count('<a ')==5
+    assert primary.count('aria-current="page"')==1
+    assert '/ui/manage' not in sidebar and '/ui/search' not in sidebar and '/ui/inbox' not in sidebar
+    for label in ['專案總覽','對話','任務與交接','記憶','MCP 接入']:
+        assert '>'+label+'</a>' in primary
     assert 'href="/help"' in sidebar
-    assert 'href="/ui/account/password"' in sidebar
-    assert '目前專案 <strong>visible</strong>' in main
+    assert 'href="/ui/account/password?project=visible"' in sidebar
+    assert '<section id="tasks">' not in main
+    assert '<section id="memory">' not in main
+    assert '<section id="connections">' not in main
     assert '共享 Chat' not in html
+
+
+@pytest.mark.parametrize('view', ['tasks','memory','connections'])
+def test_dashboard_only_renders_selected_section(setup,view):
+    client,_=setup
+    login(client)
+    response=client.get('/ui',params={'project':'visible','view':view})
+    assert response.status_code==200
+    main=response.text.split('</aside>',1)[1]
+    assert '<section id="'+view+'">' in main
+    for other in {'tasks','memory','connections','audit'}-{view}:
+        assert '<section id="'+other+'">' not in main
+    assert client.get('/ui?view=invalid').status_code==404
 
 def test_logout_and_expiry(setup):
     client,now=setup
