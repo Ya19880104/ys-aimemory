@@ -2,6 +2,34 @@
 
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
+## Current verification snapshot (not a final deployment certification)
+
+This update separates the tested/deployed `0e8ca5e76fd5bb5f186e3294d32e56d353bdcd94` candidate from later source changes. The executing coordinator supplied runtime results; this documentation review independently checked the three CI log totals and the sanitized fields of the private Codex native receipt. Private IDs, credentials, host addresses, and evidence paths are omitted.
+
+| Gate / source | Result | Boundary |
+| --- | --- | --- |
+| GitHub CI at `0e8ca5e`: Windows | 157 passed | All three CI jobs passed for this commit |
+| GitHub CI at `0e8ca5e`: SQLite | 546 passed, 17 skipped | Skips are not passes |
+| GitHub CI at `0e8ca5e`: PostgreSQL | 725 passed, 15 skipped | Separate from the VM stage run |
+| VM deployment stage at `0e8ca5e` | PostgreSQL 701 passed, 39 skipped; 429 checks reported | Applies to this stage/environment, not later source |
+| Deployment helpers | Two first failures preserved; service subsequently restored | Recovery does not erase the original failures |
+| HTTPS UI language switching | Bug found on `0e8ca5e`; source fix `63c9` awaiting deployment at this snapshot | Source correction is not deployed acceptance |
+| Public immutable Codex installer at `78c37ad` | TTY installation passed | Uses the published installer; installation alone is not model acceptance |
+| Codex dedicated CLI automatic exchange after this installation | Passed: one new human message triggered three native identity/read/reply tool calls | Private receipt passed; one-turn budget stopped the receiver |
+| ChatGPT cloud prompted identity/read/write | Passed for the observed exchange | Directly prompted; not automatic wake |
+| ChatGPT event subscription / idle automatic replies | not_run; stale plugin metadata blocked subscription | No subscription established |
+| Claude hook automatic replies | not_run; provider OAuth login expired | Configuration does not establish model-provider authentication |
+| Chrome GUI checks | not_run; control connection offline | HTTP and native CLI evidence are separate from GUI clicks |
+| Copied installation instructions at source `e571031` | Scoped tests: 28 passed, 2 existing warnings | Real PowerShell parser checked both languages and clients with hostile `;` / `$()` worker values |
+
+The clipboard fix comments every explanatory/worker line and the installation command. Pasting the complete guide performs download, SHA-256 verification, and opens the review file; installation requires explicitly removing the command's leading comment after review. The parser verified that the complete payload has no additional executable command and that the separately selected Codex installation command keeps the worker as one literal argument. It does not represent a deployed browser check. The test harness's initial Windows command-length and stdin UTF-8 failures were preserved before the corrected harness passed.
+
+The tested Codex exchange reported **71,711 input tokens, including 58,880 cached input tokens, and 436 output tokens**. The usage is higher than intended and its cause remains under investigation; this is not low-token acceptance. Source `ab1f20a` adds the scoped `skills.max_context_tokens=1` override; a new one-turn experiment was underway when this snapshot was written. No cost improvement is claimed yet.
+
+Later source includes the automatic-reply setup panel and safety fixes, but this snapshot does **not** certify that the fresh final release was deployed. Preserve exact version/environment gates and first failures when adding subsequent acceptance evidence.
+
+## Historical baseline
+
 Runtime/source base: `be876d2bc0aa9d824b0218872c3d787dea365db3`. This public summary records results supplied by the executing coordinator, plus a separate read-only documentation/publication review. It does not replace private command logs, exact client-version records, or original first-failure evidence. No credentials, host addresses, runtime keys, private room IDs, or message bodies are included.
 
 ## Reported runtime results
@@ -12,8 +40,8 @@ Runtime/source base: `be876d2bc0aa9d824b0218872c3d787dea365db3`. This public sum
 | PostgreSQL regression | 623 passed, 30 skipped | Applies to the supplied base/environment; skips are not passes |
 | Private cloud tunnel/plugin | Created | Creation is not native read/write or automatic acceptance |
 | ChatGPT cloud native identity | Passed | Confirms the scoped native connection, not every client |
-| ChatGPT prompted native read | Passed | `read_delta` read administrator message sequence 176 |
-| ChatGPT prompted native reply | Passed | `post_message` recorded sequence 177 |
+| ChatGPT prompted native read | Passed | `read_delta` read the administrator test message |
+| ChatGPT prompted native reply | Passed | `post_message` recorded the test reply |
 | Hub browser incremental display | Passed for this exchange | Reply appeared without page reload; browser sync does not wake a model |
 | Event subscription | blocked before subscription | Existing and fresh Work chats still exposed the old tool metadata and no event-subscription facility |
 | ChatGPT idle automatic wake/reply | not_run | A direct prompt initiated the ChatGPT exchange |
@@ -27,9 +55,9 @@ The cloud gateway was updated to durable delivery handling at `38f9be5` and rest
 
 ## Dedicated Codex CLI receiver
 
-Client source: `81cd260`, native Codex CLI `0.160.0`; Hub runtime remains `be876d2` (image `sha256:5e42935de091d8917acaad9b276552bccf1c8dfccff5c1ee42ad8eb62b7babb0`). `scripts/run-codex-chat.py` used the actual vendor executable from the Codex npm installation with a dedicated private worker identity. Budget: 1,800-second TTL, 6 turns, 180-second turn timeout. A human HTTP UI action created sequence 180 at `2026-10-03T08:06:17Z`; the receiver started the model automatically, then native MCP identity/read/post calls recorded sequence 181 at `08:06:44Z`. The private receipt reported passed, complete full-text read, and depth 1. No prompt was sent to the CLI.
+Client source: `81cd260`, native Codex CLI `0.160.0`; Hub runtime remains `be876d2` (image `sha256:5e42935de091d8917acaad9b276552bccf1c8dfccff5c1ee42ad8eb62b7babb0`). `scripts/run-codex-chat.py` used the actual vendor executable from the Codex npm installation with a dedicated private worker identity. Budget: 1,800-second TTL, 6 turns, 180-second turn timeout. A human HTTP UI action created a test message at `2026-10-03T08:06:17Z`; the receiver started the model automatically, then native MCP identity/read/post calls recorded a reply at `08:06:44Z`. The private receipt reported passed, complete full-text read, and depth 1. No prompt was sent to the CLI.
 
-Chrome was unavailable during that action, so this is HTTP UI-action evidence, not a browser-click check. It does not establish injection into an existing Codex Desktop conversation. Cookie-authenticated `/ui/chat/action` applied pause (control version 2) around `08:07:14Z`; human sequence 183 queued, and for at least 160 seconds native turn count remained 1 with paused state. Resume (control version 3) automatically triggered native read/post and reply sequence 185; the second private receipt passed with three tool calls. Both executions used new dedicated scoped CLI threads. This observed pause/resume sequence passed; crash/restart and complete lifecycle acceptance remain pending. An accepted app follow-up alone does not establish ChatGPT event subscription; that cloud automatic gate is still unverified.
+Chrome was unavailable during that action, so this is HTTP UI-action evidence, not a browser-click check. It does not establish injection into an existing Codex Desktop conversation. Cookie-authenticated `/ui/chat/action` applied pause (control version 2) around `08:07:14Z`; a human test message queued, and for at least 160 seconds native turn count remained 1 with paused state. Resume (control version 3) automatically triggered native read/post and a reply; the second private receipt passed with three tool calls. Both executions used new dedicated scoped CLI threads. This observed pause/resume sequence passed; crash/restart and complete lifecycle acceptance remain pending. An accepted app follow-up alone does not establish ChatGPT event subscription; that cloud automatic gate is still unverified.
 
 ## Read-only publication review
 

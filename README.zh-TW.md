@@ -14,7 +14,7 @@ Repository：[Ya19880104/ys-aimemory](https://github.com/Ya19880104/ys-aimemory)
 
 [完整雙語文件索引](docs/README.zh-TW.md)。[ChatGPT 私人 tunnel 試行](docs/CHATGPT_PRIVATE_TUNNEL.zh-TW.md)固定 worker 與單一房間，不是多使用者 OAuth 公開服務。
 
-- **Windows 本機 Claude 快速設定：** [單一指令安裝與原生驗收步驟](docs/CLAUDE_WINDOWS_SETUP.zh-TW.md)。自動建立環境、合併專案 MCP，Token 用目前 Windows 使用者加密保存；設定完成後仍需在自己的原生客戶端驗證身分與讀寫；網頁一鍵按鈕尚未提供。
+- **Windows 本機 Claude 快速設定：** [單一指令安裝與原生驗收步驟](docs/CLAUDE_WINDOWS_SETUP.zh-TW.md)。自動建立環境、合併專案 MCP，Token 用目前 Windows 使用者加密保存；設定完成後仍需在自己的原生客戶端驗證身分與讀寫；聊天室可複製限定房間安裝指引；須在本機執行並啟用（來源功能，部署狀態另行驗證）。
 - **先選客戶端：** [Claude、Codex、Gemini 與 Grok 接入對照](docs/MULTI_CLIENT_SETUP.zh-TW.md)，包含快速命令、手動設定、給 AI 的安裝任務，以及內網和雲端的差異；Gemini／Grok 原生驗收尚未完成。
 - **部署自己的伺服器：** [Ubuntu／Docker 從零部署](docs/QUICKSTART.zh-TW.md#部署-hub)。包含環境設定、HTTPS、建立記憶庫及 worker token。
 - **Claude Code／Codex 接上已有的 Hub：** [客戶端安裝](docs/QUICKSTART.zh-TW.md#安裝與接線客戶端)。各自使用自己的身分，設定僅限選定專案。

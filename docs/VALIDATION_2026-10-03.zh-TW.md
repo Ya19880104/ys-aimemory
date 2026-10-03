@@ -2,6 +2,34 @@
 
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
+## 目前驗證快照（不是最終部署認證）
+
+本次更新區分已測試／部署的 `0e8ca5e76fd5bb5f186e3294d32e56d353bdcd94` 候選版與後續來源變更。runtime 結果由執行 coordinator 提供；本輪文件檢查另外核對三份 CI 日誌總數與私人 Codex 原生回條的去秘密欄位。不附私人 ID、憑證、主機地址或證據路徑。
+
+| 關卡／來源 | 結果 | 界線 |
+| --- | --- | --- |
+| `0e8ca5e` GitHub CI：Windows | 157 passed | 該 commit 的三個 CI jobs 全部通過 |
+| `0e8ca5e` GitHub CI：SQLite | 546 passed、17 skipped | skip 不是 PASS |
+| `0e8ca5e` GitHub CI：PostgreSQL | 725 passed、15 skipped | 與 VM stage 實跑分開 |
+| `0e8ca5e` VM 部署 stage | PostgreSQL 701 passed、39 skipped；回報 429 checks | 僅對該 stage／環境有效，不含後續來源 |
+| 部署 helper | 兩次首次失敗皆保留；服務後續已恢復 | 恢復不抹去首次失敗 |
+| HTTPS UI 語言切換 | `0e8ca5e` 發現 bug；來源修正 `63c9` 在本快照仍待部署 | 來源修正不是部署驗收 |
+| `78c37ad` 公開 immutable Codex 安裝器 | TTY 安裝 passed | 使用已發布安裝器；安裝本身不是模型驗收 |
+| 本次安裝後 Codex 專用 CLI 自動交換 | passed：新的人類留言觸發原生 identity／read／reply 三次工具呼叫 | 私人回條 passed；一回合上限使接收器停止 |
+| ChatGPT 雲端提示後身分／讀取／寫回 | 本次交換 passed | 直接提示啟動，不是自動喚醒 |
+| ChatGPT 事件訂閱／閒置自動接話 | not_run；舊 plugin metadata 阻擋訂閱 | 未建立訂閱 |
+| Claude hook 自動接話 | not_run；供應商 OAuth 登入過期 | 設定完成不代表模型供應商驗證成功 |
+| Chrome GUI 檢查 | not_run；控制連線離線 | HTTP 與原生 CLI 證據不等於 GUI 點擊 |
+| 來源 `e571031` 複製安裝指引 | Scoped tests：28 passed、2 項既有 warnings | 真 PowerShell parser 覆蓋英／繁、兩用戶端及含 `;`／`$()` 的 worker 值 |
+
+複製安全修正將每行說明／worker 值與安裝命令保持註解。貼上完整指引只會下載、驗 SHA-256 及開啟審閱檔案；審閱後須明確移除安裝命令開頭的註解才執行。Parser 驗證完整內容無額外可執行命令，且另行選取的 Codex 安裝命令將 worker 保持為單一 literal 參數。這不代表已部署的瀏覽器驗收。測試 harness 最初的 Windows 命令長度與 stdin UTF-8 失敗均保留，修正 harness 後才通過。
+
+本次 Codex 交換回報 **71,711 input tokens（其中 58,880 cached input tokens）、436 output tokens**。用量高於預期，原因仍在調查，不能稱為低 token 驗收。來源 `ab1f20a` 加入限定 scope 的 `skills.max_context_tokens=1` override；本快照撰寫時另一個一回合實驗仍在執行，尚不宣稱成本改善。
+
+後續來源含自動接話設定面板及安全修正，但本快照**不認證最新最終 release 已部署**。補充後續驗收時，仍須保留確切版本／環境界線及首次失敗。
+
+## 歷史基線
+
 runtime／來源基底：`be876d2bc0aa9d824b0218872c3d787dea365db3`。公開摘要記錄執行 coordinator 提供的結果，以及另一輪只讀文件／發布檢查，不代替私人命令日誌、客戶端版號或首次失敗證據。不附憑證、主機地址、runtime key、私有房間 ID 或訊息正文。
 
 ## 已回報實測
@@ -12,8 +40,8 @@ runtime／來源基底：`be876d2bc0aa9d824b0218872c3d787dea365db3`。公開摘�
 | PostgreSQL 回歸 | 623 passed、30 skipped | 僅對所述版本／環境有效；skip 不是 PASS |
 | 私人 cloud tunnel／plugin | 已建立 | 建立不代表原生讀寫或自動驗收 |
 | ChatGPT 雲端原生身分 | passed | 僅證明限定身分連線，不含其他客戶端 |
-| ChatGPT 提示後原生讀取 | passed | read_delta 讀到管理員序號 176 |
-| ChatGPT 提示後原生寫回 | passed | post_message 寫回序號 177 |
+| ChatGPT 提示後原生讀取 | passed | read_delta 讀到管理員測試訊息 |
+| ChatGPT 提示後原生寫回 | passed | post_message 寫回測試回覆 |
 | Hub 瀏覽器增量顯示 | 本次交換 passed | 未 reload 即同步；網頁更新不是模型喚醒 |
 | 事件訂閱 | 訂閱前受阻 | 既有與全新 Work 對話仍載入舊工具 metadata，未提供事件訂閱工具 |
 | ChatGPT 閒置自動喚醒／回覆 | not_run | 本次 ChatGPT 由直接提示啟動 |
@@ -27,9 +55,9 @@ runtime／來源基底：`be876d2bc0aa9d824b0218872c3d787dea365db3`。公開摘�
 
 ## 專用 Codex CLI 接收程式
 
-客戶端來源 81cd260、原生 Codex CLI 0.160.0，Hub runtime 維持 be876d2（image sha256:5e42935de091d8917acaad9b276552bccf1c8dfccff5c1ee42ad8eb62b7babb0）。scripts/run-codex-chat.py 使用 Codex npm 安裝的實際 vendor executable 與專用私人 worker。預算 TTL 1800 秒／6 回合／turn timeout 180 秒。人類 HTTP UI action 在 2026-10-03T08:06:17Z 建立 #180，接收程式自動啟動模型，原生 MCP identity／read／post 三次呼叫於 08:06:44Z 寫回 #181。私人收據為 passed，完整 full-text read、depth 1；沒有向 CLI 送提示。
+客戶端來源 81cd260、原生 Codex CLI 0.160.0，Hub runtime 維持 be876d2（image sha256:5e42935de091d8917acaad9b276552bccf1c8dfccff5c1ee42ad8eb62b7babb0）。scripts/run-codex-chat.py 使用 Codex npm 安裝的實際 vendor executable 與專用私人 worker。預算 TTL 1800 秒／6 回合／turn timeout 180 秒。人類 HTTP UI action 在 2026-10-03T08:06:17Z 建立測試訊息，接收程式自動啟動模型，原生 MCP identity／read／post 三次呼叫於 08:06:44Z 寫回測試回覆。私人收據為 passed，完整 full-text read、depth 1；沒有向 CLI 送提示。
 
-當時 Chrome 無法連線，所以這是 HTTP UI action 證據，不是 browser click，不代表注入既有 Codex Desktop 對話。cookie-authenticated /ui/chat/action 約 08:07:14Z 暫停（control v2），人類 #183 queued；至少 160 秒 native_turns 維持 1／paused。恢復（control v3）後自動原生 read／post，寫回 #185，第二份私人收據 passed／三次工具呼叫。兩次都是新的限定 scope CLI threads。本次暫停／恢復序列通過；崩潰重啟與完整生命週期仍未驗完。app follow-up accepted 不證明 ChatGPT 已訂閱事件，雲端自動關卡仍未驗證。
+當時 Chrome 無法連線，所以這是 HTTP UI action 證據，不是 browser click，不代表注入既有 Codex Desktop 對話。cookie-authenticated /ui/chat/action 約 08:07:14Z 暫停（control v2），人類測試訊息 queued；至少 160 秒 native_turns 維持 1／paused。恢復（control v3）後自動原生 read／post，寫回測試回覆，第二份私人收據 passed／三次工具呼叫。兩次都是新的限定 scope CLI threads。本次暫停／恢復序列通過；崩潰重啟與完整生命週期仍未驗完。app follow-up accepted 不證明 ChatGPT 已訂閱事件，雲端自動關卡仍未驗證。
 
 ## 只讀發布檢查
 
