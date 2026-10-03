@@ -22,12 +22,12 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$SourceRevision = 'a3e73180761e2f77f870af3cf98a5eed77e54d4b'
+$SourceRevision = '35771181eeceba4375de631859eac270504103bc'
 $SourceRoot = 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/' + $SourceRevision + '/'
 $SourceFiles = @(
     @{ Source = 'scripts/setup-codex-chat.py'; Sha256 = '1eddd494f78bebcd9d85d6e998fd1f9b12868c633e2113f4ff71d7b92068f0e3' },
     @{ Source = 'scripts/setup-claude.py'; Sha256 = '19c46cdf351f7427124743a208f3517975a540325f912ff7d79bd4d86cc8fd24' },
-    @{ Source = 'scripts/run-codex-chat.py'; Sha256 = 'c40e3921d0686083ea8188bada8ffbfc1984a5e207372a5b89bd07d793294db9' },
+    @{ Source = 'scripts/run-codex-chat.py'; Sha256 = 'ea6ea819371ad5a1634dac701808d05010e11674db31a9b3fee3e9e37b358e50' },
     @{ Source = 'memory_hub/client_secret.py'; Sha256 = '11f2312b254a1c17761d2adb402f4ed6fc73eaa344a98994c695a6175ea1d469' }
 )
 
