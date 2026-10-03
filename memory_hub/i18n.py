@@ -111,15 +111,37 @@ def install_language(app):
     app.state.ui_language_installed = True
     from fastapi import Request
     from fastapi.responses import RedirectResponse
+    from urllib.parse import urlsplit
+    # Resolve the explicit operator origin at installation time. Import locally
+    # after modules load: web_help consumes i18n while defining its validator.
+    public_origin = None
+    if os.getenv('HUB_PUBLIC_BASE_URL'):
+        from .web_help import public_base_url
+        public_origin = urlsplit(public_base_url())
     app.add_middleware(LanguageMiddleware)
 
     @app.get('/ui/language', include_in_schema=False)
     def change_language(request: Request):
         # Return only to the same origin. No request-controlled open redirect.
-        from urllib.parse import urlsplit
-        referer = urlsplit(request.headers.get('referer', ''))
         destination = '/login'
-        if referer.netloc == request.url.netloc and referer.scheme == request.url.scheme:
+        def origin(value):
+            if value.scheme not in ('http', 'https') or value.username is not None or value.password is not None:
+                return None
+            port = value.port
+            if not value.hostname or (port is not None and not 1 <= port <= 65535):
+                return None
+            return (value.scheme, value.hostname, port if port is not None else (443 if value.scheme == 'https' else 80))
+        raw = request.headers.get('referer', '')
+        try:
+            referer = urlsplit(raw)
+            trusted = {origin(urlsplit(str(request.url)))}
+            if public_origin is not None:
+                trusted.add(origin(public_origin))
+            accepted = (not any(ord(char) <= 32 or ord(char) == 127 for char in raw)
+                and '\\' not in raw and origin(referer) is not None and origin(referer) in trusted)
+        except ValueError:
+            accepted = False
+        if accepted:
             if referer.path == '/help' or referer.path == '/login' or referer.path.startswith('/ui'):
                 query = [(k,v) for k,v in parse_qsl(referer.query) if k != 'lang']
                 destination = referer.path + ('?'+urlencode(query) if query else '')

@@ -103,6 +103,44 @@ def test_switch_preserves_local_page_and_rejects_external_redirect(localized):
     assert client.get('/ui/language?lang=en',headers={'referer':'https://evil.invalid/ui'},follow_redirects=False).headers['location'] == '/login'
 
 
+def test_language_switch_uses_configured_public_origin_behind_http_proxy(monkeypatch, request):
+    monkeypatch.setenv('HUB_PUBLIC_BASE_URL','https://public.example:443')
+    client, _, _ = request.getfixturevalue('localized')
+    referer='https://public.example/ui/chat?project=visible&session=abc&filter=a%26b&filter=c&lang=en#ignored'
+    result=client.get('/ui/language?lang=zh-TW',headers={'referer':referer},follow_redirects=False)
+    assert result.status_code == 303
+    assert result.headers['location']=='/ui/chat?project=visible&session=abc&filter=a%26b&filter=c'
+    assert client.cookies.get(COOKIE)=='zh-TW'
+    assert client.get('/ui/chat?project=visible&session=abc').headers['content-language']=='zh-TW'
+    # Existing direct backend origin remains valid, independently of the public origin.
+    direct=client.get('/ui/language?lang=en',headers={'referer':'http://testserver/help'},follow_redirects=False)
+    assert direct.headers['location']=='/help'
+    for referer in ('https://evil.invalid/ui/chat?project=visible',
+                    'http://public.example/ui/chat', 'https://public.example:444/ui/chat',
+                    'https://public.example.evil.invalid/ui/chat',
+                    'https://user@public.example/ui/chat',
+                    'https://public.example:invalid/ui/chat',
+                    'https://public.example:0/ui/chat',
+                    '//public.example/ui/chat', 'https://public.example//evil.invalid'):
+        rejected=client.get('/ui/language?lang=en',headers={'referer':referer,
+            'x-forwarded-host':'evil.invalid','x-forwarded-proto':'https',
+            'forwarded':'proto=https;host=evil.invalid'},follow_redirects=False)
+        assert rejected.headers['location']=='/login',referer
+    injected=client.get('/ui/language?lang=en',headers={'referer':'https://injected.invalid/help',
+        'x-forwarded-host':'injected.invalid','x-forwarded-proto':'https',
+        'forwarded':'proto=https;host=injected.invalid'},follow_redirects=False)
+    assert injected.headers['location']=='/login'
+
+
+def test_language_switch_does_not_trust_unconfigured_https_origin_or_headers(localized, monkeypatch):
+    client, _, _ = localized
+    # Runtime env edits cannot change the origin captured during app installation.
+    monkeypatch.setenv('HUB_PUBLIC_BASE_URL','https://injected.invalid')
+    result=client.get('/ui/language?lang=en',headers={'referer':'https://injected.invalid/ui',
+        'x-forwarded-host':'injected.invalid','x-forwarded-proto':'https'},follow_redirects=False)
+    assert result.headers['location']=='/login'
+
+
 def test_concurrent_request_locales_are_isolated(localized):
     client, _, _ = localized
     def fetch(lang):
