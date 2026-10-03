@@ -211,3 +211,9 @@ def test_integrated_app_cookie_isolation_and_management(monkeypatch,tmp_path):
         response=client.post('/ui/action/task',data={})
         assert response.status_code==403
         assert token not in client.get('/ui/manage?project=project').text
+
+
+@pytest.fixture(autouse=True)
+def traditional_interface(monkeypatch):
+    """Retain legacy copy assertions as explicit Traditional Chinese coverage."""
+    monkeypatch.setenv("HUB_WEB_LANGUAGE", "zh-TW")

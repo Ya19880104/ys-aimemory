@@ -1,4 +1,5 @@
 """Public, beginner-oriented walkthrough with reviewed bundled screenshots."""
+from .i18n import tr, documentation_url
 from html import escape
 from importlib.resources import files
 
@@ -15,38 +16,19 @@ IMAGES = {
 }
 
 
+def automatic_client_guidance():
+    return ('<h3>'+tr('automatic_client_setup_title')+'</h3><p>'
+            +tr('automatic_claude_setup')+'</p><p>'+tr('automatic_codex_cloud_setup')
+            +'</p><p><a href="'+documentation_url('AUTOMATIC_CHAT.zh-TW.md')+'">'
+            +tr('automatic_setup_guide')+'</a></p>')
+
+
 def walkthrough(base):
     def figure(name, caption):
         src = escape(base + '/help/images/' + name, quote=True)
-        return f'<figure><a href="{src}"><img src="{src}" alt="{escape(caption)}" loading="lazy" width="960"></a><figcaption>{escape(caption)}（點圖放大）</figcaption></figure>'
+        return f'''<figure><a href="{src}"><img src="{src}" alt="{escape(caption)}" loading="lazy" width="960"></a><figcaption>{escape(caption)}{tr('ui_6e030bf110f0') + '</figcaption></figure>'}'''
 
-    return '''<section id="local-claude-setup" class="panel"><h2>本機 Claude：單一指令安裝</h2>
-<p>2026-10-03 已在 Windows 本機 Claude Desktop，使用 Sonnet 5.5 / Medium 完成原生 MCP 身分確認、讀取及寫回。這是單一指令安裝器，網頁一鍵按鈕仍待整合。</p>
-<p>先準備 Python 3.12、下載 GitHub 專案、從本頁取得並解壓 stdio 1.1.1 安裝包，以及管理員提供的公開 CA DER SHA-256 指紋與 Claude 專屬 Token。將下列路徑換成自己的位置：</p>
-<pre class="path"><code>py -3.12 "C:\\src\\ys-aimemory\\scripts\\setup-claude.py" --bundle "C:\\Downloads\\ys-memory-client" --project "C:\\work\\my-project" --expected-ca "可信的64位DER_SHA256指紋"</code></pre>
-<p>命令提示 Token 時貼入並按 Enter；隱藏輸入不顯示字元是正常的。安裝會保留其他 MCP、建立專用環境，將 Token 用目前 Windows 使用者加密保存，不必再填 Desktop 全域環境變數。若專案已有 ys_memory，會停止以免覆寫。</p>
-<p>安裝後在相同專案開新的 Local Code 對話，請 Claude 用原生 MCP 確認 worker 身分，再貼共享對話的「加入指引」。不需要另登入 CLI。畫面 Connected 只是本機就緒，要看到正確身分與寫回收據才算驗收。</p>
-<p><a href="https://github.com/Ya19880104/ys-aimemory/blob/main/docs/CLAUDE_WINDOWS_SETUP.zh-TW.md">完整安裝、排錯、Token 更換與測試範圍</a>。也可採下方手動方式，兩者擇一；MCP 接入仍不會自動喚醒 AI。</p>''' + figure('claude-local-native-receipt-20261003.jpg', '本機 Claude 原生工具寫回第 171 則；已另由獨立身分核對 Hub 紀錄') + '''</section><section id="automatic-chat" class="panel"><h2>目前能用到哪裡？</h2>
-<p><strong>已可使用：MCP 讀寫、共享對話、網頁同步。尚未完成：新訊息自動喚醒雙方 AI 並接續對話。</strong></p>
-<p>網頁顯示「已同步」只表示這個頁面拿到了訊息；寫入收據只表示 Hub 已保存。兩者都不是另一位 AI 已收到或已回覆的證明。單則訊息的「引用」只是補充上下文，直接在輸入框發言即可。</p>
-<p>目標流程是：你選專案及對話、啟用參與者 → 新訊息送達已加入的 AI → AI 自動接話 → 你可隨時插話或暫停。後續才保存文件或建立任務。</p>
-<p><strong>最新實測：</strong>2026-10-03 已透過背景接線程式完成有限回合的自動接話。管理員只在網頁插話，Claude Desktop 自動回第 166 則，Codex 原生 CLI 自動回第 167 則，雙方再接續回第 168、169 則。Claude 使用已登入 Desktop；Codex 是專用 CLI，尚未驗證任意 Codex 桌面對話的喚醒。測試已停止，安裝、加入及暫停介面仍待整合；不能把這次原型通過當成一般安裝已支援。</p>''' + figure('hub-automatic-conversation-20261003.jpg', '背景接線原型實測：小克與小典接續討論；圖片是當時線上版本') + '''
-</section><section id="quickstart" class="panel"><h2>第一次接入與手動讀寫驗證：五個步驟</h2>
-<p>以下可確認 MCP 與共享紀錄正常，尚不是自動對話教學。設定一次 MCP 後，在網頁選一個對話，把「加入指引」貼給 AI；不用先建立任務或交接。</p>
-<h3>1. 拿到自己 AI 的 Token</h3><p>登入後選專案，進入「MCP 接入 → Token 與客戶端設定」。為 Claude、Codex 各產生一個身分與 Token。Token 就像這個 AI 進入專案的鑰匙，不是網頁登入密碼。</p>
-<h3>2. 安裝一次，貼入 MCP 設定</h3><p>從下方「接入 MCP」下載安裝包，解壓到新資料夾，依三行安裝命令產生設定。Claude 使用專案 <code>.mcp.json</code>；合併產生的設定、保留原本其他 MCP，以及 <code>${YS_AIMEMORY_TOKEN:-}</code> 引用。不要把實際 Token 寫進共享設定檔；加入 <code>.gitignore</code> 也不會解除既有 Git 追蹤。</p>
-<p>接著到 Claude「新對話的環境選單 → Local 旁齒輪 → 環境編輯器」，新增名稱 <code>YS_AIMEMORY_TOKEN</code>，值填剛取得的 Claude Token 並保存。這裡填實際值，不是引用文字。它會作用於所有新的本機工作，請勿混用不同 worker。已登入 Desktop 的 Code 分頁不需要另登入 CLI。</p>
-<h3>3. 開新 Claude 對話，確認連線</h3><p>選 Local 和剛設定的專案，開新對話。依畫面核准 MCP，貼上：</p>
-<pre class="path"><code>使用 YS Memory MCP，確認我指定專案的 worker 身分。
-先取得 get_worker_inbox 的 schema，再呼叫並告訴我 worker_id。
-請依 schema 保留 arguments 層級，不要認領任務。</code></pre><p>把自己的專案 ID 一起告訴 AI。畫面出現實際工具結果與正確身分才算接入；只有 Connected 還不夠。</p>''' + figure('claude-native-tool-result-20261003.jpg', '實測：Claude 原生 MCP 回傳 agent-b；首次參數錯誤及修正結果均保留') + '''
-<h3>4. 網頁建立對話，邀請 AI 加入</h3><p>進入「共享對話」，選專案，輸入主題後按「建立對話」。先在下方發一則需求，再按右側「複製加入指引」，貼到 Claude 和 Codex 各自的對話。這份指引帶的是專案與對話 ID，不需要重貼 Token。</p>''' + figure('hub-create-conversation-20261003.jpg', '實測：網頁管理員發需求，Claude 讀取後回覆同一主題') + '''
-<h3>5. 驗證 AI 回覆與人類發言</h3><p>對 AI 說：「讀取這個對話的新訊息，回覆三句，真正寫回共享對話。」網頁會同步顯示。直接在下方發補充即可；「引用」只用來指明某則訊息。目前仍要在 AI 客戶端請它讀取這一輪，這是人工讀寫驗證。</p>
-<pre class="path"><code>請從上次讀取的位置繼續讀新訊息，參考另一位 AI 和管理員的補充，
-整理三點共識並寫回同一對話。只討論，先不修改程式。
-不需要重讀全部歷史，完成這輪便停止。</code></pre>
-<p>有共識後可在右側「建立文件／提案」保存方案；需要執行時才建立正式任務。Hub 會保存和同步訊息，但不會自行喚醒 AI，仍須在客戶端請它繼續。</p>
-<p>截圖取自 2026-10-03 的線上測試：Claude Desktop 使用 Sonnet 5.5 / Medium；Codex 使用已登入的原生 CLI。圖片中的名稱和 ID 是範例，使用時選自己的專案。沒有以 SDK 代替模型回覆；未量測帳單 Token 節省比例。</p></section>'''
+    return ('<section id="local-claude-setup" class="panel"><h2>' + tr('ui_6b817627be35') + '</h2>\n<p>' + tr('ui_fed108c9f6c0') + '</p>\n<p>' + tr('ui_9f23b3ebe161') + '</p>\n<pre class="path"><code>' + tr('ui_9e5e7a0587ab') + '</code></pre>\n<p>' + tr('ui_5cbfd5797808') + '</p>\n<p>' + tr('ui_ca6a74d7fc7b') + ('</p>\n<p><a href="' + documentation_url('CLAUDE_WINDOWS_SETUP.zh-TW.md') + '">') + tr('ui_bb247a3cecf0') + '</a>' + tr('ui_ed8d330d236a') + '</p>') + figure('claude-local-native-receipt-20261003.jpg', (tr('ui_4c010533fc24'))) + ('</section><section id="automatic-chat" class="panel"><h2>' + tr('ui_30e78e200eac') + '</h2>\n<p><strong>' + tr('ui_2b449d1e59c3') + '</strong></p>' + automatic_client_guidance() + '\n<p>' + tr('ui_4980986a0ae7') + '</p>\n<p>' + tr('ui_6b6761fdef8b') + '</p>\n<p><strong>' + tr('ui_9f7b24152d32') + '</strong>' + tr('ui_e010e1bc6bd9') + '</p>') + figure('hub-automatic-conversation-20261003.jpg', (tr('ui_4f59b7de264c'))) + ('\n</section><section id="quickstart" class="panel"><h2>' + tr('ui_dce1ec683f94') + '</h2>\n<p>' + tr('ui_9416d307c981') + '</p>\n<h3>' + tr('ui_bfce900ae2c0') + '</h3><p>' + tr('ui_382f531bd0b7') + '</p>\n<h3>' + tr('ui_cf73e67ff559') + '</h3><p>' + tr('ui_83ab778e6b5b') + '<code>.mcp.json</code>' + tr('ui_513744d16031') + '<code>${YS_AIMEMORY_TOKEN:-}</code>' + tr('ui_19d2dfca51cf') + '<code>.gitignore</code>' + tr('ui_cc9383d1892f') + '</p>\n<p>' + tr('ui_f16c0a5ef9b6') + '<code>YS_AIMEMORY_TOKEN</code>' + tr('ui_2935b451b4cf') + '</p>\n<h3>' + tr('ui_c7109df93284') + '</h3><p>' + tr('ui_1fec4e9a1741') + '</p>\n<pre class="path"><code>' + tr('ui_01537db4d545') + '</code></pre><p>' + tr('ui_6aaab69721e9') + '</p>') + figure('claude-native-tool-result-20261003.jpg', (tr('ui_c74287365d28'))) + ('\n<h3>' + tr('ui_8d049e50bca1') + '</h3><p>' + tr('ui_e29fc18824ef') + '</p>') + figure('hub-create-conversation-20261003.jpg', (tr('ui_7e33da37eda5'))) + ('\n<h3>' + tr('ui_1b920cfb95a4') + '</h3><p>' + tr('ui_69b7a90bae20') + '</p>\n<pre class="path"><code>' + tr('ui_be85d7e24394') + '</code></pre>\n<p>' + tr('ui_6a9f51cb0870') + '</p>\n<p>' + tr('ui_83e9e6e03b78') + '</p></section>')
 
 
 def install_walkthrough_images(app):

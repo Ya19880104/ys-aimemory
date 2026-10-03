@@ -3,6 +3,7 @@
 The environment is a one-time bootstrap, never an account synchronization feed.
 User IDs are distinct from worker identities and browser cookies are not tokens.
 """
+from .i18n import tr
 from dataclasses import dataclass
 import secrets
 import unicodedata
@@ -32,28 +33,28 @@ class WebPrincipal:
 
 def text(value, limit=128):
     if not isinstance(value, str) or not value.strip() or len(value) > limit or any(unicodedata.category(c).startswith('C') for c in value):
-        raise HubError('invalid_account', '名稱不可空白、過長或含控制字元。', 400)
+        raise HubError('invalid_account', (tr('ui_d546c60a3cca')), 400)
     return value.strip()
 
 
 def username_key(value):
     key = unicodedata.normalize('NFKC', text(value)).casefold()
     if len(key) > 256:
-        raise HubError('invalid_account', '正規化後的登入名稱過長。', 400)
+        raise HubError('invalid_account', (tr('ui_e08227c04b3a')), 400)
     return key
 
 
 def account_values(display_name, role, scopes, manager):
     if role not in {'admin', 'member', 'read_only'} or type(manager) is not bool:
-        raise HubError('invalid_account', '帳號角色或權限格式不正確。', 400)
+        raise HubError('invalid_account', (tr('ui_49074c5d8675')), 400)
     if not isinstance(scopes, (tuple, list)) or len(scopes) > 100:
-        raise HubError('invalid_account', '專案範圍格式不正確，最多 100 項。', 400)
+        raise HubError('invalid_account', (tr('ui_394104ad2d97')), 400)
     return text(display_name), role, tuple(sorted({identifier(p) for p in scopes})), manager
 
 
 def password_digest(password):
     if not isinstance(password, str) or not 10 <= len(password) <= 1024 or '\x00' in password:
-        raise HubError('invalid_password', '密碼必須為 10–1024 字元且不得含 NUL。', 400)
+        raise HubError('invalid_password', (tr('ui_20bbcd79e428')), 400)
     return hash_password(password)
 
 
@@ -64,7 +65,7 @@ def user_identifier(value):
             raise ValueError('Non-canonical ID')
         return canonical
     except (ValueError, TypeError, AttributeError):
-        raise HubError('invalid_account', '帳號識別格式不正確。', 400) from None
+        raise HubError('invalid_account', (tr('ui_c44c21649fca')), 400) from None
 
 
 class WebUsers:
@@ -139,18 +140,18 @@ class WebUsers:
     def _actor(self, conn, current, *, manager=True):
         record = self.auth._get(conn, (current or {}).get('_key', ''), 'session')
         if not record:
-            raise HubError('unauthorized', '登入已失效，請重新登入。', 401)
+            raise HubError('unauthorized', (tr('ui_75baae0fbc25')), 401)
         row = self._load(conn, record['user_id'])
         if manager and not row['can_manage_users']:
-            raise HubError('forbidden', '此帳號沒有使用者管理權限。', 403)
+            raise HubError('forbidden', (tr('ui_15a7e789ea75')), 403)
         return row
 
     def _target(self, conn, target_id, expected_version):
         row = self._load(conn, user_identifier(target_id))
         if row is None:
-            raise HubError('not_found', '找不到帳號。', 404)
+            raise HubError('not_found', (tr('ui_97ca99cc04e7')), 404)
         if type(expected_version) is not int or expected_version != row['version']:
-            raise HubError('account_conflict', '帳號已更新，請重新載入。', 409)
+            raise HubError('account_conflict', (tr('ui_c590245f0a78')), 409)
         return row
 
     def _last_manager(self, conn, row, enabled, manager):
@@ -158,7 +159,7 @@ class WebUsers:
             count = conn.execute(select(func.count()).select_from(self.users).where(
                 self.users.c.enabled.is_(True), self.users.c.can_manage_users.is_(True))).scalar_one()
             if count <= 1:
-                raise HubError('last_manager', '必須保留至少一位啟用中的帳號管理員。', 409)
+                raise HubError('last_manager', (tr('ui_1cebb7510107')), 409)
 
     def _update(self, conn, row, **values):
         values.update(version=row['version'] + 1, security_version=row['security_version'] + 1,
@@ -167,7 +168,7 @@ class WebUsers:
 
     def list(self, current, after='', limit=20):
         if not 1 <= limit <= 50 or len(after) > 36:
-            raise HubError('invalid_page', '分頁格式不正確。', 400)
+            raise HubError('invalid_page', (tr('ui_393a16951cb3')), 400)
         if after: after = user_identifier(after)
         with self.auth.transaction() as conn:
             self._actor(conn, current)
@@ -186,7 +187,7 @@ class WebUsers:
             self._actor(conn, current)
             row = self._load(conn, user_id)
             if row is None:
-                raise HubError('not_found', '找不到帳號。', 404)
+                raise HubError('not_found', (tr('ui_97ca99cc04e7')), 404)
             return self._public(conn, row)
 
     def create(self, current, username, display_name, password, role, projects, can_manage_users=False):
@@ -203,7 +204,7 @@ class WebUsers:
                 self._grants(conn, user_id, scopes)
                 self._audit(conn, actor['user_id'], user_id, 'create', {'role': role, 'projects': list(scopes), 'can_manage_users': manager})
         except IntegrityError:
-            raise HubError('account_exists', '使用者名稱已存在。', 409) from None
+            raise HubError('account_exists', (tr('ui_865a58e791e3')), 409) from None
         return user_id
 
     def update(self, current, target_id, expected_version, display_name, role, projects, can_manage_users=False):
@@ -218,7 +219,7 @@ class WebUsers:
 
     def set_enabled(self, current, target_id, expected_version, enabled):
         if type(enabled) is not bool:
-            raise HubError('invalid_account', '啟用狀態格式不正確。', 400)
+            raise HubError('invalid_account', (tr('ui_cd611b2f9037')), 400)
         with self.auth.transaction() as conn:
             actor = self._actor(conn, current)
             row = self._target(conn, target_id, expected_version)
@@ -232,17 +233,17 @@ class WebUsers:
             with self.auth.transaction() as conn:
                 actor = self._actor(conn, current, manager=False)
                 if actor['user_id'] != target_id:
-                    raise HubError('forbidden', '只能變更自己的密碼。', 403)
+                    raise HubError('forbidden', (tr('ui_753062cd23c6')), 403)
                 row = self._target(conn, target_id, expected_version)
                 digest = row['password_hash']
             if not verify_password(current_password, digest):
-                raise HubError('invalid_current_password', '目前密碼不正確。', 403)
+                raise HubError('invalid_current_password', (tr('ui_07b06141ea51')), 403)
         digest = password_digest(password)
         with self.auth.transaction() as conn:
             actor = self._actor(conn, current, manager=current_password is None)
             row = self._target(conn, target_id, expected_version)
             if current_password is not None and actor['user_id'] != target_id:
-                raise HubError('forbidden', '只能變更自己的密碼。', 403)
+                raise HubError('forbidden', (tr('ui_753062cd23c6')), 403)
             self._update(conn, row, password_hash=digest)
             self._audit(conn, actor['user_id'], target_id, 'self_password' if current_password is not None else 'reset_password')
 
@@ -252,10 +253,10 @@ class WebUsers:
         with self.auth.transaction() as conn:
             actor = self._actor(conn, current, manager=False)
             if actor['role'] != 'admin':
-                raise HubError('forbidden', '此帳號沒有專案管理權限。', 403)
+                raise HubError('forbidden', (tr('ui_f8b8e59ef830')), 403)
             scopes = self._identity(conn, actor).projects
             if len(scopes) >= 100 and project_id not in scopes:
-                raise HubError('scope_limit', '每個帳號最多授權 100 個專案。', 409)
+                raise HubError('scope_limit', (tr('ui_bffb3b1927cd')), 409)
             state = {'revision': 1, 'sources': {}, 'tasks': {}, 'packets': {}, 'decisions': {}, 'sequence': 0}
             insert = sqlite_insert if self.store.sqlite else pg_insert
             inserted = conn.execute(insert(project_table).values(id=project_id, state=state).on_conflict_do_nothing().returning(project_table.c.id)).scalar_one_or_none()

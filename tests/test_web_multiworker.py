@@ -132,3 +132,9 @@ def test_expired_nonce_and_bounded_entry_cleanup(shared):
     now[0]+=51
     with auth.transaction() as conn:
         assert conn.execute(select(func.count()).select_from(auth.entries).where(auth.entries.c.kind=='fixture')).scalar_one()==0
+
+
+@pytest.fixture(autouse=True)
+def traditional_interface(monkeypatch):
+    """Retain legacy copy assertions as explicit Traditional Chinese coverage."""
+    monkeypatch.setenv("HUB_WEB_LANGUAGE", "zh-TW")

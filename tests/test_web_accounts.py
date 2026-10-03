@@ -472,3 +472,9 @@ def test_settings_available_without_project_scope(accounts):
     assert response.status_code == 200 and '我的密碼' in response.text
     assert '使用者管理' in response.text and '建立專案' not in response.text
     assert other.get('/ui/users').status_code == 200
+
+
+@pytest.fixture(autouse=True)
+def traditional_interface(monkeypatch):
+    """Retain legacy copy assertions as explicit Traditional Chinese coverage."""
+    monkeypatch.setenv("HUB_WEB_LANGUAGE", "zh-TW")

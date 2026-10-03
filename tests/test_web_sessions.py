@@ -212,3 +212,9 @@ def test_account_cookie_paths_are_precise_and_account_data_omits_hashes(room):
     assert client.get('/ui/account/password').status_code == 200
     assert client.get('/ui/users/unknown').status_code == 401
     assert client.post('/ui/users/create', data={'username':'forged'}).status_code == 403
+
+
+@pytest.fixture(autouse=True)
+def traditional_interface(monkeypatch):
+    """Retain legacy copy assertions as explicit Traditional Chinese coverage."""
+    monkeypatch.setenv("HUB_WEB_LANGUAGE", "zh-TW")

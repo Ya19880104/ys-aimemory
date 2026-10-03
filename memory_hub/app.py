@@ -39,7 +39,7 @@ class AuthenticationMiddleware:
             return await self.app(scope, receive, send)
         if scope['type'] == 'http' and scope['path'] in {'/ui/mcp','/ui/mcp/project','/ui/mcp/issue','/ui/mcp/rotate','/ui/mcp/revoke'}:
             return await self.app(scope, receive, send)
-        if scope["type"] != "http" or scope["path"] in {"/healthz", "/", "/ui", "/login", "/logout", "/ui/manage", "/ui/search", "/ui/task", "/ui/inbox", "/ui/action/project", "/ui/action/source", "/ui/action/import", "/ui/action/task", "/ui/action/approve", "/ui/action/recover"}:
+        if scope["type"] != "http" or scope["path"] in {"/healthz", "/", "/ui", "/ui/language", "/login", "/logout", "/ui/manage", "/ui/search", "/ui/task", "/ui/inbox", "/ui/action/project", "/ui/action/source", "/ui/action/import", "/ui/action/task", "/ui/action/approve", "/ui/action/recover"}:
             return await self.app(scope, receive, send)
         authorization = dict(scope["headers"]).get(b"authorization", b"").decode("latin1")
         credential = authorization[7:] if authorization.startswith("Bearer ") else ""
@@ -184,6 +184,8 @@ def create_app(*, database_url=None, auth_tokens=None, allow_sqlite=None):
             # Do not echo source text, private arguments or input values on errors.
             return JSONResponse({"error":"invalid_arguments","message":"Arguments do not match the tool schema"}, status_code=422)
 
+    from .i18n import install_language
+    install_language(app)
     from .web_help import install_help
     install_help(app)
     install_client_bundle(app)

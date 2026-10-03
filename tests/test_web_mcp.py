@@ -208,3 +208,9 @@ def test_real_app_middleware_managed_bearer_and_cookie_isolation(tmp_path, monke
         assert post(client,'revoke',form(client,'revoke','mcp-isolated',meta['token_id'])).status_code==303
         assert client.post('/mcp',json=init,headers=mcp_headers).status_code==401
         assert client.post('/v1/tools/create_project',json={'arguments':{'project_id':'visible'}},headers={'Authorization':'Bearer '+env_token}).status_code==200
+
+
+@pytest.fixture(autouse=True)
+def traditional_interface(monkeypatch):
+    """Retain legacy copy assertions as explicit Traditional Chinese coverage."""
+    monkeypatch.setenv("HUB_WEB_LANGUAGE", "zh-TW")

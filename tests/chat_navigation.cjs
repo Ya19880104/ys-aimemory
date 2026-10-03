@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+const label = (english, chinese) => input.locale === 'zh-TW' ? chinese : english;
 
 function documentFrom(html) {
   const ids = new Map();
@@ -140,7 +141,7 @@ async function projectChangeDuringDeepLink() {
     assert.equal(target.pathname, path); assert.equal(target.searchParams.get('project'), 'beta');
     assert.equal(target.searchParams.get('view'), view);
   }
-  assert.equal(ui.get('active-room').textContent, '選擇一個對話');
+  assert.equal(ui.get('active-room').textContent, label('Choose a conversation', '選擇一個對話'));
   assert.ok(ui.get('room-list').textContent.includes(roomC.title));
   assert.ok(!ui.get('room-list').textContent.includes(roomB.title), 'Late response must not select the old project room');
   assert.equal(ui.get('send-message').disabled, true);
@@ -264,26 +265,28 @@ async function overlappingRefreshIsCoalesced() {
 async function deliveryStateAndPause() {
   let paused=false,version=1;
   const participants=[{worker_id:'worker-a',display_name:'Codex',status:'processing',relay_online:true,turns_used:2,max_turns:20,latest_delivery:{status:'dispatched',through_sequence:9}},
-    {worker_id:'worker-b',display_name:'Claude',status:'offline',relay_online:false,turns_used:1,max_turns:10,latest_delivery:{status:'replied',through_sequence:8,reply_sequence:10}}];
+    {worker_id:'worker-b',display_name:'Claude',status:'offline',relay_online:false,turns_used:1,max_turns:10,latest_delivery:{status:'replied',through_sequence:8,reply_sequence:10}},
+    {worker_id:'worker-c',display_name:'Disconnected client',status:'disconnected',relay_online:false}];
   const ui=boot(q=>{if(q.op==='list')return listing([roomB]);if(q.op==='read')return reading(roomB);if(q.op==='nonce'){assert.equal(q.action,'set_session_delivery_paused');return {nonce:'single-use-browser-nonce'};}assert.equal(q.op,'delivery');return {control:{paused,version},participants,has_more:false};},roomB.session_id,
     {deliveryHandler:true,writeHandler:body=>{assert.equal(body.action,'set_session_delivery_paused');assert.equal(body.nonce,'single-use-browser-nonce');assert.equal(body.arguments.expected_version,version);assert.equal(body.arguments.project_id,'alpha');assert.equal(body.arguments.session_id,roomB.session_id);assert.ok(body.arguments.idempotency_key);paused=body.arguments.paused;version++;return {paused,version,running_turns_cancelled:false};}});
   await settle();assert.equal(ui.get('pause-delivery').hidden,false);assert.equal(ui.get('pause-delivery').disabled,false);
-  assert.ok(ui.get('delivery-participants').textContent.includes('已交給客戶端'));
-  assert.ok(!ui.get('delivery-participants').textContent.includes('AI 已收到'),'Transport receipt must not imply model read');
-  assert.ok(ui.get('delivery-participants').textContent.includes('回覆 #10'));
-  assert.ok(ui.get('delivery-participants').textContent.includes('接線離線'));
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Handed to client', '已交給客戶端')));
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Disconnected', '已中斷自動接話')));
+  assert.ok(!ui.get('delivery-participants').textContent.includes(label('AI received', 'AI 已收到')),'Transport receipt must not imply model read');
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Reply to #10', '回覆 #10')));
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Connection offline', '接線離線')));
   await ui.get('pause-delivery').onclick();
-  assert.equal(ui.writes.length,1);assert.equal(ui.get('delivery-title').textContent,'自動接話已暫停');
-  assert.ok(ui.get('delivery-explanation').textContent.includes('已開始的回合無法撤回'));
+  assert.equal(ui.writes.length,1);assert.equal(ui.get('delivery-title').textContent,label('Automatic replies paused', '自動接話已暫停'));
+  assert.ok(ui.get('delivery-explanation').textContent.includes(label('turns already started cannot be recalled', '已開始的回合無法撤回')));
   assert.equal(ui.get('send-message').disabled,false,'Pause does not delete or block human messages');
-  assert.equal(ui.get('pause-delivery').textContent,'恢復自動接話');
+  assert.equal(ui.get('pause-delivery').textContent,label('Resume automatic replies', '恢復自動接話'));
   await ui.get('pause-delivery').onclick();assert.equal(ui.writes.length,2);assert.equal(paused,false);
 }
 
 async function deliveryReadOnly(){
   const ui=boot(q=>q.op==='list'?listing([roomB]):reading(roomB));
   await settle();assert.equal(ui.get('pause-delivery').hidden,true);
-  assert.equal(ui.get('delivery-title').textContent,'尚無 AI 加入自動接話');
+  assert.equal(ui.get('delivery-title').textContent,label('No AI has joined automatic replies yet', '尚無 AI 加入自動接話'));
   await ui.get('pause-delivery').onclick();assert.equal(ui.writes.length,0);
 }
 

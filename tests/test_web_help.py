@@ -43,7 +43,7 @@ def test_help_without_ca_is_public_and_never_uses_request_host(tmp_path, monkeyp
     with client(monkeypatch, tmp_path / "missing.crt") as browser:
         response = browser.get("/help", headers={"Host": "attacker.invalid", "X-Forwarded-Host": "attacker.invalid"})
         assert response.status_code == 200
-        assert 'lang="zh-Hant"' in response.text
+        assert 'lang="zh-TW"' in response.text
         assert "https://192.0.2.10/ui/mcp" in response.text
         assert "https://192.0.2.10/mcp" in response.text
         assert "attacker.invalid" not in response.text
@@ -250,3 +250,9 @@ def test_bundled_tutorial_images_are_public_only_on_the_exact_allowlist(tmp_path
         for path in ('/help/images/connection.json', '/help/images/.mcp.json', '/help/images/missing.png'):
             assert browser.get(path).status_code == 401
         assert browser.get('/v1/tools/read_session').status_code == 401
+
+
+@pytest.fixture(autouse=True)
+def traditional_interface(monkeypatch):
+    """Retain legacy copy assertions as explicit Traditional Chinese coverage."""
+    monkeypatch.setenv("HUB_WEB_LANGUAGE", "zh-TW")
