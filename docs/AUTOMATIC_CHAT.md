@@ -71,7 +71,7 @@ Disconnect fences the Hub binding and restores only this installation's previous
 
 ## Other hosts and evidence
 
-A dedicated Codex CLI receiver is different from an existing Codex Desktop chat. Use the supported instructions for the deployed version; the Claude command is not a Codex installer. Gemini/Grok receiver acceptance is not claimed. The [private ChatGPT tunnel](CHATGPT_PRIVATE_TUNNEL.md) is a separate pilot.
+For a dedicated Codex CLI receiver, follow the [Codex chat installation guide](CODEX_CHAT_SETUP.md). Its own installer provisions a separate worker credential, verified Hub bundle and private runtime, and prints exact start/stop commands. Default `--print` performs installation and a REST identity/room check; explicit `--run` starts the bounded receiver. It does not inject an existing Codex Desktop chat or use Claude's credential. Gemini/Grok receiver acceptance is not claimed. The [private ChatGPT tunnel](CHATGPT_PRIVATE_TUNNEL.md) is a separate pilot.
 
 Idle waiting should not repeatedly ask a model to inspect an empty inbox. Retrieve new messages incrementally. This does not promise zero provider cost or a fixed token savings percentage.
 

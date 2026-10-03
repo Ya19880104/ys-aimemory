@@ -8,15 +8,15 @@ For ordinary on-demand MCP access, use [client setup](CLIENT_SETUP.md). For room
 
 ## 1. Prepare the CLI and room
 
-Use Windows with Python 3.12 and Git. Install the official Codex CLI using the **Windows** instructions on the [official Codex CLI page](https://learn.chatgpt.com/docs/codex/cli), then open a new PowerShell terminal. Check the native executable:
+Use Windows with Python 3.12. Git is only needed for the optional checkout method. Install the official Codex CLI using the **Windows** instructions on the [official Codex CLI page](https://learn.chatgpt.com/docs/codex/cli), then open a new PowerShell terminal. Check the installation:
 
 ```powershell
-Get-Command codex.exe -CommandType Application
-codex.exe --version
+Get-Command codex -All
+codex --version
 py -3.12 --version
 ```
 
-The installer resolves `codex.exe` from `PATH`. A `codex.cmd` or `codex.ps1` shim alone is insufficient. If needed, supply `--codex` with the absolute path to an actual executable you located; do not guess a versioned application-folder path. The installer also checks the CLI features required by the receiver.
+The installer resolves `codex.exe` from `PATH`. For a standard official npm installation that exposes `codex.cmd`, it reads that installation's package metadata and resolves the matching Windows x64/arm64 native dependency automatically; it does not execute the wrapper or require a guessed application-folder path. Package name, alias version, OS and architecture must match. For a nonstandard installation, `--codex` (or bootstrap `-CodexPath`) accepts an explicitly verified native executable. Version/help preflight checks required CLI features without running a model.
 
 Use your existing CLI login. If the CLI is not signed in, complete `codex login` yourself using [official authentication guidance](https://learn.chatgpt.com/docs/auth). The installer does not sign in, copy model credentials, or change your account. The Hub worker Token below is a separate credential.
 
@@ -33,13 +33,35 @@ In the Hub, select/create the project, open a conversation, and issue a dedicate
 
 The machine must reach the Hub's public CA download on HTTP port 80, the verified HTTPS client bundle, and the Python package source used by that bundle. Only the public CA is fetched over HTTP; its trusted fingerprint must match before authenticated HTTPS operations. The installer does not add global CA trust, follow redirects, or use environment proxies for Hub requests.
 
-## 2. Install from the repository
+## 2. Install through a fixed URL (no clone)
+
+Download and review this immutable script. The hash check must pass before execution:
+
+```powershell
+$Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/78c37add40d3927cce00636060bd4160cfe53e31/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '112849D6CF4F025E4EB2BB6F31FA9F1A040A0A6DC524A14F60A70840A2AE1BA1') { throw 'Installer hash mismatch' }
+notepad $Installer
+```
+
+After review, replace the values and install. Use the dedicated Codex worker, never Claude's Token:
+
+```powershell
+& $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_32_LOWERCASE_HEX_ROOM_ID' -WorkerId 'YOUR_CODEX_WORKER_ID' -Language en -Hours 1 -MaxTurns 20 -Print
+```
+
+`-Print` is the default: it performs installation and authorization checks without starting a model. Enter the Token at the hidden prompt, then continue at **Start the dedicated receiver** below using the receipt's exact `start_command`. Explicit `-Run` instead installs and immediately starts the bounded receiver. Do not combine both switches. `-PythonPath` can select an existing Python 3.12; `-TurnTimeout` defaults to 90 seconds. No local project-directory argument is needed: the receiver creates a private empty working directory for its conversational turns.
+
+The bootstrap verifies four source files from revision `a3e73180761e2f77f870af3cf98a5eed77e54d4b`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
+
+### Alternative: install from a checkout
 
 Clone into a **new** directory and use the checkout containing `scripts/setup-codex-chat.py`:
 
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
+git checkout --detach a3e73180761e2f77f870af3cf98a5eed77e54d4b
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
@@ -114,6 +136,7 @@ The time budget starts at the **first receiver start**, not installation. Its ex
 | --- | --- |
 | `codex_exe_not_found_install_official_cli_or_use_codex_option` | Install the official native Windows CLI, reopen PowerShell, or supply the verified executable path with `--codex`. |
 | `codex_cli_missing_required_features` | Update through the official CLI instructions; the preflight found an incompatible CLI. |
+| `codex_npm_metadata_invalid`, `codex_npm_native_metadata_invalid` or missing native package | Repair/reinstall the official npm package; do not substitute a guessed binary or edit the checks. Standard nested and hoisted optional dependency layouts are supported. |
 | CA/TLS or public-download failure | Verify the administrator's origin/fingerprint and direct network access; do not disable TLS verification. |
 | `dedicated_worker_identity_mismatch` | Check the worker ID against the dedicated Token issued by the Hub. |
 | `room_identity_or_active_state_mismatch` | Check project/room IDs, worker grant, and that the room is open. |
