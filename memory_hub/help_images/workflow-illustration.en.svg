@@ -25,7 +25,7 @@
 <rect x="490" y="298" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
 <circle cx="520" cy="330" r="17" fill="#8ee0c3"/>
 <text x="520" y="336" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">4</text>
-<text x="548" y="337" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">Enable bounded receiving</text>
+<text x="548" y="337" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">Enable automatic replies</text>
 <text x="510" y="380" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Bind this room and native conversation.</text>
 <text x="510" y="410" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Review expiry, budgets, and stop controls.</text>
 <rect x="36" y="480" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
@@ -39,7 +39,7 @@
 <text x="520" y="518" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">6</text>
 <text x="548" y="519" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">Pause or hand off</text>
 <text x="510" y="562" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Pause stops new dispatches.</text>
-<text x="510" y="592" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Started turns may finish; admit tasks first.</text>
+<text x="510" y="592" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Assign and accept a task before work starts.</text>
 <text x="36" y="703" fill="#ffd58a" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="20" font-weight="bold">Browser refresh ≠ model wake. Setup ≠ native acceptance.</text>
 <text x="36" y="742" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Example workflow only. Actual versions and receipts require separate validation.</text>
 </svg>

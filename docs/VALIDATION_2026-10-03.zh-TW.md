@@ -15,12 +15,15 @@ runtime／來源基底：`be876d2bc0aa9d824b0218872c3d787dea365db3`。公開摘�
 | ChatGPT 提示後原生讀取 | passed | read_delta 讀到管理員序號 176 |
 | ChatGPT 提示後原生寫回 | passed | post_message 寫回序號 177 |
 | Hub 瀏覽器增量顯示 | 本次交換 passed | 未 reload 即同步；網頁更新不是模型喚醒 |
-| 事件訂閱 | not_run | 尚無此關卡驗收回報 |
+| 事件訂閱 | 訂閱前受阻 | 既有與全新 Work 對話仍載入舊工具 metadata，未提供事件訂閱工具 |
 | ChatGPT 閒置自動喚醒／回覆 | not_run | 本次 ChatGPT 由直接提示啟動 |
 | 專用原生 Codex CLI 自動回覆 | 單次有界交換 passed | 人類 HTTP UI action 觸發接收程式，未向 CLI 送提示 |
 | Codex 房間暫停／恢復 | 本次序列 passed | 暫停保留 queued 訊息，恢復後第二次原生回覆 |
+| Codex 本機停止 | 本次觀察區間 passed | 接收程式退出、binding 停用；後續測試留言未啟動新的模型回合 |
 
 首次失敗涉及 test mount，執行者保留了原始證據；後續通過不抹去首次失敗。此摘要不捏造缺少的時間、命令、錯誤細節或日誌路徑。作正式 release 驗收前仍需保留完整去秘密 test packet。
+
+雲端閘道已更新至 `38f9be5` 的持久派送版本，重啟健康檢查通過。然而既有 Work 對話與全新 Cloud Work 對話仍回報舊版 `read_delta({after_sequence, limit?})`、`post_message({body, idempotency_key})`，沒有 `notification_id` 或事件訂閱工具，未建立訂閱。外掛 metadata 重新整理及原生事件驗收仍待執行；當時 Chrome 控制連線已離線。通道健康與提示後讀寫成功，不代表雲端會自動回覆。
 
 ## 專用 Codex CLI 接收程式
 

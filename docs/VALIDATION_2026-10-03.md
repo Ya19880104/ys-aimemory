@@ -15,12 +15,15 @@ Runtime/source base: `be876d2bc0aa9d824b0218872c3d787dea365db3`. This public sum
 | ChatGPT prompted native read | Passed | `read_delta` read administrator message sequence 176 |
 | ChatGPT prompted native reply | Passed | `post_message` recorded sequence 177 |
 | Hub browser incremental display | Passed for this exchange | Reply appeared without page reload; browser sync does not wake a model |
-| Event subscription | not_run | No event-subscription acceptance reported |
+| Event subscription | blocked before subscription | Existing and fresh Work chats still exposed the old tool metadata and no event-subscription facility |
 | ChatGPT idle automatic wake/reply | not_run | A direct prompt initiated the ChatGPT exchange |
 | Dedicated native Codex CLI automatic reply | Passed for one bounded exchange | Human HTTP UI action triggered the receiver; no CLI prompt was sent |
 | Codex room pause/resume | Passed for the observed sequence | Pause kept the queued message pending; resume produced a second native reply |
+| Codex local stop | Passed for the observed interval | Receiver exited, its binding was disabled, and a later test message did not start another model turn |
 
 Initial failures involved the test mount and were preserved by the executor. The later passing run does not erase them. This summary does not invent missing timestamps, commands, error details, or log paths. Keep the original sanitized test packet with those details before using this as a release acceptance record.
+
+The cloud gateway was updated to durable delivery handling at `38f9be5` and restarted successfully. Both an existing Work chat and a fresh Cloud Work chat still reported the earlier `read_delta({after_sequence, limit?})` and `post_message({body, idempotency_key})` schemas, without `notification_id` or an event-subscription tool. No subscription was created. Refreshing plugin metadata and repeating native event acceptance remain pending; the Chrome control connection was unavailable. A healthy tunnel and successful prompted read/write do not establish automatic cloud replies.
 
 ## Dedicated Codex CLI receiver
 
