@@ -529,7 +529,7 @@ def receiver(config, client, directory, *, turn=native_turn, now=time.time, slee
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code == 409 and exc.response.json().get('error') == 'stale_claim':
                     pending_claim = None
-                    claim_path.unlink()
+                    claim_path.unlink(missing_ok=True)
                     continue
                 raise
             polls += 1
@@ -575,7 +575,7 @@ def receiver(config, client, directory, *, turn=native_turn, now=time.time, slee
                 break
             if status == 'idle':
                 pending_claim = None
-                claim_path.unlink()
+                claim_path.unlink(missing_ok=True)
             sleep(3)
         else:
             record = {'state': 'stopped', 'at': now(), 'native_turns': turns, 'binding_id': binding['binding_id']}

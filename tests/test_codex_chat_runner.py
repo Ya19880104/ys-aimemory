@@ -157,6 +157,50 @@ def test_stale_claim_rotates_then_dispatch_pause_race_cannot_wake(tmp_path):
     assert len(turns) == 1 and len(dispatches) == 2
 
 
+@pytest.mark.parametrize('response_kind', ['idle', 'stale_claim'])
+def test_removed_pending_claim_during_response_does_not_disable_receiver(tmp_path, response_kind):
+    requests, controls = [], []
+    def handle(request):
+        operation = request.url.path.rsplit('/', 1)[-1]
+        if operation == 'join':
+            return httpx.Response(200, json={k: CONFIG[k] for k in ('worker_id', 'project_id', 'session_id')} |
+                {'binding_id': '0'*32, 'version': 1, 'generation': 1})
+        if operation == 'control':
+            controls.append(request)
+        if operation == 'claim':
+            requests.append(json.loads(request.content))
+            if len(requests) == 1:
+                # Manual deletion can race the HTTP response despite the kernel
+                # lock excluding a second receiver in this directory.
+                (tmp_path / 'receiver-claim.json').unlink()
+                return httpx.Response(409 if response_kind == 'stale_claim' else 200,
+                    json={'error': 'stale_claim'} if response_kind == 'stale_claim' else
+                         {'status': 'idle', 'delivery': None})
+            return httpx.Response(200, json={'status': 'budget_exhausted', 'delivery': None})
+        return httpx.Response(200, json={'status': 'waiting'})
+    with httpx.Client(base_url='https://fixture.test', transport=httpx.MockTransport(handle)) as client:
+        result = runner.receiver(CONFIG, client, tmp_path, now=lambda: 100, sleep=lambda _: None,
+            turn=lambda *args: pytest.fail('No ready delivery'))
+    assert result['state'] == 'budget_exhausted'
+    assert len(requests) == 2 and requests[0]['request_id'] != requests[1]['request_id']
+    assert not controls
+
+
+def test_pending_claim_permission_error_still_fails_closed(tmp_path, monkeypatch):
+    original_unlink = Path.unlink
+    def denied(path, *args, **kwargs):
+        if path == tmp_path / 'receiver-claim.json':
+            raise PermissionError('Cannot remove pending state')
+        return original_unlink(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'unlink', denied)
+    client = FakeClient(['idle'])
+    with pytest.raises(PermissionError):
+        runner.receiver(CONFIG, client, tmp_path, now=lambda: 100, sleep=lambda _: None,
+            turn=lambda *args: pytest.fail('No model'))
+    assert client.calls[-1][0] == '/v1/chat/control'
+    assert client.calls[-1][1]['enabled'] is False
+
+
 def arguments(name, **changes):
     if name == 'get_worker_inbox':
         result = {'project_id': CONFIG['project_id']}
