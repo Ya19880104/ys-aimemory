@@ -11,6 +11,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import platform
 import re
 import shutil
 import subprocess
@@ -66,9 +67,50 @@ def executable(path):
     return path.resolve(strict=True)
 
 
+def npm_codex_executable():
+    """Resolve the official npm shim's native optional package without running it."""
+    shim = shutil.which('codex.cmd')
+    if not shim:
+        return None
+    shim = Path(shim)
+    wrapper = file_bytes(shim, 65536).decode('utf-8-sig').replace('/', '\\').lower()
+    if '%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js' not in wrapper:
+        raise SetupError('codex_npm_wrapper_not_recognized')
+    arch = {'amd64': 'x64', 'x86_64': 'x64', 'arm64': 'arm64', 'aarch64': 'arm64'}.get(platform.machine().lower())
+    if arch is None:
+        raise SetupError('codex_npm_architecture_not_supported')
+    package = shim.parent / 'node_modules/@openai/codex'
+    metadata = json.loads(file_bytes(package / 'package.json'))
+    version = metadata.get('version', '')
+    package_name = '@openai/codex-win32-' + arch
+    native_version = version + '-win32-' + arch if isinstance(version, str) else ''
+    repository = 'git+https://github.com/openai/codex.git'
+    if (metadata.get('name') != '@openai/codex'
+            or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?', version)
+            or metadata.get('bin') != {'codex': 'bin/codex.js'}
+            or metadata.get('repository', {}).get('url') != repository
+            or metadata.get('optionalDependencies', {}).get(package_name) != 'npm:@openai/codex@' + native_version):
+        raise SetupError('codex_npm_metadata_invalid')
+    # These are the two standard Node resolution locations, bounded to this shim.
+    # No recursive App-directory search, shell invocation or provider config read.
+    candidates = [package / 'node_modules' / package_name,
+                  shim.parent / 'node_modules' / package_name]
+    triple = 'x86_64-pc-windows-msvc' if arch == 'x64' else 'aarch64-pc-windows-msvc'
+    for native in candidates:
+        if not (native / 'package.json').exists():
+            continue
+        info = json.loads(file_bytes(native / 'package.json'))
+        if (info.get('name') != '@openai/codex' or info.get('version') != native_version
+                or info.get('os') != ['win32'] or info.get('cpu') != [arch]
+                or 'vendor' not in info.get('files', [])
+                or info.get('repository', {}).get('url') != repository):
+            raise SetupError('codex_npm_native_metadata_invalid')
+        return executable(native / 'vendor' / triple / 'bin/codex.exe')
+    raise SetupError('codex_npm_native_package_missing_reinstall_official_cli')
+
+
 def codex_executable(explicit=None):
-    # PATH resolution asks for the actual native binary, never codex.cmd/.ps1.
-    found = explicit or shutil.which('codex.exe')
+    found = explicit or shutil.which('codex.exe') or npm_codex_executable()
     if not found:
         raise SetupError('codex_exe_not_found_install_official_cli_or_use_codex_option')
     path = executable(found)
@@ -289,7 +331,7 @@ def main():
         if args.stop:
             state = plain_path(receipt['state_directory'])
             state.mkdir(exist_ok=True)
-            (state / 'STOP').touch(exist_ok=True)
+            plain_path(state / 'STOP').touch(exist_ok=True)
             print(json.dumps({'status': 'stop_requested', 'stop_file': str(state / 'STOP'),
                               'running_turns_cancelled': False}))
             return 0

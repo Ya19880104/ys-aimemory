@@ -190,6 +190,17 @@ def test_stopped_install_does_not_silently_clear_stop_or_renew_budget(installati
     assert (state / 'STOP').exists()
 
 
+@pytest.mark.skipif(os.name != 'nt', reason='Windows DPAPI installation contract')
+def test_stop_refuses_a_linked_stop_file(installation, monkeypatch, capsys):
+    receipt = installation.install()
+    original = Path.is_symlink
+    monkeypatch.setattr(Path, 'is_symlink', lambda path: path.name == 'STOP' or original(path))
+    monkeypatch.setattr(sys, 'argv', ['setup-codex-chat.py', '--receipt',
+        str(Path(receipt['client_directory']) / 'codex-install.json'), '--stop'])
+    assert setup.main() == 1
+    assert 'linked_path_refused' in capsys.readouterr().err
+
+
 @pytest.mark.parametrize('changes', [
     {'project_id': 'invalid space'}, {'session_id': 'wrong'}, {'worker_id': ''},
     {'worker_id': 'newline\n'}, {'hours': 0}, {'hours': 9}, {'max_turns': 0},
@@ -227,6 +238,78 @@ def test_codex_not_found_or_required_flags_missing_is_explicit(tmp_path, monkeyp
     monkeypatch.setattr(setup.subprocess, 'run', lambda *a, **kw: SimpleNamespace(stdout=b'old help'))
     with pytest.raises(setup.SetupError, match='missing_required_features'):
         setup.codex_executable(path)
+
+
+@pytest.fixture
+def npm_install(tmp_path, monkeypatch):
+    shim = tmp_path / 'npm/codex.cmd'
+    shim.parent.mkdir()
+    shim.write_text('@echo off\n"%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js" %*')
+    package = shim.parent / 'node_modules/@openai/codex'
+    package.mkdir(parents=True)
+    repository = {'type': 'git', 'url': 'git+https://github.com/openai/codex.git'}
+    metadata = {'name': '@openai/codex', 'version': '0.160.0', 'bin': {'codex': 'bin/codex.js'},
+        'repository': repository, 'optionalDependencies': {'@openai/codex-win32-x64': 'npm:@openai/codex@0.160.0-win32-x64'}}
+    (package / 'package.json').write_text(json.dumps(metadata))
+    monkeypatch.setattr(setup.shutil, 'which', lambda name: str(shim) if name == 'codex.cmd' else None)
+    monkeypatch.setattr(setup.platform, 'machine', lambda: 'AMD64')
+    def create(layout='nested', arch='x64'):
+        base = package if layout == 'nested' else shim.parent
+        native = base / 'node_modules' / ('@openai/codex-win32-' + arch)
+        native.mkdir(parents=True)
+        info = {'name': '@openai/codex', 'version': '0.160.0-win32-' + arch,
+            'repository': repository, 'os': ['win32'], 'cpu': [arch], 'files': ['vendor']}
+        (native / 'package.json').write_text(json.dumps(info))
+        triple = 'x86_64-pc-windows-msvc' if arch == 'x64' else 'aarch64-pc-windows-msvc'
+        exe = native / 'vendor' / triple / 'bin/codex.exe'
+        exe.parent.mkdir(parents=True)
+        exe.write_bytes(b'fixture native executable')
+        return native, exe, info
+    return SimpleNamespace(shim=shim, package=package, metadata=metadata, create=create)
+
+
+@pytest.mark.parametrize('layout', ['nested', 'hoisted'])
+def test_standard_npm_layout_resolves_native_without_running_wrapper(npm_install, monkeypatch, layout):
+    _, expected, _ = npm_install.create(layout)
+    calls = []
+    def command(args, **kwargs):
+        calls.append(args)
+        return SimpleNamespace(stdout=b'--ignore-user-config --ephemeral --json --sandbox --skip-git-repo-check')
+    monkeypatch.setattr(setup.subprocess, 'run', command)
+    assert setup.codex_executable() == expected
+    assert calls == [[str(expected), '--version'], [str(expected), 'exec', '--help']]
+    assert all(str(npm_install.shim) not in args for args in calls)
+
+
+def test_npm_arm64_uses_matching_dependency_and_vendor_triple(npm_install, monkeypatch):
+    monkeypatch.setattr(setup.platform, 'machine', lambda: 'ARM64')
+    metadata = npm_install.metadata
+    metadata['optionalDependencies'] = {'@openai/codex-win32-arm64': 'npm:@openai/codex@0.160.0-win32-arm64'}
+    (npm_install.package / 'package.json').write_text(json.dumps(metadata))
+    _, expected, _ = npm_install.create(arch='arm64')
+    assert setup.npm_codex_executable() == expected
+
+
+@pytest.mark.parametrize('field,value', [('name', '@other/codex'), ('os', ['linux']),
+    ('cpu', ['arm64']), ('version', '0.159.0-win32-x64'), ('repository', {'url': 'https://other.test'})])
+def test_npm_native_metadata_mismatch_stops(npm_install, field, value):
+    native, _, info = npm_install.create()
+    info[field] = value
+    (native / 'package.json').write_text(json.dumps(info))
+    with pytest.raises(setup.SetupError, match='native_metadata_invalid'):
+        setup.npm_codex_executable()
+
+
+def test_npm_wrapper_main_package_and_missing_native_are_not_guessed(npm_install):
+    with pytest.raises(setup.SetupError, match='native_package_missing'):
+        setup.npm_codex_executable()
+    metadata = npm_install.metadata | {'name': '@other/codex'}
+    (npm_install.package / 'package.json').write_text(json.dumps(metadata))
+    with pytest.raises(setup.SetupError, match='codex_npm_metadata_invalid'):
+        setup.npm_codex_executable()
+    npm_install.shim.write_text('@echo off\nother-wrapper %*')
+    with pytest.raises(setup.SetupError, match='wrapper_not_recognized'):
+        setup.npm_codex_executable()
 
 
 @pytest.mark.parametrize('fault', [None, 'wrong-worker', 'wrong-room', 'archived', 'history', '401', 'redirect'])
