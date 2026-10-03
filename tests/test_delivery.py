@@ -163,7 +163,9 @@ def test_new_message_during_turn_is_not_skipped_by_successful_reply(collaboratio
     s = room(hub); binding = join(hub, s); before = post(hub, s, B)
     first = claim(hub, binding)['delivery']
     after = post(hub, s, B, body='Human interruption after dispatch')
-    read_delivery(hub, s, first)
+    batch_read = read_delivery(hub, s, first)
+    assert all(item['sequence'] <= first['through_sequence'] for item in batch_read['items'])
+    assert after['message_id'] not in [item.get('message_id') for item in batch_read['items']]
     reply(hub, s, first)
     next_batch = claim(hub, binding)['delivery']
     assert next_batch['message_ids'] == [after['message_id']]
@@ -231,6 +233,138 @@ def test_oversized_receipt_rolls_back_read_state(collaboration):
     assert status(hub, s)['participants'][0]['latest_delivery']['read_at'] is None
     with hub.store.engine.connect() as conn:
         assert conn.execute(select(DELIVERY_TABLES['deliveries'].c.read_message_ids)).scalar_one() == []
+
+
+@pytest.mark.parametrize('body_size,ceiling', [(500, 16384), (3000, 65536)])
+def test_delivery_receipt_is_reserved_before_full_page_pagination(collaboration, body_size, ceiling):
+    hub, _, _ = collaboration
+    s = room(hub); binding = join(hub, s)
+    for _ in range(20):
+        post(hub, s, B, body='x' * body_size)
+    delivery = claim(hub, binding)['delivery']
+    plain = hub.call('read_session', values(s, after_sequence=delivery['after_sequence'],
+        full_text=True, limit=20, max_bytes=ceiling), A)
+    # Exactly full without a receipt: this used to fail deterministically after
+    # pagination. Receipt-aware pagination must return fewer items and progress.
+    budget = plain['returned_bytes']
+    cursor, seen, first_count = delivery['after_sequence'], [], None
+    for _ in range(20):
+        page = read_delivery(hub, s, delivery, after_sequence=cursor, max_bytes=budget)
+        if first_count is None:
+            first_count = len(page['items'])
+        assert page['returned_bytes'] <= budget
+        assert page['returned_bytes'] == len(json.dumps(page, ensure_ascii=False,
+            sort_keys=True, separators=(',', ':')).encode())
+        assert page['next_after_sequence'] > cursor
+        seen.extend(x['message_id'] for x in page['items'])
+        cursor = page['next_after_sequence']
+        if not page['has_more']:
+            break
+    assert first_count < len(plain['items'])
+    assert set(seen) == set(delivery['message_ids'])
+    assert page['delivery_receipt']['status'] == 'tool_read'
+    assert page['delivery_receipt']['unread_message_ids'] == []
+    reply(hub, s, delivery)
+
+
+def test_failed_batch_explicit_reenable_retries_same_range_and_fences_old_lease(collaboration):
+    hub, _, _ = collaboration
+    now = [1000.0]; hub.clock = lambda: now[0]
+    s = room(hub); binding = join(hub, s); post(hub, s, B)
+    for _ in range(3):
+        last = claim(hub, binding, lease_seconds=15)['delivery']
+        now[0] += 16
+    assert claim(hub, binding)['status'] == 'failed'
+    recovered = call(hub, 'control', project_id='p', binding_id=binding['binding_id'],
+                     enabled=True, expected_version=1)
+    assert recovered['version'] == 2
+    assert recovered['processed_sequence'] == binding['processed_sequence']
+    assert recovered['latest_delivery']['attempts'] == 0
+    reject('stale_delivery', lambda: read_delivery(hub, s, last))
+    fresh = claim(hub, binding)['delivery']
+    assert fresh['delivery_id'] == last['delivery_id'] and fresh['attempts'] == 1
+    assert fresh['message_ids'] == last['message_ids']
+    read_delivery(hub, s, fresh)
+    reply(hub, s, fresh)
+
+
+def test_pause_and_disable_do_not_consume_failed_attempt_allowance(collaboration):
+    hub, _, _ = collaboration
+    s = room(hub); binding = join(hub, s, max_turns=20); post(hub, s, B)
+    version = 1
+    for _ in range(5):
+        old = claim(hub, binding)['delivery']
+        assert old['attempts'] == 1
+        call(hub, 'pause', ADMIN, **values(s, paused=True, expected_version=version))
+        call(hub, 'pause', ADMIN, **values(s, paused=False, expected_version=version + 1))
+        version += 2
+    next_delivery = claim(hub, binding)['delivery']
+    assert next_delivery['attempts'] == 1
+    assert status(hub, s)['participants'][0]['turns_used'] == 6
+    call(hub, 'control', project_id='p', binding_id=binding['binding_id'], enabled=False, expected_version=1)
+    call(hub, 'control', project_id='p', binding_id=binding['binding_id'], enabled=True, expected_version=2)
+    assert claim(hub, binding)['delivery']['attempts'] == 1
+
+
+def test_expiry_guard_disconnect_manual_and_rejoin_preserve_unprocessed_messages(collaboration):
+    hub, _, _ = collaboration
+    now = [1000.0]; hub.clock = lambda: now[0]
+    s = room(hub); binding = join(hub, s, ttl_seconds=60); original = post(hub, s, B)
+    delivery = claim(hub, binding)['delivery']
+    now[0] += 61
+    reject('delivery_stopped', lambda: post(hub, s, A, body='Cannot drop metadata after expiry'))
+    reject('forbidden', lambda: call(hub, 'disconnect', B, project_id='p', binding_id=binding['binding_id'],
+                                   expected_version=1))
+    released = call(hub, 'disconnect', project_id='p', binding_id=binding['binding_id'], expected_version=1)
+    assert released['status'] == 'disconnected' and released['released_at'] == now[0]
+    assert released['processed_sequence'] == binding['processed_sequence']
+    assert claim(hub, binding)['status'] == 'disconnected'
+    reject('not_found', lambda: read_delivery(hub, s, delivery))
+    manual = post(hub, s, A, body='Explicitly disconnected; manual posting is restored')
+    new_binding = join(hub, s)
+    assert new_binding['processed_sequence'] == binding['processed_sequence']
+    new_batch = claim(hub, new_binding)['delivery']
+    assert new_batch['message_ids'] == [original['message_id']]
+    assert manual['sequence'] <= new_batch['through_sequence']
+
+
+def test_automatic_reply_depth_stops_pingpong_and_new_manual_root_restarts(collaboration):
+    hub, _, _ = collaboration
+    s = room(hub); a, b = join(hub, s), join(hub, s, B)
+    hub.sessions.call('post_session_message', values(s, body='One human topic', idempotency_key='root'), human())
+    first = [claim(hub, a)['delivery'], claim(hub, b, B)['delivery']]
+    for actor, delivery in zip((A, B), first):
+        read_delivery(hub, s, delivery, actor); reply(hub, s, delivery, actor)
+    second = [claim(hub, a)['delivery'], claim(hub, b, B)['delivery']]
+    for actor, delivery in zip((A, B), second):
+        read_delivery(hub, s, delivery, actor); reply(hub, s, delivery, actor)
+    assert claim(hub, a)['status'] == claim(hub, b, B)['status'] == 'idle'
+    events = hub.call('read_session', values(s, full_text=True), ADMIN)['items']
+    assert [x['automatic_reply_depth'] for x in events if x['type'] == 'message'] == [0, 1, 1, 2, 2]
+    assert [p['turns_used'] for p in status(hub, s)['participants']] == [2, 2]
+    post(hub, s, A, body='Explicit manual new topic')
+    restarted = claim(hub, b, B)['delivery']
+    read_delivery(hub, s, restarted, B); reply(hub, s, restarted, B)
+    last = hub.call('read_session', values(s, after_sequence=restarted['through_sequence']), ADMIN)['items'][-1]
+    assert last['automatic_reply_depth'] == 1
+
+
+def test_new_human_root_in_mixed_batch_wins_over_old_automatic_depth(collaboration):
+    hub, _, _ = collaboration
+    s = room(hub); a, b = join(hub, s), join(hub, s, B)
+    post(hub, s, B, body='Original manual topic')
+    initial = claim(hub, a)['delivery']
+    read_delivery(hub, s, initial); reply(hub, s, initial)
+    hub.sessions.call('post_session_message', values(s, body='New human topic', idempotency_key='new-root'), human())
+    mixed = claim(hub, b, B)['delivery']
+    assert {m['automatic_reply_depth'] for m in mixed['messages']} == {0, 1}
+    read_delivery(hub, s, mixed, B); written = reply(hub, s, mixed, B)
+    actual = hub.call('read_session', values(s, after_sequence=written['sequence'] - 1), ADMIN)['items'][0]
+    assert actual['automatic_reply_depth'] == 1
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        hub.call('post_session_message', values(s, body='Cannot forge depth', idempotency_key='forged-depth',
+                                                automatic_reply_depth=0), A)
 
 
 def test_budget_expiry_and_three_attempt_failure_are_bounded(collaboration):
@@ -324,3 +458,9 @@ def test_rest_auth_schema_status_and_no_mcp_discovery_cost(collaboration, monkey
         tools = client.post('/mcp', headers={**headers, 'Accept': 'application/json, text/event-stream'},
             json={'jsonrpc':'2.0', 'id':1, 'method':'tools/list', 'params':{}}).json()['result']['tools']
         assert not any(x['name'] in {'join', 'claim', 'heartbeat', 'dispatched'} for x in tools)
+        disconnected = client.post('/v1/chat/disconnect', headers=headers, json={
+            'project_id': 'p', 'binding_id': joined.json()['binding_id'], 'expected_version': 1})
+        assert disconnected.status_code == 200 and disconnected.json()['status'] == 'disconnected'
+        manual = client.post('/v1/tools/post_session_message', headers=headers, json={'arguments': values(s,
+            body='Manual post after explicit disconnect', idempotency_key='manual-after-disconnect')})
+        assert manual.status_code == 200

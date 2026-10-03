@@ -18,6 +18,7 @@ def define_tables(metadata):
         Column('display_name', String(80), nullable=False), Column('native_session_hash', String(64), nullable=False),
         Column('generation', Integer, nullable=False), Column('version', Integer, nullable=False),
         Column('enabled', Boolean, nullable=False), Column('created_at', Float, nullable=False),
+        Column('released_at', Float),
         Column('expires_at', Float, nullable=False), Column('last_seen_at', Float, nullable=False),
         Column('processed_sequence', BigInteger, nullable=False), Column('max_turns', Integer, nullable=False),
         Column('turns_used', Integer, nullable=False), room_fk(),
@@ -34,7 +35,7 @@ def define_tables(metadata):
         Column('dispatched_at', Float), Column('read_at', Float), Column('replied_at', Float),
         Column('reply_message_id', String(32)), Column('reply_sequence', BigInteger),
         Index('collab_binding_delivery', 'binding_id', 'generation', 'created_at'),
-        CheckConstraint('through_sequence > after_sequence AND attempts >= 1', name='collab_delivery_range'))
+        CheckConstraint('through_sequence > after_sequence AND attempts >= 0', name='collab_delivery_range'))
     joins = Table('collab_binding_requests', metadata,
         Column('project_id', String(128), ForeignKey('projects.id'), primary_key=True),
         Column('operation', String(16), primary_key=True), Column('actor_kind', String(16), primary_key=True),

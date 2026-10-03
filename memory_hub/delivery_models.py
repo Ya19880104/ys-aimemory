@@ -39,6 +39,10 @@ class ControlBinding(BindingRef):
     expected_version: int = Field(ge=1)
 
 
+class DisconnectBinding(BindingRef):
+    expected_version: int = Field(ge=1)
+
+
 DELIVERY_MODELS = {'join': JoinDelivery, 'heartbeat': BindingRef, 'claim': ClaimDelivery,
                    'dispatched': DispatchDelivery, 'pause': PauseDelivery, 'control': ControlBinding,
-                   'status': SessionRef}
+                   'disconnect': DisconnectBinding, 'status': SessionRef}

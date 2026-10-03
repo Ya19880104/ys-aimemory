@@ -7,7 +7,7 @@ import hashlib
 import json
 import time
 import uuid
-from sqlalchemy import select
+from sqlalchemy import case, select
 from .delivery_models import DELIVERY_MODELS
 from .store import DELIVERY_TABLES, SESSION_TABLES, HubError
 
@@ -34,7 +34,7 @@ class DeliveryService:
         require(actor.role != 'read_only', 'forbidden', 'Read-only identity', 403)
         if name == 'pause':
             require(actor.role == 'admin', 'forbidden', 'Admin role required', 403)
-        elif name != 'control':
+        elif name not in {'control', 'disconnect'}:
             require(actor.kind == 'worker', 'forbidden', 'Worker identity required', 403)
         with self.store.transaction(a['project_id'], initialize_index=False) as (state, conn):
             now = self.clock()
@@ -57,8 +57,7 @@ class DeliveryService:
                     b, d = self.tables['bindings'], self.tables['deliveries']
                     ids = select(b.c.binding_id).where(b.c.project_id == a['project_id'],
                                                      b.c.session_id == a['session_id'])
-                    conn.execute(d.update().where(d.c.binding_id.in_(ids),
-                        d.c.status.in_(['leased', 'dispatched', 'tool_read'])).values(lease_until=now))
+                    self._fence_administrative(conn, d.c.binding_id.in_(ids), now)
                 self._audit(conn, state, a, actor, 'pause', now)
                 result = {**value, 'running_turns_cancelled': False}
                 if replay_key is not None:
@@ -66,16 +65,34 @@ class DeliveryService:
                 return result
             binding = self._binding(conn, a['project_id'], a['binding_id'])
             require(actor.kind == 'worker' and actor.id == binding['worker_id'] or
-                    name == 'control' and actor.role == 'admin', 'forbidden', 'Binding belongs to another worker', 403)
+                    name in {'control', 'disconnect'} and actor.role == 'admin', 'forbidden', 'Binding belongs to another worker', 403)
             room = self._room(conn, binding['project_id'], binding['session_id'])
+            if name == 'disconnect':
+                require(a['expected_version'] == binding['version'], 'stale_binding', 'Binding changed')
+                binding.update(enabled=False, released_at=now, generation=binding['generation'] + 1,
+                               version=binding['version'] + 1)
+                self._save_binding(conn, binding, 'enabled', 'released_at', 'generation', 'version')
+                d = self.tables['deliveries']
+                conn.execute(d.update().where(d.c.binding_id == binding['binding_id'],
+                    d.c.status.in_(['leased', 'dispatched', 'tool_read', 'failed', 'retry_ready'])).values(
+                        status='released', lease_until=now))
+                self._audit(conn, state, {**a, 'session_id': binding['session_id']}, actor, 'disconnect', now)
+                return self._public_binding(conn, binding, room, now)
             if name == 'control':
                 require(a['expected_version'] == binding['version'], 'stale_binding', 'Binding changed')
+                require(binding['released_at'] is None or not a['enabled'], 'binding_released',
+                        'Join again to activate a disconnected binding')
                 binding.update(enabled=a['enabled'], version=binding['version'] + 1)
                 self._save_binding(conn, binding, 'enabled', 'version')
                 if not a['enabled']:
                     d = self.tables['deliveries']
+                    self._fence_administrative(conn, d.c.binding_id == binding['binding_id'], now)
+                else:
+                    d = self.tables['deliveries']
                     conn.execute(d.update().where(d.c.binding_id == binding['binding_id'],
-                        d.c.status.in_(['leased', 'dispatched', 'tool_read'])).values(lease_until=now))
+                        d.c.generation == binding['generation'], d.c.status == 'failed').values(
+                            status='retry_ready', attempts=0, lease_id=uuid.uuid4().hex, lease_until=now,
+                            read_message_ids=[], read_at=None, dispatched_at=None))
                 self._audit(conn, state, {**a, 'session_id': binding['session_id']}, actor, 'control', now)
                 return self._public_binding(conn, binding, room, now)
             self._active_worker(conn, binding)
@@ -118,6 +135,14 @@ class DeliveryService:
             'worker_id': actor.id if actor.kind == 'worker' else 'human:' + actor.id, 'at': now,
             'context_revision': state['revision'],
             'references': {k: a[k] for k in ('session_id', 'binding_id') if k in a}})
+
+    def _fence_administrative(self, conn, condition, now):
+        d = self.tables['deliveries']
+        # A deliberately interrupted lease is not a transport/model failure.
+        # Real model starts remain charged against turns_used.
+        conn.execute(d.update().where(condition,
+            d.c.status.in_(['leased', 'dispatched', 'tool_read']), d.c.lease_until > now).values(
+                lease_until=now, attempts=case((d.c.attempts > 0, d.c.attempts - 1), else_=0)))
 
     def _room(self, conn, project, session):
         t = SESSION_TABLES['sessions']
@@ -183,13 +208,14 @@ class DeliveryService:
             'native_session_hash': hashlib.sha256(a['native_session_id'].encode()).hexdigest(),
             'generation': previous['generation'] + 1 if previous else 1,
             'version': previous['version'] + 1 if previous else 1, 'enabled': True,
+            'released_at': None,
             'created_at': now, 'expires_at': now + a['ttl_seconds'], 'last_seen_at': now,
             'processed_sequence': cursor, 'max_turns': a['max_turns'], 'turns_used': 0}
         self._active_worker(conn, binding)
         if previous:
             d = self.tables['deliveries']
             conn.execute(d.update().where(d.c.binding_id == binding['binding_id'],
-                d.c.status.in_(['leased', 'dispatched', 'tool_read', 'failed'])).values(status='superseded'))
+                d.c.status.in_(['leased', 'dispatched', 'tool_read', 'failed', 'retry_ready'])).values(status='superseded'))
             conn.execute(t.update().where(t.c.binding_id == binding['binding_id']).values(**binding))
         else:
             conn.execute(t.insert().values(**binding))
@@ -201,6 +227,7 @@ class DeliveryService:
 
     def _blocked(self, conn, binding, room, now):
         if not self._worker_active(conn, binding): return 'revoked'
+        if binding['released_at'] is not None: return 'disconnected'
         if room['status'] != 'open': return 'archived'
         if self._control(conn, room)['paused']: return 'paused'
         if not binding['enabled']: return 'disabled'
@@ -210,7 +237,7 @@ class DeliveryService:
     def _pending(self, conn, binding):
         t = self.tables['deliveries']
         row = conn.execute(select(t).where(t.c.binding_id == binding['binding_id'],
-            t.c.generation == binding['generation'], t.c.status.in_(['leased', 'dispatched', 'tool_read', 'failed']))
+            t.c.generation == binding['generation'], t.c.status.in_(['leased', 'dispatched', 'tool_read', 'failed', 'retry_ready']))
             .order_by(t.c.created_at.desc()).limit(1)).mappings().one_or_none()
         return dict(row) if row else None
 
@@ -232,7 +259,7 @@ class DeliveryService:
             t.c.created_at.desc(), t.c.delivery_id.desc()).limit(1)).mappings().one_or_none()
         return {**{k: binding[k] for k in ('binding_id', 'project_id', 'session_id', 'worker_id',
             'client', 'display_name', 'generation', 'version', 'enabled', 'expires_at', 'last_seen_at',
-            'processed_sequence', 'max_turns', 'turns_used')}, 'status': state, 'relay_online': online,
+            'processed_sequence', 'max_turns', 'turns_used', 'released_at')}, 'status': state, 'relay_online': online,
             'latest_delivery': self._public_delivery(last) if last else None}
 
     def _status(self, conn, a, actor):
@@ -273,8 +300,10 @@ class DeliveryService:
                 e.c.session_id == binding['session_id'], e.c.sequence > binding['processed_sequence'])
                 .order_by(e.c.sequence).limit(20)).scalars().all()
             incoming = [{'message_id': x['message_id'], 'sequence': x['sequence'],
-                         'actor_kind': x['actor']['kind'], 'actor_id': x['actor']['id']}
+                         'actor_kind': x['actor']['kind'], 'actor_id': x['actor']['id'],
+                         'automatic_reply_depth': x.get('automatic_reply_depth', 0)}
                         for x in rows if x['type'] == 'message' and
+                        x.get('automatic_reply_depth', 0) < 2 and
                         not (x['actor']['kind'] == 'worker' and x['actor']['id'] == binding['worker_id'])]
             if not incoming:
                 if rows:
@@ -345,11 +374,26 @@ class DeliveryService:
         require(size <= a['max_bytes'], 'response_budget_too_small',
                 'Increase max_bytes to include the delivery receipt', 422)
 
+    def prepare_tool_read(self, conn, a, actor):
+        """Reserve a worst-case receipt before pagination; bound reads to the batch."""
+        _, delivery = self._tool_delivery(conn, a, actor)
+        receipt = {'delivery_id': delivery['delivery_id'], 'status': 'partial_tool_read',
+                   'unread_message_ids': [m['message_id'] for m in delivery['messages']]}
+        # Adding one JSON property to an object requires a comma, key, colon and
+        # its value. Existing returned_bytes has already converged in _page.
+        reserve = len(json.dumps({'delivery_receipt': receipt}, ensure_ascii=False,
+                                 sort_keys=True, separators=(',', ':')).encode()) - 1 + 16
+        return reserve, delivery['through_sequence']
+
     def validate_tool_reply(self, conn, a, actor):
         _, delivery = self._tool_delivery(conn, a, actor)
         require(delivery['read_at'] is not None, 'delivery_not_read', 'Read complete delivery messages with the tool first')
         require(a['idempotency_key'] == 'delivery-' + delivery['delivery_id'],
                 'delivery_key_required', 'Use the stable delivery reply idempotency key')
+        depths = [m.get('automatic_reply_depth', 0) for m in delivery['messages']]
+        # A new human/manual message is a new root. Older AI context in the same
+        # batch must not consume the new root's first automatic response.
+        return 1 if 0 in depths else max(depths) + 1
 
     def guard_unbound_post(self, conn, a, actor):
         if actor.kind != 'worker':
@@ -360,6 +404,8 @@ class DeliveryService:
         if row is None:
             return
         binding = dict(row)
+        if binding['released_at'] is not None:
+            return
         blocked = self._blocked(conn, binding, self._room(conn, a['project_id'], a['session_id']), self.clock())
         require(blocked is None, 'delivery_stopped', 'Bound participant delivery is ' + (blocked or 'stopped'))
         require(self._pending(conn, binding) is None, 'delivery_metadata_required',

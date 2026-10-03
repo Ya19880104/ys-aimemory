@@ -58,10 +58,16 @@ lasts 15–300 seconds, bounded by binding expiry.
 - Incoming messages: `status:"ready"` and a `delivery` containing `delivery_id`,
   `lease_id`, `lease_until`, `after_sequence`, `through_sequence`, `message_ids`,
   routing metadata and a stable `reply_idempotency_key`. Message bodies are omitted.
-- A batch scans at most 20 room events. Human messages reach every active bound
-  participant. Other workers' messages also trigger delivery. Own worker messages
-  and non-message events do not invoke a model. A human and worker with identical
-  ID text remain different actors.
+- A batch scans at most 20 room events. Human and explicit manual worker messages
+  start at server-derived `automatic_reply_depth:0`. Automatic replies are depth 1
+  or 2. Other workers' replies trigger delivery only below depth 2; depth-2 replies
+  remain visible in the room but do not start another model turn. Own worker messages
+  and non-message events do not invoke a model. A human and worker with identical ID
+  text remain different actors. Clients cannot submit their own reply depth.
+- A batch containing a new depth-0 message uses that new topic as its causal root,
+  producing a depth-1 reply even if older AI context is also included. Otherwise the
+  reply depth is the maximum included causal depth plus one. This preserves brief
+  direct AI discussion while preventing an unbounded AI-to-AI reply loop.
 
 ## Dispatch, tool-read and reply receipts
 
@@ -73,7 +79,10 @@ The model uses the existing native MCP tools, preserving their `arguments` wrapp
 
 1. Add paired `delivery_id` and `lease_id` to `read_session`. Read from
    `after_sequence`, use `full_text:true` and appropriate `limit` / `max_bytes`,
-   and paginate when necessary.
+   and paginate when necessary. Delivery reads stop at `through_sequence`, so the
+   model cannot accidentally answer newer messages that still await another batch.
+   Pagination reserves the largest possible delivery receipt before selecting
+   events; adding the actual receipt cannot overflow an otherwise valid page.
 2. `delivery_receipt.status:"tool_read"` with empty `unread_message_ids` means the
    server has returned every complete incoming message in that batch. Truncated
    snippets cannot earn a complete receipt. Ordinary reads without delivery
@@ -91,8 +100,10 @@ Dispatch does not advance the processed cursor. After lease expiry, retry the sa
 delivery ID and reply key under a new lease ID. Old leases cannot earn receipts or
 write replies. If a successful post response is lost, retrying the identical request
 returns its original receipt without adding another message. A batch allows at most
-three lease attempts. Messages arriving after batch creation remain pending after
-the old batch completes.
+three non-administrative lease attempts. A pause or disable that interrupts a live
+lease does not count as a failed attempt; actual model starts still consume
+`turns_used`. Messages arriving after batch creation remain pending after the old
+batch completes.
 
 ## Pause and status
 
@@ -100,11 +111,11 @@ the old batch completes.
 
 - `control`: `paused`, `version`.
 - `participants`: `binding_id`, `worker_id`, `client`, `display_name`, `generation`,
-  `version`, `enabled`, `expires_at`, `last_seen_at`, `processed_sequence`,
+  `version`, `enabled`, `released_at`, `expires_at`, `last_seen_at`, `processed_sequence`,
   `max_turns`, `turns_used`, `relay_online`, `status`, and `latest_delivery`.
 - Participant states: `waiting`, `offline`, `processing`, `failed`,
-  `budget_exhausted`, `paused`, `disabled`, `expired`, `archived`, `revoked`.
-- Receipt states: `leased`, `dispatched`, `tool_read`, `replied`, `failed`, with
+  `budget_exhausted`, `paused`, `disabled`, `disconnected`, `expired`, `archived`, `revoked`.
+- Receipt states: `leased`, `dispatched`, `tool_read`, `replied`, `failed`, `retry_ready`, with
   timestamps and exact reply ID/sequence. Status omits bodies, credentials, lease
   IDs and native conversation identifiers.
 
@@ -119,11 +130,30 @@ their own supported cancellation mechanism.
 
 The owner or an admin may `POST /v1/chat/control` with
 `{project_id,binding_id,enabled,expected_version}`. This changes only one binding
-and uses version CAS, without an idempotency key. Disabling and rejoining increments
-the binding generation and fences the old conversation's leases.
+and uses version CAS, without an idempotency key. Explicitly setting `enabled:true`
+also resets a failed batch's attempts and read receipt while retaining its delivery
+ID, stable reply key and cursor. It does not add model-start budget or extend expiry;
+renew the binding when those limits have been reached. Disabling and rejoining
+increments the binding generation and fences the old conversation's leases.
+
+The owner or an admin may `POST /v1/chat/disconnect` with
+`{project_id,binding_id,expected_version}` to leave automatic mode explicitly. It
+records `released_at`, disables the binding and increments its generation. Old
+pending deliveries are marked `released`; their messages stay in the event log and
+the processed cursor does not advance. Normal manual posts are then allowed. Joining
+again preserves the cursor, so unprocessed messages remain eligible. Disconnect is
+a version-CAS action: after an ambiguous response, read status and reconcile a
+`disconnected` result rather than blindly retrying an old version.
+
+Expiry, failed delivery and budget exhaustion alone do not switch a binding into
+manual mode. Explicit disconnect is required, preventing an old automatic job from
+removing delivery metadata to bypass a paused or expired binding. After an explicit
+disconnect, ordinary requests are manual requests; the same bearer credential cannot
+cryptographically distinguish the caller's intent. Relays must stop on disconnect
+and must never remove delivery metadata after an error.
 
 Cookie-authenticated admin UI calls
-`hub.delivery.call('status'|'pause'|'control', arguments, SessionActor)` through the
+`hub.delivery.call('status'|'pause'|'control'|'disconnect', arguments, SessionActor)` through the
 same service and independently verifies login, CSRF and nonce. Read-only members
 may view status but cannot control delivery.
 
