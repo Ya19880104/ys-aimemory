@@ -28,7 +28,7 @@
 | P2-1 提前記 dispatch／孤兒 listener | 待完成 | stderr 前仍記 `handed_to_client`，只代表 relay dispatch 意圖，不能證明 wake/read；本追蹤未證明 parent-process liveness。 |
 | P2-2 read 超過 claimed range | 來源已修正 | Reservation 傳入 `through_sequence`，delta ceiling 被限制；`test_new_message_during_turn_is_not_skipped_by_successful_reply` 確認新訊息仍待處理。 |
 | P2-3 polling lock/write 負載 | 待完成 | Idle 約每 3 秒 claim、15 秒 heartbeat；未驗收 long-poll/notify 或負载 benchmark。原估計次數不是現況實測。 |
-| P2-4 activation mismatch 無提示／子目錄 | 待完成 | `bind_activation` 仍要求精確 phrase/project cwd，mismatch 返回 false；沒有明確 activation_mismatch 診斷。 |
+| P2-4 activation mismatch / project subdirectories | Source fixed at `e24b13c` / 來源已修正 | Explicit attempts record sanitized reasons; resolved project subdirectories are accepted. Native activation observed; nested-cwd native GUI case not separately exercised. 明確嘗試記去秘密原因，接受專案子目錄；原生 activation 已觀察，nested-cwd GUI 未另測。 |
 | P2-5 restart 等待 Stop | 文件部分說明；生命週期待驗收 | 指南要求 activation/reload，實作仍為 Stop hook；restart/resume/orphan 需原生測試。配置不是啟動證據。 |
 | P2-6 reminder 假設 compact tools | 來源已修正 | 已改 narrow chat_read/chat_reply，與 automatic bridge 相符；仍須確認實際 immutable bundle/config。 |
 | P2-7 receipt 不證明自動 wake | 保留證據界線 | tool_read/replied 證明協定操作；自動驗收需人類新事件、idle receiver、無額外 prompt 的原生執行。Bearer 或 dispatch 狀態本身不足。 |
@@ -40,8 +40,18 @@
 - [ ] 原生 outage/pause race/re-enable/disconnect、expiry guard、舊 lease 拒絕、crash/restart 不重複不漏訊息。
 - [ ] 兩原生客戶端有限 depth-2 互回；新 topic root；fresh setup 不重播整房。
 - [ ] 真正 installed bundle 的 permission/config 與錯房／錯 worker 拒絕。
-- [ ] Parent/orphan、activation 診斷、startup/resume 提示與 polling 負載保留為明確工程待辦。
+- [ ] Parent/orphan、startup/resume 提示與 polling 負載保留為明確工程待辦。
 - [ ] ChatGPT event subscription/idle wake 獨立驗收；tunnel 可達與 prompted read/write 分開。
 - [ ] GUI/i18n 另行審查驗收；原審查未讀這些介面。
 
 約 59k 的 token 觀察需按 session 累計語意解讀：input/cache/output counters 是 session/tool exchange 的觀察，不證明單一 59k prompt、價格或實際帳單。保留精確 client/version 與 counter 語意；少量樣本不能推論節費或因果。低 token 最佳化仍待完成。
+
+## Fresh executor evidence / 執行者新證據
+
+Watcher `e24b13c418bad9705f86b589b1ac212145d06a71`, Hub `c4fe0f1`: a fresh official Claude Remote Control session (Sonnet 5.5 Medium) activated with the exact generated phrase and entered idle polling with zero model turns. A human browser message then triggered ToolSearch plus two native MCP calls (`chat_read`, `chat_reply`); full-text read reported `ready_to_reply=true`, reply actor was Claude and receipt was `replied`. Reply latency was approximately 16.646 seconds. No additional Claude prompt initiated the exchange. One bounded automatic exchange passed; complete pause/resume/stop lifecycle evidence awaits the final packet.
+
+新官方 Claude Remote Control session activation 後 idle、零 model turns；人類瀏覽器訊息觸發 ToolSearch 與兩次 native MCP calls，完整 read/reply receipt 通過，約 16.646 秒。沒有額外 Claude prompt；一次有限自動 exchange passed，完整 lifecycle 等待最終 packet。
+
+ChatGPT managed tunnel had stopped and was restarted ready at 22:47 +08:00. Plugin Refresh succeeded; updated notification schemas and `message.created` event discovery were visible. Fresh Work identity passed, but native deferred tools still exposed no subscribe/wait/unsubscribe facility: no subscription was established. Current blocker is unavailable client subscription facility, not stale discovered metadata. Idle automatic replies remain not_run. These are executor-supplied observations, with private identifiers, URLs, messages and screenshots omitted.
+
+ChatGPT tunnel 重啟 ready，Plugin Refresh 成功，更新 schema 與 event discovery 可見；新 Work identity passed，但客戶端仍無訂閱工具，沒有建立 subscription。當前阻礙是客戶端訂閱能力不可用，不再是已探索 metadata 過時；idle 自動回覆仍 not_run。以上為執行者提供的觀察，不公開私人證據內容。

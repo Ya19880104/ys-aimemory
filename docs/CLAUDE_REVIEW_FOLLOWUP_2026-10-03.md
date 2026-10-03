@@ -28,7 +28,7 @@ Paths above are under `memory_hub/`, `scripts/`, and `tests/`. See [delivery con
 | P2-1 dispatch recorded before reminder emission / orphan listener | Pending | `handed_to_client` is still recorded before stderr emission. It is relay dispatch intent, not model wake/read proof. Parent-process liveness is not established by this follow-up. |
 | P2-2 reads exceed claimed range | Source fixed | Delivery reservation supplies `through_sequence`; session delta read caps its ceiling. `test_new_message_during_turn_is_not_skipped_by_successful_reply` verifies newer messages remain pending. |
 | P2-3 polling lock/write load | Pending | Listener still polls about every 3 seconds and heartbeats every 15 seconds while idle. No long-poll/notify or load benchmark is certified. Approximate historical counts are estimates, not measured current load. |
-| P2-4 activation mismatch silent / subdirectory mismatch | Pending | `bind_activation` still requires exact phrase and exact project cwd and returns false on mismatch; no explicit `activation_mismatch` diagnostic is present. |
+| P2-4 activation mismatch / project subdirectories | Source fixed at `e24b13c` / 來源已修正 | Explicit attempts record sanitized reasons; resolved project subdirectories are accepted. Native activation observed; nested-cwd native GUI case not separately exercised. 明確嘗試記去秘密原因，接受專案子目錄；原生 activation 已觀察，nested-cwd GUI 未另測。 |
 | P2-5 restart waits for Stop | Partial documentation; lifecycle pending | Guide requires activation/reload; implementation remains a Stop hook. Native restart/resume and orphan handling require tests; configuration is not startup proof. |
 | P2-6 reminder assumes compact tools | Source fixed | Reminder now calls narrow `chat_read`/`chat_reply`, matching automatic bridge mode. Confirm installed immutable bundle/config, not merely repository source. |
 | P2-7 receipts do not prove automatic wake | Evidence boundary retained | `tool_read`/`replied` prove protocol operations. Native automatic acceptance needs a human-created event, an idle receiver and observed native execution without an extra prompt. A bearer credential or a dispatch state alone cannot prove it. |
@@ -40,8 +40,18 @@ Paths above are under `memory_hub/`, `scripts/`, and `tests/`. See [delivery con
 - [ ] Native outage/pause race/re-enable/disconnect, expired guard, stale lease denial, crash/restart without duplicates or skipped messages.
 - [ ] Two native clients: bounded depth-2 follow-ups; fresh human topic starts a new root; no full-room replay on fresh setup.
 - [ ] Installer permission/config checks and wrong-room/wrong-worker rejection against the actual installed bundle.
-- [ ] Parent-process/orphan handling, activation diagnostics, startup/resume notice and polling load remain explicit engineering follow-ups.
+- [ ] Parent-process/orphan handling, startup/resume notice and polling load remain explicit engineering follow-ups.
 - [ ] ChatGPT event subscription and idle wake independently accepted; tunnel reachability and prompted read/write are separate gates.
 - [ ] GUI/i18n acceptance independently reviewed; the original delivery review excluded those surfaces.
 
 Token observations near 59k require cumulative-session accounting: reported input/cache/output counters are observations across the session/tool exchange, not proof of one 59k prompt, a price, or billed usage. Preserve counter semantics and exact client/version; do not infer savings or causality from small samples. Low-token optimization remains pending.
+
+## Fresh executor evidence / 執行者新證據
+
+Watcher `e24b13c418bad9705f86b589b1ac212145d06a71`, Hub `c4fe0f1`: a fresh official Claude Remote Control session (Sonnet 5.5 Medium) activated with the exact generated phrase and entered idle polling with zero model turns. A human browser message then triggered ToolSearch plus two native MCP calls (`chat_read`, `chat_reply`); full-text read reported `ready_to_reply=true`, reply actor was Claude and receipt was `replied`. Reply latency was approximately 16.646 seconds. No additional Claude prompt initiated the exchange. One bounded automatic exchange passed; complete pause/resume/stop lifecycle evidence awaits the final packet.
+
+新官方 Claude Remote Control session activation 後 idle、零 model turns；人類瀏覽器訊息觸發 ToolSearch 與兩次 native MCP calls，完整 read/reply receipt 通過，約 16.646 秒。沒有額外 Claude prompt；一次有限自動 exchange passed，完整 lifecycle 等待最終 packet。
+
+ChatGPT managed tunnel had stopped and was restarted ready at 22:47 +08:00. Plugin Refresh succeeded; updated notification schemas and `message.created` event discovery were visible. Fresh Work identity passed, but native deferred tools still exposed no subscribe/wait/unsubscribe facility: no subscription was established. Current blocker is unavailable client subscription facility, not stale discovered metadata. Idle automatic replies remain not_run. These are executor-supplied observations, with private identifiers, URLs, messages and screenshots omitted.
+
+ChatGPT tunnel 重啟 ready，Plugin Refresh 成功，更新 schema 與 event discovery 可見；新 Work identity passed，但客戶端仍無訂閱工具，沒有建立 subscription。當前阻礙是客戶端訂閱能力不可用，不再是已探索 metadata 過時；idle 自動回覆仍 not_run。以上為執行者提供的觀察，不公開私人證據內容。
