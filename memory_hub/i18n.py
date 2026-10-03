@@ -1,13 +1,15 @@
 """Request-scoped UI language; never translate project or user supplied content."""
 from contextvars import ContextVar
+from html import escape
 import json
 import os
 from pathlib import Path
-from urllib.parse import parse_qsl, urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 LANGUAGES = ('en', 'zh-TW')
 COOKIE = 'hub_ui_language'
 _locale = ContextVar('hub_ui_language', default=None)
+_return_path = ContextVar('hub_ui_return_path', default='/login')
 # Published guide siblings shipped with the international release. Production
 # wheels do not include the repository's docs directory.
 ENGLISH_GUIDES = frozenset({
@@ -61,9 +63,31 @@ def script_catalog(script):
 CATALOG = json.loads(Path(__file__).with_name('ui_catalog.json').read_text(encoding='utf-8'))
 
 
+def local_language_destination(value):
+    """Return a canonical relative UI URL; reject encoded path/authority tricks."""
+    if (not isinstance(value, str) or len(value) > 8192 or
+            any(ord(char) < 32 or ord(char) == 127 for char in value) or '\\' in value):
+        return '/login'
+    try:
+        target = urlsplit(value)
+        path = target.path
+        if (target.scheme or target.netloc or target.fragment or not path.startswith('/') or
+                path.startswith('//') or '%' in path or '//' in path or
+                any(part in {'.', '..'} for part in path.split('/')) or
+                not (path in {'/help', '/login', '/ui'} or path.startswith('/ui/')) or
+                path == '/ui/language'):
+            return '/login'
+        query = [(key, item) for key, item in parse_qsl(target.query, keep_blank_values=True, max_num_fields=64)
+                 if key != 'lang']
+    except ValueError:
+        return '/login'
+    return path + ('?' + urlencode(query) if query else '')
+
+
 def language_switch():
     label, apply = ('Language', 'Apply') if locale() == 'en' else ('語言', '套用')
     return ('<form class="language-switch" method="get" action="/ui/language">'
+            '<input type="hidden" name="return_to" value="'+escape(_return_path.get(), quote=True)+'">'
             '<label for="ui-language">'+label+'</label>'
             '<select id="ui-language" name="lang" aria-label="'+label+'">'
             + ''.join('<option value="'+value+'"'+(' selected' if value == locale() else '')+'>'+name+'</option>'
@@ -87,6 +111,7 @@ class LanguageMiddleware:
         if chosen not in LANGUAGES:
             chosen = default_language()
         token = _locale.set(chosen)
+        return_token = _return_path.set(local_language_destination(request.url.path + '?' + request.url.query))
         async def localized_send(message):
             if message['type'] == 'http.response.start':
                 headers = list(message.get('headers', []))
@@ -103,6 +128,7 @@ class LanguageMiddleware:
             await self.app(scope, receive, localized_send)
         finally:
             _locale.reset(token)
+            _return_path.reset(return_token)
 
 
 def install_language(app):
@@ -122,7 +148,12 @@ def install_language(app):
 
     @app.get('/ui/language', include_in_schema=False)
     def change_language(request: Request):
-        # Return only to the same origin. No request-controlled open redirect.
+        # Forms carry an explicit local destination because pages deliberately
+        # suppress Referer. Never fall back to a header for a rejected target.
+        if 'return_to' in request.query_params:
+            destination = local_language_destination(request.query_params.get('return_to'))
+            return RedirectResponse(destination, status_code=303)
+        # Backward-compatible same-origin links without the new form field.
         destination = '/login'
         def origin(value):
             if value.scheme not in ('http', 'https') or value.username is not None or value.password is not None:
@@ -143,6 +174,5 @@ def install_language(app):
             accepted = False
         if accepted:
             if referer.path == '/help' or referer.path == '/login' or referer.path.startswith('/ui'):
-                query = [(k,v) for k,v in parse_qsl(referer.query) if k != 'lang']
-                destination = referer.path + ('?'+urlencode(query) if query else '')
+                destination = local_language_destination(referer.path + ('?' + referer.query if referer.query else ''))
         return RedirectResponse(destination, status_code=303)
