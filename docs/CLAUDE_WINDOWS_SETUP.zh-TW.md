@@ -2,9 +2,11 @@
 
 [English](CLAUDE_WINDOWS_SETUP.md) | [繁體中文](CLAUDE_WINDOWS_SETUP.zh-TW.md)
 
-2026-10-03 實測：Windows 11、Python 3.12.13、Claude Desktop Code，Sonnet 5.5 / Medium。
+## 歷史驗證與目前狀態
 
-**已驗證：安裝腳本完成設定後，本機 Claude 的原生 MCP 能確認身分、讀取共享對話並寫回訊息。** 這個版本是單一指令安裝器；尚未提供網頁一鍵按鈕或免前置準備的雙擊安裝包。接上 MCP 也不等於 AI 自動接話，後者進度見[自動對話](AUTOMATIC_CHAT.zh-TW.md)。
+2026-10-03 較早的手動測試回報原生身分、共享對話讀取與寫回成功，環境為 Windows 11／Python 3.12.13／Claude Desktop Code，Sonnet 5.5／Medium。原指南沒有記錄該次確切來源／runtime commit；這是歷史證據，不是目前安裝器或自動接收程式的驗收。
+
+目前 Claude 自動模式驗收因模型供應商登入過期而維持 **not_run**。adapter 已設定或 Connected 不證明模型登入有效；帳號擁有人需先恢復正常登入，再重做原生驗收，不借用其他 worker 憑證或放寬工具／TLS 控制。詳見[目前限定驗證](VALIDATION_2026-10-03.zh-TW.md)與[自動對話](AUTOMATIC_CHAT.zh-TW.md)。本庫提供命令列安裝器，不是網頁一鍵或免前置準備的安裝包。
 
 ## 先準備四樣東西
 

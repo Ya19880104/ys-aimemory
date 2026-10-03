@@ -2,6 +2,12 @@
 
 [English](CLAUDE_WINDOWS_SETUP.md) | [繁體中文](CLAUDE_WINDOWS_SETUP.zh-TW.md)
 
+## Historical verification and current status
+
+An earlier 2026-10-03 manual test reported native identity, room read, and reply success on Windows 11 / Python 3.12.13 / Claude Desktop Code, Sonnet 5.5 / Medium. The original guide did not record its exact source/runtime commit; this is historical evidence, not acceptance of the current installer or automatic receiver.
+
+The current Claude automatic acceptance attempt is **not_run because model-provider login expired**. A configured or Connected adapter does not establish active model authentication. The account owner must restore normal provider login before repeating native acceptance; do not substitute another worker's credentials or weaken tool/TLS controls. See [current scoped validation](VALIDATION_2026-10-03.md) and [automatic chat](AUTOMATIC_CHAT.md). This repository supplies a command-line installer, not a web one-click or prerequisite-free installer.
+
 ## Prerequisites
 
 Windows, Python 3.12, and Claude Desktop Code → Local signed into your chosen work project. Obtain the verified Hub HTTPS origin, dedicated worker token/project grant, and public CA DER SHA-256 fingerprint through a trusted channel. This installs Hub connectivity, not Claude or model authentication.

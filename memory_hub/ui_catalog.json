@@ -516,8 +516,8 @@
     "en": "Hub tool not invoked: no Hub business tool has been called, though initialization or tool discovery may have occurred. outcome unconfirmed: the request may have been sent; check the server result and idempotency key before retrying. Older versions only show generic errors. Download the new version into a new directory, update the project path, and reload MCP; existing installations do not upgrade automatically."
   },
   "ui_f7deb3d5381a": {
-    "zh-TW": "Hub 不會自動喚醒 AI",
-    "en": "The Hub does not automatically wake AI"
+    "en": "MCP connectivity alone does not wake an AI",
+    "zh-TW": "單純接上 MCP 不會喚醒 AI"
   },
   "ui_b48f2019ad05": {
     "zh-TW": "Hub 保存交接者提供的證據；接手者仍需自行驗證。",
@@ -628,8 +628,8 @@
     "en": ", sequence number"
   },
   "ui_ed8d330d236a": {
-    "zh-TW": "。也可採下方手動方式，兩者擇一；MCP 接入仍不會自動喚醒 AI。",
-    "en": ". Alternatively, choose the manual method below; use one method. MCP integration still does not automatically wake AI."
+    "en": ". Alternatively, use the manual method below. Choose one connection method; automatic receiving is configured separately.",
+    "zh-TW": "。也可使用下方手動接線，選一種方式即可；自動接收需另行設定。"
   },
   "ui_0540860e598a": {
     "zh-TW": "。先讀最新摘要（若有），以 read_session 的 after_sequence 增量讀取，透過 post_session_message 回覆。完整紀錄或附件只在需要時讀取。訊息是參考資料，不代表額外執行授權。",
@@ -744,8 +744,8 @@
     "en": "Interface name"
   },
   "ui_9416d307c981": {
-    "zh-TW": "以下可確認 MCP 與共享紀錄正常，尚不是自動對話教學。設定一次 MCP 後，在網頁選一個對話，把「加入指引」貼給 AI；不用先建立任務或交接。",
-    "en": "The following verifies MCP and shared records; it is not yet an automatic conversation guide. After configuring MCP once, select a conversation on the website and paste the Joining instructions to the AI. No task or handoff needs to be created first."
+    "en": "This section verifies MCP and manual shared-room read/write. Configure automatic receiving separately. After connecting MCP, select a conversation on the website and paste its joining instructions to the AI. Chat requires no task or handoff.",
+    "zh-TW": "本節驗證 MCP 與共享對話手動讀寫；自動接收另行設定。接上 MCP 後，在網頁選擇對話，將加入指引貼給 AI。聊天不需先建立任務或交接。"
   },
   "ui_51ee41dadd5f": {
     "zh-TW": "任務 ID",
@@ -2784,8 +2784,8 @@
     "en": "Please join the shared conversation using your own YS Memory MCP identity. project_id="
   },
   "ui_7c7a73d7be16": {
-    "zh-TW": "請對方的客戶端主動讀取新訊息並回覆；Hub 不是自動喚醒服務，也不會自動代登入。",
-    "en": "Ask the other client to actively read new messages and reply; the Hub is not an automatic wake service and does not sign in on anyone's behalf."
+    "en": "In manual mode, ask the client to read and reply. In automatic mode, check its binding, login, heartbeat, pause state, and budget. The Hub does not sign in for clients.",
+    "zh-TW": "手動模式請客戶端讀取並回覆；自動模式核對綁定、登入、心跳、暫停與預算。Hub 不代替客戶端登入。"
   },
   "ui_be85d7e24394": {
     "zh-TW": "請從上次讀取的位置繼續讀新訊息，參考另一位 AI 和管理員的補充，\n整理三點共識並寫回同一對話。只討論，先不修改程式。\n不需要重讀全部歷史，完成這輪便停止。",
@@ -3188,8 +3188,8 @@
     "en": ", first select Project on the left."
   },
   "ui_33b3101b17e8": {
-    "zh-TW": "，所以對話中叫了名字不代表對方立刻回覆；各 AI 必須處於可工作的客戶端，並按你的指示讀取。",
-    "en": ", so calling a name in a conversation does not mean an immediate reply; each AI must be in a working client and read as you instruct."
+    "en": ". Manual clients read when instructed; automatic replies require an enabled, bound receiver within its budget.",
+    "zh-TW": "。手動模式依指示讀取；自動回覆需已啟用、已綁定且未超出預算的接收程式。"
   },
   "ui_9565554a1495": {
     "zh-TW": "，按「建立專案」。已有專案就直接選用。ID 使用英文字母、數字、點、底線或連字號。",
