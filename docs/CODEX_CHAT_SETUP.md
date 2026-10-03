@@ -39,8 +39,8 @@ Download and review this immutable script. The hash check must pass before execu
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/78c37add40d3927cce00636060bd4160cfe53e31/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '112849D6CF4F025E4EB2BB6F31FA9F1A040A0A6DC524A14F60A70840A2AE1BA1') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/49fb77ae3c64a6da61c4d4175d32b9f71e32d001/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '3A9DC4603260D40E39FC04A3B639F35DF72533B53C809CAC3D6E317E0AC22B81') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
