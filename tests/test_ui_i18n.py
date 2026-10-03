@@ -162,3 +162,25 @@ def test_document_links_work_without_repository_docs(monkeypatch, tmp_path):
         assert documentation_url('CLIENT_SETUP.zh-TW.md').endswith('/CLIENT_SETUP.zh-TW.md')
     finally:
         _locale.reset(token)
+
+
+@pytest.mark.parametrize('lang, role, expected', [('en', 'admin', 'Posting as Administrator '), ('zh-TW', 'admin', '以 管理員 '), ('en', 'member', 'Posting as Member '), ('zh-TW', 'member', '以 成員 ')])
+def test_composer_identity_is_a_complete_sentence_and_escapes_names(localized, monkeypatch, lang, role, expected):
+    from dataclasses import replace
+    from memory_hub.web_auth import WebAuthStore
+    from html import escape
+
+    client, _, _ = localized
+    original = WebAuthStore.principal
+    name = '教學測試管理員 <img src=x onerror=alert(1)> & {role}'
+    def principal(self, current):
+        person = original(self, current)
+        return replace(person, display_name=name, role=role) if person else person
+    monkeypatch.setattr(WebAuthStore, 'principal', principal)
+    response = client.get('/ui/chat?project=visible&lang='+lang)
+    assert response.status_code == 200
+    identity = re.search(r'<div class="composer-by">(.*?)</div>', response.text)[1]
+    assert identity == expected + '<strong>' + escape(name, quote=True) + '</strong>' + (' 發言' if lang == 'zh-TW' else '')
+    assert '<img' not in identity
+    assert 'Use Administrator' not in identity
+    assert set(re.findall(r'{([^}]+)}', CATALOG['composer_posting_as'][lang])) == {'role', 'name'}

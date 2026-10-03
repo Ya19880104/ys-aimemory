@@ -163,10 +163,6 @@
     "zh-TW": " 環境變數。直接 HTTP 設定的私有 CA 另以 ",
     "en": " environment variable. For a private CA in direct HTTP configuration, also use "
   },
-  "ui_cfdaa36e1c8d": {
-    "zh-TW": " 發言",
-    "en": " message"
-  },
   "ui_f61980f461dd": {
     "zh-TW": " 的專案目錄，以隱藏輸入提供自己的 worker Token：",
     "en": " project directory, and enter your worker Token using hidden input:"
@@ -746,10 +742,6 @@
   "ui_0c4e6cbfd54f": {
     "zh-TW": "介面名稱",
     "en": "Interface name"
-  },
-  "ui_608d6f105272": {
-    "zh-TW": "以 ",
-    "en": "Use "
   },
   "ui_9416d307c981": {
     "zh-TW": "以下可確認 MCP 與共享紀錄正常，尚不是自動對話教學。設定一次 MCP 後，在網頁選一個對話，把「加入指引」貼給 AI；不用先建立任務或交接。",
@@ -3262,5 +3254,13 @@
   "ui_642fcc1b1e7f": {
     "zh-TW": "待重試認領",
     "en": "Ready to retry"
+  },
+  "composer_posting_as": {
+    "en": "Posting as {role} <strong>{name}</strong>",
+    "zh-TW": "以 {role} <strong>{name}</strong> 發言"
+  },
+  "composer_member": {
+    "en": "Member",
+    "zh-TW": "成員"
   }
 }
