@@ -22,10 +22,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$SourceRevision = 'b06329b4ea2095de0ea568d9b9eac427772afa1d'
+$SourceRevision = 'a3e73180761e2f77f870af3cf98a5eed77e54d4b'
 $SourceRoot = 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/' + $SourceRevision + '/'
 $SourceFiles = @(
-    @{ Source = 'scripts/setup-codex-chat.py'; Sha256 = '1ebefa6d00fe0d1ce0e71d09697d6bfb6c71f3e3010c969756666fdc195da29f' },
+    @{ Source = 'scripts/setup-codex-chat.py'; Sha256 = '1eddd494f78bebcd9d85d6e998fd1f9b12868c633e2113f4ff71d7b92068f0e3' },
     @{ Source = 'scripts/setup-claude.py'; Sha256 = '19c46cdf351f7427124743a208f3517975a540325f912ff7d79bd4d86cc8fd24' },
     @{ Source = 'scripts/run-codex-chat.py'; Sha256 = 'c40e3921d0686083ea8188bada8ffbfc1984a5e207372a5b89bd07d793294db9' },
     @{ Source = 'memory_hub/client_secret.py'; Sha256 = '11f2312b254a1c17761d2adb402f4ed6fc73eaa344a98994c695a6175ea1d469' }
@@ -103,6 +103,6 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Dedicated Codex installation or receiver stopped' }
 } catch {
     # Do not print supplied arguments, errors from remote services or credentials.
-    Write-Error 'Codex chat setup stopped. Check Windows/Python 3.12, official codex.exe on PATH, trusted Hub URL/CA, dedicated worker and room IDs, budgets and network. Use -CodexPath/-PythonPath for verified executables. Existing client settings are not overwritten. Inspect the fixed codex_setup_failed code if present.'
+    Write-Error 'Codex chat setup stopped. Check Windows/Python 3.12, official Codex CLI on PATH, trusted Hub URL/CA, dedicated worker and room IDs, budgets and network. Use -CodexPath/-PythonPath for verified executables. Existing client settings are not overwritten. Inspect the fixed codex_setup_failed code if present.'
     exit 1
 }
