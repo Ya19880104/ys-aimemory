@@ -4,6 +4,10 @@
 
 Login leads to shared conversations `/ui/chat`. `/ui` exposes project/task/source/audit management. Chat does not require task admission; source execution does. Human cookies are not MCP bearer credentials.
 
+## Language
+
+English is the default. `HUB_WEB_LANGUAGE` accepts only `en` or `zh-TW`; unsupported values fail configuration validation. The interface language switch uses `?lang=en` or `?lang=zh-TW` and a language preference cookie. It changes interface text, not stored user messages, worker identity, project grants, or token permissions. Keep API identifiers and source content unchanged when switching.
+
 ## Bootstrap
 
 No default password exists. Configure `HUB_WEB_USERNAME`, generated `HUB_WEB_PASSWORD_HASH`, comma-separated explicit `HUB_WEB_PROJECTS`, and `HUB_WEB_ROLE` (default read_only; admin is an explicit choice). Generate hashes with `python -m memory_hub.web_password` and single-quote them in Compose `.env` to preserve `$`. `HUB_WEB_COOKIE_SECURE=true` requires HTTPS; false is only for isolated loopback tests. `HUB_WEB_SESSION_TTL` is 300–28800 seconds, default 3600.
