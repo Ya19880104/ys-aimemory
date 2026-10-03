@@ -145,3 +145,11 @@ The time budget starts at the **first receiver start**, not installation. Its ex
 | `receiver_was_stopped_keep_evidence_and_provision_new_bounded_run` | Preserve the old STOP/evidence and explicitly create a new bounded installation when wanted. |
 
 This guide describes the installer/receiver contract. It does not certify a particular machine's native run, Desktop injection, or ChatGPT cloud delivery. Those require their own recorded acceptance tests.
+
+## Upgrade and lost-response recovery
+
+Upgrade the Hub first, then stop the old receiver and use this page's current pinned installer. Existing installations do not update themselves. Do not overwrite a running receiver or delete its state. Use Claude's disconnect/renew flow; for Codex, confirm the old receiver stopped, then create a new dedicated installation with an explicit budget.
+
+Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid and dispatch has not started, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
+
+Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).

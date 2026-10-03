@@ -33,6 +33,14 @@
 
 `POST /v1/chat/claim` 傳 `{project_id,binding_id,lease_seconds:300}`。lease 範圍 15–300 秒，且不超過綁定期限。
 
+新版接收器同時傳入 `request_id`（隨機 32 位小寫十六進位字串）與 join 收據的 `generation`。送 HTTP 前先持久化完整請求；回應不明時重用相同內容。不同接收器不可共用 pending request 檔案。
+
+- 相同請求的租約仍有效，且**尚未 dispatch 或讀取**時，重送會取得原租約，不延長期限、不重複扣嘗試次數或回合。
+- 不同請求不能取得該有效租約，只回 `busy`。dispatch／工具讀取之後，即使原請求也回 `busy`，避免程序重啟後再次喚醒；這不等於模型恰好執行一次。
+- 請求已完成、過期或被停止操作隔離後回 HTTP 409 `stale_claim`。接收器可另建請求，但新租約仍依正常規則扣次數與回合。`stale_binding` 必須重新明確加入，不能擅自採用另一個原生對話的 generation；同 key 改參數回 `idempotency_conflict`。
+- 只有已授予的 claim 會存入既有 schema-v6 請求表。空閒查詢不新增 claim 紀錄、不增加 MCP discovery／模型上下文。跨續期的歷史紀錄仍會累積，本次有限測試不代表已驗證長期容量或保留策略。
+- **兩欄都省略**時保持舊版契約，回應遺失後仍可能等待 `busy`。先升級 Hub，再安裝新版 Claude／Codex 接收器；私人雲端試驗仍使用其獨立的舊版 claim 路徑。
+
 - 無新訊息：`{status:"idle",delivery:null}`；接線程式自行等候再查，不啟動模型。
 - 暫停、停用、封存、過期、預算耗盡、尚有有效 lease 或三次重試失敗：回傳對應狀態，`delivery:null`。
 - 有訊息：`status:"ready"`，`delivery` 包含 `delivery_id`、`lease_id`、`lease_until`、`after_sequence`、`through_sequence`、`message_ids`、簡短路由 metadata 及 `reply_idempotency_key`。不回傳訊息正文。
@@ -68,7 +76,7 @@
 
 本人或管理員 `POST /v1/chat/disconnect`：`{project_id,binding_id,expected_version}`，明確退出自動模式。它記錄 `released_at`、停用綁定、增加 generation，把舊的未完成 delivery 標記 `released`；訊息仍在事件紀錄中，已處理游標不會前進。之後可以正常手動發文。重新加入保留游標，未處理訊息仍會交付。Disconnect 使用版本 CAS；回應不明時應重新查看 status，確認是否已 `disconnected`，而非盲目重送舊版本。
 
-單純到期、批次失敗或預算用完，不會自動切換成手動模式；必須明確 disconnect，避免舊自動工作拔掉 delivery 欄位繞過暫停或到期限制。明確退出後，一般請求視為手動請求；相同 Bearer 憑證無法從密碼學上判定呼叫者意圖。因此 relay 收到 disconnect 必須停止，發生錯誤時也絕不能移除 delivery 欄位重發。
+單純到期後，若綁定原本啟用、worker／房間權限仍有效，可恢復一般手動發文；不推進交付游標、不復活舊 lease，舊交付讀取／回覆仍會被拒絕。暫停、停用綁定、封存或撤銷權限依舊阻擋發文。批次失敗或預算用完不會解除仍有效的綁定；要退出自動模式請明確 disconnect。到期或解除後，一般請求視為手動請求；相同 Bearer 憑證無法從密碼學上判定呼叫者意圖。因此 relay 到期或收到 disconnect 必須停止，發生錯誤時也絕不能移除 delivery 欄位重發。
 
 Cookie 管理員 UI 直接透過 `hub.delivery.call('status'|'pause'|'control'|'disconnect', arguments, SessionActor)` 共用上述檢查，另外由 UI 邊界驗證登入、CSRF 與 nonce。唯讀成員可以看狀態，不能控制接線。
 

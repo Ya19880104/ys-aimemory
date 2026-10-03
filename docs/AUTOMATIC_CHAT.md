@@ -76,3 +76,11 @@ For a dedicated Codex CLI receiver, follow the [Codex chat installation guide](C
 Idle waiting should not repeatedly ask a model to inspect an empty inbox. Retrieve new messages incrementally. This does not promise zero provider cost or a fixed token savings percentage.
 
 Acceptance requires an idle bound client reacting to a new human web message without an extra prompt; correct identity/room; matching delivery/read/reply receipts; observed budget/pause/stop/revocation/archive behavior; crash/restart recovery without duplicates or skipped human messages; and bounded AI follow-ups. Record exact commits, native versions, and passed/failed/skipped/not_run. [Delivery API](DELIVERY_API.md) defines the durable contract. Source/tests cannot certify native acceptance.
+
+## Upgrade and lost-response recovery
+
+Upgrade the Hub first, then stop the old receiver and use this page's current pinned installer. Existing installations do not update themselves. Do not overwrite a running receiver or delete its state. Use Claude's disconnect/renew flow; for Codex, confirm the old receiver stopped, then create a new dedicated installation with an explicit budget.
+
+Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid and dispatch has not started, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
+
+Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).
