@@ -26,7 +26,7 @@ xAI Remote MCP 由雲端代連服務，支援 Streaming HTTP / SSE 及自訂驗�
 - 已部署主機的 `/help#clients`：HTML 教學與 `/downloads/ys-memory-stdio-1.1.1.zip` 安裝包。ZIP 由自己的 Hub 依部署網址及公開 CA 產生，不是帶著固定真實主機資訊的 GitHub release。
 - [伺服器腳本](../scripts/)：preflight、備份、還原檢查；[套件產生程式](../memory_hub/client_bundle.py)負責提供 adapter 與公開連線配置。
 
-目前有可逐步執行的命令與 adapter，**沒有自動覆寫各 AI 設定的一鍵安裝器**。設定合併和模型登入仍由使用者控制。使用已有 Hub 不需要再部署一套伺服器。
+Windows Claude 已有[單一指令安裝器與實測教學](CLAUDE_WINDOWS_SETUP.zh-TW.md)，可合併指定專案設定並加密保存自己的 Token；遇到既有 `ys_memory` 會停止。其他客戶端使用以下手動設定，網頁一鍵按鈕尚未提供。模型登入與工具核准由客戶端處理。使用已有 Hub 不需要再部署一套伺服器。
 
 ## Windows 客戶端快速安裝
 

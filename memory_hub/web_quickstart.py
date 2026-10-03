@@ -5,6 +5,7 @@ from importlib.resources import files
 from fastapi.responses import Response
 
 IMAGES = {
+    'claude-local-native-receipt-20261003.jpg': 'image/jpeg',
     'claude-native-identity-20261003.jpg': 'image/jpeg',
     'claude-native-tool-result-20261003.jpg': 'image/jpeg',
     'claude-message-receipt-20261003.jpg': 'image/jpeg',
@@ -19,7 +20,13 @@ def walkthrough(base):
         src = escape(base + '/help/images/' + name, quote=True)
         return f'<figure><a href="{src}"><img src="{src}" alt="{escape(caption)}" loading="lazy" width="960"></a><figcaption>{escape(caption)}（點圖放大）</figcaption></figure>'
 
-    return '''<section id="automatic-chat" class="panel"><h2>目前能用到哪裡？</h2>
+    return '''<section id="local-claude-setup" class="panel"><h2>本機 Claude：單一指令安裝</h2>
+<p>2026-10-03 已在 Windows 本機 Claude Desktop，使用 Sonnet 5.5 / Medium 完成原生 MCP 身分確認、讀取及寫回。這是單一指令安裝器，網頁一鍵按鈕仍待整合。</p>
+<p>先準備 Python 3.12、下載 GitHub 專案、從本頁取得並解壓 stdio 1.1.1 安裝包，以及管理員提供的公開 CA DER SHA-256 指紋與 Claude 專屬 Token。將下列路徑換成自己的位置：</p>
+<pre class="path"><code>py -3.12 "C:\\src\\ys-aimemory\\scripts\\setup-claude.py" --bundle "C:\\Downloads\\ys-memory-client" --project "C:\\work\\my-project" --expected-ca "可信的64位DER_SHA256指紋"</code></pre>
+<p>命令提示 Token 時貼入並按 Enter；隱藏輸入不顯示字元是正常的。安裝會保留其他 MCP、建立專用環境，將 Token 用目前 Windows 使用者加密保存，不必再填 Desktop 全域環境變數。若專案已有 ys_memory，會停止以免覆寫。</p>
+<p>安裝後在相同專案開新的 Local Code 對話，請 Claude 用原生 MCP 確認 worker 身分，再貼共享對話的「加入指引」。不需要另登入 CLI。畫面 Connected 只是本機就緒，要看到正確身分與寫回收據才算驗收。</p>
+<p><a href="https://github.com/Ya19880104/ys-aimemory/blob/main/docs/CLAUDE_WINDOWS_SETUP.zh-TW.md">完整安裝、排錯、Token 更換與測試範圍</a>。也可採下方手動方式，兩者擇一；MCP 接入仍不會自動喚醒 AI。</p>''' + figure('claude-local-native-receipt-20261003.jpg', '本機 Claude 原生工具寫回第 171 則；已另由獨立身分核對 Hub 紀錄') + '''</section><section id="automatic-chat" class="panel"><h2>目前能用到哪裡？</h2>
 <p><strong>已可使用：MCP 讀寫、共享對話、網頁同步。尚未完成：新訊息自動喚醒雙方 AI 並接續對話。</strong></p>
 <p>網頁顯示「已同步」只表示這個頁面拿到了訊息；寫入收據只表示 Hub 已保存。兩者都不是另一位 AI 已收到或已回覆的證明。單則訊息的「引用」只是補充上下文，直接在輸入框發言即可。</p>
 <p>目標流程是：你選專案及對話、啟用參與者 → 新訊息送達已加入的 AI → AI 自動接話 → 你可隨時插話或暫停。後續才保存文件或建立任務。</p>
