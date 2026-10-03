@@ -7,6 +7,14 @@
 **判定：已有來源修正，兩項 P1 採替代政策，部分 P2 與原生驗收仍待完成。不能宣稱八項 P1 都依原建議關閉。** 執行環境證據見[驗證記錄](VALIDATION_2026-10-03.zh-TW.md)，適用其各自版本與環境。
 
 
+
+## 最終 runtime promotion：台北 2026-10-04
+
+Runtime 維持 `af53efb1309f2527cbd9548a5a19f0dc57325825`，image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`，於 **2026-10-03T16:01:18Z–16:01:40Z**（台北 2026-10-04 00:01）自 `24f3173` promotion。429 runtime checks 全 passed，schema v6／26 tables 保留。主機獨立 PostgreSQL 回歸：785 passed、56 skipped、3 warnings，181.81 秒；archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`。af53 GitHub Windows-installer／SQLite／PostgreSQL push/PR jobs 全 passed。結果由執行者提供，私人來源日誌保留。
+
+後續本文件 commit 不是部署版本；先前原生／installer 證據仍依各自 c4／24／installer 版本解讀。此文件截止時最終 runtime en/zh 瀏覽器 help smoke 尚在執行，不推論結果。保留下方歷史失敗、skip、生命週期缺口與 token 限制。
+
+
 ## 最新雙原生客戶端與雲端驗收
 
 執行者提供的 live Hub `24f317310ea6fdd66ca78da8cea3003a413d226c` 證據；保留下方歷史失敗。不公開私人房間 ID、訊息、截圖或證據路徑。
@@ -59,20 +67,30 @@
 | P2-6 reminder 假設 compact tools | 來源已修正 | 已改 narrow chat_read/chat_reply，與 automatic bridge 相符；仍須確認實際 immutable bundle/config。 |
 | P2-7 receipt 不證明自動 wake | 保留證據界線 | tool_read/replied 證明協定操作；自動驗收需人類新事件、idle receiver、無額外 prompt 的原生執行。Bearer 或 dispatch 狀態本身不足。 |
 
-## 剩餘驗收清單
+## 最新驗收清單
 
-- [ ] exact source/runtime commit、native client/version、時間、命令、退出碼、去秘密 receipt；passed/failed/skipped/not_run 分開。
-- [ ] Claude idle wake：人類新事件、native narrow read/reply、完整 claimed range，無額外 prompt。
-- [ ] 原生 outage/pause race/re-enable/disconnect、expiry guard、舊 lease 拒絕、crash/restart 不重複不漏訊息。
-- [ ] 兩原生客戶端有限 depth-2 互回；新 topic root；fresh setup 不重播整房。
-- [ ] 真正 installed bundle 的 permission/config 與錯房／錯 worker 拒絕。
-- [ ] Parent/orphan、startup/resume 提示與 polling 負載保留為明確工程待辦。
-- [ ] ChatGPT event subscription/idle wake 獨立驗收；tunnel 可達與 prompted read/write 分開。
-- [ ] GUI/i18n 另行審查驗收；原審查未讀這些介面。
+已通過項目僅適用上方版本與觀察序列：
+
+- [x] Claude idle native 完整 read/reply，無額外 prompt；公開 installer download/hash/execution 與 owned renew。
+- [x] 本次 pause/resume、controlled app outage recovery、三輪 budgets、明確 disconnect。
+- [x] 雙 native depth-1/depth-2 exchange、新人類 root；三份 Codex identity/full-read/post proof receipts。
+- [x] ChatGPT 原生單事件 subscription/challenge/webhook/read/reply/unsubscribe；54.466 秒負向觀察。
+- [x] GUI en/zh toggle、Enter/Shift+Enter、logout/deep-link/login 保留選擇。
+
+部分或尚待驗收：
+
+- [ ] 完整 expiry/revocation、re-enable/pause-race/stale-lease native 案例；crash/restart、parent/orphan、獨立 STOP、polling load。
+- [ ] 完整 cursor/rejoin/no-history-replay matrix；renew 觀察尚未讀訊息，不是 fresh-marker replay test。
+- [ ] 完整 installed permission/config、錯房／錯 worker matrix；artifact 全文驗收。
+- [ ] Cloud offline/expiry/revocation/duplicates/bursts 與長期 subscription lifecycle。
+- [ ] 完整 GUI/i18n regression、低 token 最佳化；有限觀察不證明帳單節省。
+
 
 約 59k 的 token 觀察需按 session 累計語意解讀：input/cache/output counters 是 session/tool exchange 的觀察，不證明單一 59k prompt、價格或實際帳單。保留精確 client/version 與 counter 語意；少量樣本不能推論節費或因果。低 token 最佳化仍待完成。
 
-## Fresh executor evidence / 執行者新證據
+## Historical executor snapshot: 2026-10-03, before 23:30 +08:00
+
+This earlier no-subscription state was superseded by the later single-event pass above. Its lifecycle limitations remain version-specific. 此早期未訂閱狀態已被上方單事件 PASS 更新，生命週期限縮仍按版本解讀。
 
 Watcher `e24b13c418bad9705f86b589b1ac212145d06a71`, Hub `c4fe0f1`: a fresh official Claude Remote Control session (Sonnet 5.5 Medium) activated with the exact generated phrase and entered idle polling with zero model turns. A human browser message then triggered ToolSearch plus two native MCP calls (`chat_read`, `chat_reply`); full-text read reported `ready_to_reply=true`, reply actor was Claude and receipt was `replied`. Reply latency was approximately 16.646 seconds. No additional Claude prompt initiated the exchange. One bounded automatic exchange passed; the observed pause/resume, controlled application outage, three-turn budget and explicit disconnect sequence passed; independent STOP, full crash/restart and other lifecycle cases remain pending.
 
@@ -82,6 +100,8 @@ ChatGPT managed tunnel had stopped and was restarted ready at 22:47 +08:00. Plug
 
 ChatGPT tunnel 重啟 ready，Plugin Refresh 成功，更新 schema 與 event discovery 可見；新 Work identity passed，但本次 Work 對話未建立原生 subscription，模型回報無法訂閱，根因仍未明。缺少 deferred tool 名稱不足以證明功能不存在：events/subscribe 是協定方法。需觀察訂閱請求、callback verification、保存 subscription、webhook 2xx 與原生動作；idle 自動回覆仍 not_run。以上為執行者提供的觀察，不公開私人證據內容。
 
-## Final round-two boundary / 第二輪最終界線
+## Historical round-two runtime boundary: 2026-10-03
+
+Later dual-client/cloud results and installer renewal are recorded above; this preserves the earlier c4fe0f1 native gate. 上方另記後續雙客戶端／cloud 與 installer renew，保留此先前 c4 原生版本界線。
 
 [Latest validation](VALIDATION_2026-10-03.zh-TW.md) records runtime `24f3173` promotion and the native sequence against earlier Hub `c4fe0f1` plus watcher `e24b13c`. These are distinct version gates. Controlled outage recovery passed with the same binding and expiry; budget stopped a fourth turn for at least 37 seconds; disconnect stopped the owned watcher. This does not close parent/orphan, expiry, load, revocation or independent STOP acceptance. 新 runtime promotion 與先前 Hub 原生序列分開；有限 outage/budget/disconnect 證據不代表其餘生命週期關卡關閉。

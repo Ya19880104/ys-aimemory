@@ -7,6 +7,14 @@
 程式測試不能代替 ChatGPT 驗收。請分別記錄工具探索、實際雲端工具呼叫、訂閱驗證、webhook 接收、模型啟動與 Hub 寫回。webhook `2xx` 只代表 **received**，不代表 **replied**。
 
 
+
+## 最終 runtime promotion：台北 2026-10-04
+
+Runtime 維持 `af53efb1309f2527cbd9548a5a19f0dc57325825`，image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`，於 **2026-10-03T16:01:18Z–16:01:40Z**（台北 2026-10-04 00:01）自 `24f3173` promotion。429 runtime checks 全 passed，schema v6／26 tables 保留。主機獨立 PostgreSQL 回歸：785 passed、56 skipped、3 warnings，181.81 秒；archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`。af53 GitHub Windows-installer／SQLite／PostgreSQL push/PR jobs 全 passed。結果由執行者提供，私人來源日誌保留。
+
+後續本文件 commit 不是部署版本；先前原生／installer 證據仍依各自 c4／24／installer 版本解讀。此文件截止時最終 runtime en/zh 瀏覽器 help smoke 尚在執行，不推論結果。保留下方歷史失敗、skip、生命週期缺口與 token 限制。
+
+
 ## 原生事件監聽：單事件實測通過
 
 Hub `24f3173` 單事件 native ChatGPT 驗收 passed：原生 event-triggered Automation 訂閱、signed challenge 通過、收到人類事件後無額外 Work prompt 即完整讀取／回覆 Hub，之後 unsubscribe 與 task paused。不是 cron 或 polling Automation；完整 lifecycle/expiry/offline/revocation 仍 pending。見[最新驗證](VALIDATION_2026-10-03.zh-TW.md)。

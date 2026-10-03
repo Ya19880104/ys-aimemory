@@ -7,6 +7,14 @@ This pilot connects **one dedicated Hub worker to one project and one shared roo
 Source tests are not ChatGPT acceptance. Record tool discovery, actual cloud tool calls, subscription verification, webhook receipt, model response and Hub write-back separately. A webhook `2xx` is only **received**, not **replied**.
 
 
+
+## Final runtime promotion: 2026-10-04 Taipei
+
+Runtime remains `af53efb1309f2527cbd9548a5a19f0dc57325825`, image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`, promoted from `24f3173` during **2026-10-03T16:01:18Z–16:01:40Z** (2026-10-04 00:01 Taipei). All 429 runtime checks passed; schema v6 and 26 tables were preserved. Independent host PostgreSQL regression: 785 passed, 56 skipped, 3 warnings in 181.81 seconds; archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`. GitHub Windows-installer, SQLite and PostgreSQL push/PR jobs passed for af53. Executor-supplied results retain private source logs.
+
+This subsequent documentation commit is not the deployed runtime. Earlier native/client evidence retains its original c4/24/installer version boundaries. Final-runtime English/Traditional Chinese browser help smoke was still in progress at this documentation cutoff; no result is inferred. Historical failures, skips, lifecycle gaps and token limitations remain below.
+
+
 ## Native event monitoring: observed single-event pass
 
 Native ChatGPT event acceptance passed for one event against Hub `24f3173`: a native event-triggered Automation subscribed, verified its signed callback challenge, received one matching human event and posted the Hub reply without an additional Work prompt. It then unsubscribed and paused the task. This is neither a cron task nor a polling Automation. Full lifecycle/expiry/offline/revocation acceptance remains pending. See [latest validation](VALIDATION_2026-10-03.md).

@@ -7,6 +7,14 @@ Source inspection: `f5003e6`, Windows, 2026-10-03. This maps the private origina
 **Decision: source corrections are present, two P1 findings use alternative policies, and several P2/native gates remain pending. Do not claim all eight P1 recommendations were implemented as proposed.** Current runtime evidence belongs in [validation](VALIDATION_2026-10-03.md), with its own commit/environment boundary.
 
 
+
+## Final runtime promotion: 2026-10-04 Taipei
+
+Runtime remains `af53efb1309f2527cbd9548a5a19f0dc57325825`, image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`, promoted from `24f3173` during **2026-10-03T16:01:18Z–16:01:40Z** (2026-10-04 00:01 Taipei). All 429 runtime checks passed; schema v6 and 26 tables were preserved. Independent host PostgreSQL regression: 785 passed, 56 skipped, 3 warnings in 181.81 seconds; archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`. GitHub Windows-installer, SQLite and PostgreSQL push/PR jobs passed for af53. Executor-supplied results retain private source logs.
+
+This subsequent documentation commit is not the deployed runtime. Earlier native/client evidence retains its original c4/24/installer version boundaries. Final-runtime English/Traditional Chinese browser help smoke was still in progress at this documentation cutoff; no result is inferred. Historical failures, skips, lifecycle gaps and token limitations remain below.
+
+
 ## Latest native dual-client and cloud acceptance
 
 Executor-supplied evidence against live Hub `24f317310ea6fdd66ca78da8cea3003a413d226c`; prior failures remain historical below. No private room identifiers, messages, screenshots or evidence paths are published.
@@ -59,20 +67,30 @@ Paths above are under `memory_hub/`, `scripts/`, and `tests/`. See [delivery con
 | P2-6 reminder assumes compact tools | Source fixed | Reminder now calls narrow `chat_read`/`chat_reply`, matching automatic bridge mode. Confirm installed immutable bundle/config, not merely repository source. |
 | P2-7 receipts do not prove automatic wake | Evidence boundary retained | `tool_read`/`replied` prove protocol operations. Native automatic acceptance needs a human-created event, an idle receiver and observed native execution without an extra prompt. A bearer credential or a dispatch state alone cannot prove it. |
 
-## Remaining acceptance checklist
+## Latest acceptance checklist
 
-- [ ] Record exact source/runtime commit, native client/version, timestamp, commands, exits and sanitized receipts; separate passed/failed/skipped/not_run.
-- [ ] Claude idle wake: fresh human event, native narrow read and reply, full claimed range read, no additional human prompt.
-- [ ] Native outage/pause race/re-enable/disconnect, expired guard, stale lease denial, crash/restart without duplicates or skipped messages.
-- [ ] Two native clients: bounded depth-2 follow-ups; fresh human topic starts a new root; no full-room replay on fresh setup.
-- [ ] Installer permission/config checks and wrong-room/wrong-worker rejection against the actual installed bundle.
-- [ ] Parent-process/orphan handling, startup/resume notice and polling load remain explicit engineering follow-ups.
-- [ ] ChatGPT event subscription and idle wake independently accepted; tunnel reachability and prompted read/write are separate gates.
-- [ ] GUI/i18n acceptance independently reviewed; the original delivery review excluded those surfaces.
+Observed passed cases are scoped to the versions and sequences above:
+
+- [x] Claude idle native full read/reply without an extra prompt; public installer download/hash/execution and owned renewal.
+- [x] Observed pause/resume, controlled app outage recovery, three-turn budgets and explicit disconnect.
+- [x] Dual native depth-1/depth-2 exchange and a new human root; three Codex identity/full-read/post proof receipts.
+- [x] ChatGPT native single-event subscription/challenge/webhook/read/reply/unsubscribe; bounded 54.466-second negative control.
+- [x] GUI language toggles, composer Enter/Shift+Enter and logout/deep-link/login selection preservation.
+
+Partial or remaining acceptance:
+
+- [ ] Full expiry/revocation, re-enable/pause-race/stale-lease native cases; crash/restart, parent/orphan, independent STOP and polling load.
+- [ ] Complete cursor/rejoin/no-history-replay matrix; renewal observed pending unread messages, not a fresh-marker replay test.
+- [ ] Full installed permission/config and wrong-room/wrong-worker rejection matrix; artifact full-text acceptance.
+- [ ] Cloud offline/expiry/revocation/duplicates/bursts and long-running subscription lifecycle.
+- [ ] Complete GUI/i18n regression and low-token optimization; bounded observations do not establish billing savings.
+
 
 Token observations near 59k require cumulative-session accounting: reported input/cache/output counters are observations across the session/tool exchange, not proof of one 59k prompt, a price, or billed usage. Preserve counter semantics and exact client/version; do not infer savings or causality from small samples. Low-token optimization remains pending.
 
-## Fresh executor evidence / 執行者新證據
+## Historical executor snapshot: 2026-10-03, before 23:30 +08:00
+
+This earlier no-subscription state was superseded by the later single-event pass above. Its lifecycle limitations remain version-specific. 此早期未訂閱狀態已被上方單事件 PASS 更新，生命週期限縮仍按版本解讀。
 
 Watcher `e24b13c418bad9705f86b589b1ac212145d06a71`, Hub `c4fe0f1`: a fresh official Claude Remote Control session (Sonnet 5.5 Medium) activated with the exact generated phrase and entered idle polling with zero model turns. A human browser message then triggered ToolSearch plus two native MCP calls (`chat_read`, `chat_reply`); full-text read reported `ready_to_reply=true`, reply actor was Claude and receipt was `replied`. Reply latency was approximately 16.646 seconds. No additional Claude prompt initiated the exchange. One bounded automatic exchange passed; the observed pause/resume, controlled application outage, three-turn budget and explicit disconnect sequence passed; independent STOP, full crash/restart and other lifecycle cases remain pending.
 
@@ -82,6 +100,8 @@ ChatGPT managed tunnel had stopped and was restarted ready at 22:47 +08:00. Plug
 
 ChatGPT tunnel 重啟 ready，Plugin Refresh 成功，更新 schema 與 event discovery 可見；新 Work identity passed，但本次 Work 對話未建立原生 subscription，模型回報無法訂閱，根因仍未明。缺少 deferred tool 名稱不足以證明功能不存在：events/subscribe 是協定方法。需觀察訂閱請求、callback verification、保存 subscription、webhook 2xx 與原生動作；idle 自動回覆仍 not_run。以上為執行者提供的觀察，不公開私人證據內容。
 
-## Final round-two boundary / 第二輪最終界線
+## Historical round-two runtime boundary: 2026-10-03
+
+Later dual-client/cloud results and installer renewal are recorded above; this preserves the earlier c4fe0f1 native gate. 上方另記後續雙客戶端／cloud 與 installer renew，保留此先前 c4 原生版本界線。
 
 [Latest validation](VALIDATION_2026-10-03.md) records runtime `24f3173` promotion and the native sequence against earlier Hub `c4fe0f1` plus watcher `e24b13c`. These are distinct version gates. Controlled outage recovery passed with the same binding and expiry; budget stopped a fourth turn for at least 37 seconds; disconnect stopped the owned watcher. This does not close parent/orphan, expiry, load, revocation or independent STOP acceptance. 新 runtime promotion 與先前 Hub 原生序列分開；有限 outage/budget/disconnect 證據不代表其餘生命週期關卡關閉。
