@@ -62,3 +62,5 @@ Read [AGENTS.md](AGENTS.md) and the relevant [Skills](skills/) before source wor
 Existing help screenshots preserve historical test material, not current native acceptance. Review their identifiers and sharing scope before redistribution.
 
 `MANIFEST.sha256.json` and [the original report](TEST_REPORT.zh-TW.md) preserve historical delivery evidence, not current CI results or a manifest of later additions. Record passed, failed, skipped, and not_run separately with the exact commit/environment. Distribution: `ys-ai-memory-hub`; import: `memory_hub`.
+
+Latest scoped evidence: [2026-10-03 validation](docs/VALIDATION_2026-10-03.md). Prompted ChatGPT identity/read/write and browser synchronization are distinct from event subscription and idle automatic wake.

@@ -111,3 +111,5 @@ python scripts/test-deployment.py
 ```
 
 原交付歷史結果見 [測試與交付報告](TEST_REPORT.zh-TW.md)；当前版本須另附 exact commit 的測試紀錄。雲端原生身分確認、共享讀寫與自動喚醒應分開驗收。
+
+最新限定範圍證據：[2026-10-03 驗證](docs/VALIDATION_2026-10-03.zh-TW.md)。ChatGPT 提示後身分／讀寫與網頁同步，和事件訂閱／閒置自動喚醒分開。
