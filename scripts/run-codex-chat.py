@@ -301,6 +301,13 @@ async def serve_scope(config):
         schemas = [tool for tool in catalog.tools if tool.name in TOOLS]
         if {tool.name for tool in schemas} != set(TOOLS):
             raise ReceiverError('native_tools_missing')
+        schemas = [tool.model_copy(update={
+            'title': 'Verify chat worker',
+            'description': "Return this chat receiver's authenticated worker_id only; no inbox or task contents.",
+            'outputSchema': {'type': 'object', 'properties': {
+                'worker_id': {'type': 'string', 'minLength': 1, 'maxLength': 128}},
+                'required': ['worker_id'], 'additionalProperties': False},
+        }) if tool.name == 'get_worker_inbox' else tool for tool in schemas]
 
         @server.list_tools()
         async def tools():
@@ -324,6 +331,13 @@ async def serve_scope(config):
                 event['item']['result'] = result.model_dump(mode='json', by_alias=True)
                 proof.event(event)
                 number += 1
+                if name == 'get_worker_inbox':
+                    # Validate the real upstream identity/error before projecting.
+                    # This dedicated receiver never needs task or handoff content;
+                    # construct fresh blocks so metadata cannot leak that content.
+                    identity = {'worker_id': config['worker_id']}
+                    return types.CallToolResult(structuredContent=identity, content=[
+                        types.TextContent(type='text', text=json.dumps(identity, separators=(',', ':')))])
                 return result
             except Exception:
                 stopped = True
