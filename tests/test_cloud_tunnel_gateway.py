@@ -19,10 +19,26 @@ SECRET = 'whsec_' + base64.b64encode(b'synthetic-webhook-secret-32-bytes').decod
 URL = 'https://callback.example.test/mcp-events/synthetic'
 
 
-class Hub:
-    def __init__(self, config):
+class Hub(cloud.HubClient):
+    """Real SQLite Hub behind an in-process transport, with synthetic identities."""
+    def __init__(self, config, clock):
+        from memory_hub.service import Hub as ProductHub
+        from memory_hub.store import Store
+        from memory_hub.models import Principal
+        from memory_hub.session_service import SessionActor
         self.config, self.messages, self.pause, self.revoked = config, [], False, False
-        self.sequence, self.posts, self.reads = 100, [], []
+        self.sequence, self.posts, self.reads = 0, [], []
+        self.clock = clock
+        self.actor = SessionActor('worker', config['worker_id'], 'ChatGPT fixture', ('pilot',), 'worker')
+        self.principal = Principal(worker_id=config['worker_id'], projects=['pilot'])
+        admin = Principal(worker_id='operator', projects=['pilot'], role='admin')
+        self.other = Principal(worker_id='other-ai', projects=['pilot'])
+        self.real = ProductHub(Store('sqlite:///' + str(Path(config['state_path']).with_name('hub.sqlite')), allow_sqlite=True), clock=clock,
+                               principals=[self.principal, self.other, admin])
+        self.real.call('create_project', {'project_id': 'pilot'}, admin)
+        room = self.real.call('create_session', {'project_id': 'pilot', 'title': 'Synthetic room', 'idempotency_key': 'room'}, admin)
+        config['session_id'] = room['session_id']
+        self.sequence = room['latest_sequence']
 
     def identity(self):
         if self.revoked:
@@ -33,27 +49,41 @@ class Hub:
     def paused(self):
         if self.pause == 'unavailable':
             raise cloud.GatewayError('Pause unavailable')
-        return self.pause
+        state = self.real.delivery.call('status', {'project_id':'pilot','session_id':self.config['session_id']}, self.actor)
+        return self.pause or state['control']['paused']
 
     def latest(self): return self.sequence
 
-    def read(self, after, limit=5):
+    def _tool(self, name, **arguments):
+        from memory_hub.store import HubError
+        try:
+            return self.real.call(name, {'project_id':'pilot', **arguments}, self.principal)
+        except HubError as exc:
+            raise cloud.GatewayError('Hub rejected request: ' + exc.code, -32001, exc.code) from None
+
+    def read(self, after, limit=5, **kwargs):
         self.reads.append(after)
-        items = [item for item in self.messages if item['sequence'] > after][:limit]
-        return {'items': items, 'next_after_sequence': items[-1]['sequence'] if items else after,
-                'has_more': False, 'session': {'latest_sequence': self.sequence,
-                'session_id': self.config['session_id'], 'project_id': self.config['project_id']}}
+        return super().read(after, limit, **kwargs)
+
+    def relay(self, operation, **arguments):
+        return self.real.delivery.call(operation, {'project_id':'pilot', **arguments}, self.actor)
 
     def add(self, sender='human-admin', body='new test message'):
-        self.sequence += 1
-        identifier = f'{self.sequence:032x}'
-        self.messages.append({'type': 'message', 'event_id': identifier, 'message_id': identifier,
-            'sequence': self.sequence, 'created_at': 1000.0, 'actor': {'id': sender, 'display_name': sender}, 'body': body})
+        from memory_hub.session_service import SessionActor
+        from uuid import uuid4
+        own = sender == self.config['worker_id']
+        actor = SessionActor('worker' if own else 'human', sender, sender, ('pilot',), 'worker' if own else 'member')
+        result = self.real.sessions.call('post_session_message', {'project_id':'pilot',
+            'session_id':self.config['session_id'], 'body':body, 'idempotency_key':uuid4().hex}, actor)
+        self.sequence = result['sequence']
+        self.messages.append(result)
+        return result
 
-    def post(self, body, key):
+    def post(self, body, key, **kwargs):
+        result = super().post(body, key, **kwargs)
         self.posts.append((body, key))
-        self.add(self.config['worker_id'], body)
-        return {'message_id': self.messages[-1]['event_id'], 'sequence': self.sequence}
+        self.sequence = result['sequence']
+        return result
 
 
 @pytest.fixture
@@ -62,8 +92,8 @@ def pilot(tmp_path):
         'worker_id': 'chatgpt-pilot', 'state_path': str(tmp_path / 'private.sqlite'),
         'callback_hosts': ['callback.example.test'], 'poll_interval': 60,
         'max_events_per_subscription': 20, 'subscription_ttl': 60}
-    hub = Hub(config)
     sent, now = [], [1000.0]
+    hub = Hub(config, lambda: now[0])
     result = {'status': 202}
     def sender(url, body, headers, hosts):
         packet = json.loads(body)
@@ -95,24 +125,24 @@ def test_mcp2_catalog_and_fixed_tool_scope(pilot):
     assert {tool['name'] for tool in rpc(gateway, 'tools/list')['result']['tools']} == {'identity', 'read_delta', 'post_message'}
     assert rpc(gateway, 'events/list')['result']['events'][0]['name'] == cloud.EVENT_NAME
     identity = rpc(gateway, 'tools/call', {'name': 'identity'})['result']['structuredContent']
-    assert identity['worker_id'] == 'chatgpt-pilot' and identity['latest_sequence'] == 100
+    assert identity['worker_id'] == 'chatgpt-pilot' and identity['latest_sequence'] == pilot.hub.sequence
     for name, arguments in [('read_delta', {'after_sequence': 0, 'project_id': 'foreign'}),
                             ('post_message', {'body': 'test', 'idempotency_key': 'a', 'session_id': 'b' * 32}),
                             ('memory_call', {'name': 'approve_memory_change'})]:
         assert 'error' in rpc(gateway, 'tools/call', {'name': name, 'arguments': arguments})
     assert pilot.hub.posts == [] and pilot.hub.reads == []
     result = rpc(gateway, 'tools/call', {'name': 'post_message', 'arguments': {'body': 'hello', 'idempotency_key': 'once'}})
-    assert result['result']['structuredContent']['sequence'] == 101
+    assert result['result']['structuredContent']['sequence'] == pilot.hub.sequence
     assert pilot.hub.posts == [('hello', 'once')]
 
 
 def test_first_subscription_starts_now_signed_and_encrypted(pilot):
     pilot.hub.add(body='historical text must not be delivered')
     receipt = pilot.gateway.subscribe(subscription())
-    pilot.hub.add(body='new confidential body')
+    message = pilot.hub.add(body='new confidential body')
     pilot.gateway.tick()
     delivered = pilot.sent[-1]
-    assert delivered[1]['data']['sequence'] == 102
+    assert delivered[1]['data']['sequence'] == message['sequence']
     assert delivered[1]['data']['preview'] == 'new confidential body'
     headers, body = delivered[2:]
     expected = base64.b64encode(hmac.new(base64.b64decode(SECRET[6:]),
@@ -167,8 +197,8 @@ def test_pause_rechecked_after_read_before_dispatch(pilot):
     pilot.gateway.subscribe(subscription())
     pilot.hub.add()
     read = pilot.hub.read
-    def pause_during_read(*args):
-        result = read(*args)
+    def pause_during_read(*args, **kwargs):
+        result = read(*args, **kwargs)
         pilot.hub.pause = True
         return result
     pilot.hub.read = pause_during_read
@@ -228,11 +258,18 @@ def test_event_budget_refresh_and_expiry_do_not_restart_old_history(pilot):
     for _ in range(3): pilot.hub.add()
     pilot.gateway.tick()
     pilot.gateway.subscribe(subscription())  # refresh preserves cursor/count.
+    notification = pilot.sent[-1][1]['data']['notification_id']
+    pilot.gateway.call('read_delta', {'notification_id': notification})
+    pilot.gateway.call('post_message', {'notification_id': notification, 'body': 'First bounded reply'})
+    pilot.hub.add()
     pilot.gateway.tick()
     pilot.gateway.tick()
     assert len([item for item in pilot.sent if 'eventId' in item[1]]) == 2
     with pytest.raises(cloud.GatewayError, match='budget'):
         pilot.gateway.subscribe(subscription())
+    notification = pilot.sent[-1][1]['data']['notification_id']
+    pilot.gateway.call('read_delta', {'notification_id': notification})
+    pilot.gateway.call('post_message', {'notification_id': notification, 'body': 'Last bounded reply'})
     pilot.gateway.unsubscribe(unsubscribe())
     pilot.gateway.subscribe(subscription())
     pilot.gateway.tick()
@@ -250,9 +287,13 @@ def test_expired_subscription_does_not_send_old_queue_after_refresh(pilot, poll_
         pilot.gateway.tick()
         assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0] == 'expired'
     pilot.result['status'] = 202
+    with pytest.raises(cloud.GatewayError, match='unsubscribe'):
+        pilot.gateway.subscribe(subscription())
+    pilot.gateway.unsubscribe(unsubscribe())
     pilot.gateway.subscribe(subscription())
     pilot.gateway.tick()
-    assert pilot.gateway.db.execute('SELECT state FROM outbox').fetchone()[0] == 'cancelled'
+    assert pilot.gateway.db.execute('SELECT state FROM outbox ORDER BY rowid').fetchone()[0] == 'cancelled'
+    assert pilot.sent[-1][1]['data']['notification_id'] != pilot.sent[1][1]['data']['notification_id']
 
 
 def test_refresh_rotates_encrypted_secret_with_overlap(pilot):
@@ -421,3 +462,260 @@ def test_gateway_dpapi_secret_box_roundtrip():
     cipher = box.encrypt(value)
     assert cipher[:2] == b'D1' and box.decrypt(cipher) == value
     assert SECRET.encode() not in cipher
+
+
+def active_binding(pilot):
+    row = pilot.gateway.db.execute("SELECT binding FROM subscriptions WHERE status='active'").fetchone()
+    return pilot.gateway.box.decrypt(row['binding'])['receipt']
+
+
+def notification(pilot):
+    return [packet[1]['data']['notification_id'] for packet in pilot.sent if 'eventId' in packet[1]][-1]
+
+
+def read_batch(pilot, identifier):
+    args = {'notification_id': identifier, 'limit': 1}
+    pages = []
+    for _ in range(20):
+        page = pilot.gateway.call('read_delta', args)
+        pages.append(page)
+        if not page['delivery_receipt']['unread_message_ids']:
+            return pages
+        args['after_sequence'] = page['next_after_sequence']
+    raise AssertionError('Batch did not complete within 20 events')
+
+
+def test_protocol_success_envelopes_and_callback_diagnostic_are_bounded(pilot, capsys):
+    for method in ['server/discover', 'tools/list', 'events/list', 'ping']:
+        assert rpc(pilot.gateway, method)['result']['resultType'] == 'complete'
+    discovered = rpc(pilot.gateway, 'server/discover')['result']
+    assert discovered['_meta']['io.modelcontextprotocol/serverInfo']['name']
+    assert rpc(pilot.gateway, 'tools/call', {'name':'identity'})['result']['resultType'] == 'complete'
+    host = 'unlisted-fixture.example.test'
+    with pytest.raises(cloud.GatewayError):
+        cloud.callback_url('https://' + host + '/private-callback?secret=do-not-log', [])
+    diagnostic = capsys.readouterr().err
+    assert json.loads(diagnostic) == {'event':'callback_host_not_allowed', 'hostname':host}
+    assert 'private-callback' not in diagnostic and 'do-not-log' not in diagnostic
+
+
+def test_native_batch_pages_full_escaped_message_receipts_and_stable_reply(pilot):
+    pilot.gateway.subscribe(subscription())
+    huge = 'boundary-' + chr(1) * 7980 + '-END'
+    pilot.hub.add(body=huge)
+    for _ in range(4): pilot.hub.add(body='second page ' * 300)
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    binding = active_binding(pilot)
+    state = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
+    assert state['latest_delivery']['status'] == 'dispatched'
+    assert state['latest_delivery']['read_at'] is None
+    assert state['processed_sequence'] == binding['processed_sequence']
+    with pytest.raises(cloud.GatewayError, match='delivery_not_read'):
+        pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Complete reply'})
+    pages = read_batch(pilot, identifier)
+    assert len(pages) == 5 and pages[0]['items'][0]['body'] == huge
+    assert all(page['returned_bytes'] <= 65536 for page in pages)
+    assert pages[0]['returned_bytes'] > 16384  # The escaped message used the one-event fallback.
+    result = pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Complete reply'})
+    assert result['delivery_receipt']['status'] == 'replied'
+    assert pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Complete reply'}) == result
+    assert len(pilot.hub.posts) == 1
+    written = pilot.hub.read(result['sequence'] - 1, 1, full_text=True)['items'][0]
+    assert written['automatic_reply_depth'] == 1
+    with pytest.raises(cloud.GatewayError):
+        pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'A different reply'})
+    with pytest.raises(cloud.GatewayError):
+        pilot.gateway.call('post_message', {'body':'Drop metadata to bypass', 'idempotency_key':'ordinary'})
+
+
+def test_cloud_and_other_ai_causal_depth_stops_then_human_restarts(pilot):
+    from memory_hub.session_service import SessionActor
+    pilot.gateway.subscribe(subscription())
+    root = pilot.hub.add()
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    read_batch(pilot, identifier)
+    pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Cloud depth one'})
+    other_actor = SessionActor.from_principal(pilot.hub.other)
+    common = {'project_id':'pilot', 'session_id':pilot.config['session_id']}
+    other = pilot.hub.real.delivery.call('join', {**common, 'client':'claude', 'display_name':'Other AI',
+        'native_session_id':'synthetic-other', 'after_sequence':root['sequence'], 'idempotency_key':'other'}, other_actor)
+    delivery = pilot.hub.real.delivery.call('claim', {'project_id':'pilot', 'binding_id':other['binding_id']}, other_actor)['delivery']
+    args = {**common, 'delivery_id':delivery['delivery_id'], 'lease_id':delivery['lease_id']}
+    pilot.hub.real.call('read_session', {**args, 'after_sequence':delivery['after_sequence'], 'full_text':True}, pilot.hub.other)
+    reply = pilot.hub.real.call('post_session_message', {**args, 'body':'Other depth two',
+        'idempotency_key':delivery['reply_idempotency_key']}, pilot.hub.other)
+    assert pilot.hub.read(reply['sequence'] - 1, 1)['items'][0]['automatic_reply_depth'] == 2
+    before = len(pilot.sent)
+    pilot.gateway.tick()
+    assert len(pilot.sent) == before  # A depth-2 AI reply is visible but cannot wake the cloud.
+    pilot.hub.add(body='A new human root')
+    pilot.gateway.tick()
+    assert len(pilot.sent) == before + 1
+    identifier = notification(pilot)
+    read_batch(pilot, identifier)
+    again = pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Fresh depth one'})
+    assert pilot.hub.read(again['sequence'] - 1, 1)['items'][0]['automatic_reply_depth'] == 1
+
+
+def test_pause_fences_old_notification_and_never_rebinds_it_to_new_batch(pilot):
+    from memory_hub.session_service import SessionActor
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    old = notification(pilot)
+    read_batch(pilot, old)
+    admin = SessionActor('human', 'admin', 'Admin', ('pilot',), 'admin')
+    common = {'project_id':'pilot', 'session_id':pilot.config['session_id']}
+    pilot.hub.real.delivery.call('pause', {**common, 'paused':True, 'expected_version':1}, admin)
+    with pytest.raises(cloud.GatewayError):
+        pilot.gateway.call('post_message', {'notification_id':old, 'body':'Late reply'})
+    pilot.hub.real.delivery.call('pause', {**common, 'paused':False, 'expected_version':2}, admin)
+    pilot.gateway.tick()
+    new = notification(pilot)
+    assert new != old
+    with pytest.raises(cloud.GatewayError, match='superseded'):
+        pilot.gateway.call('read_delta', {'notification_id':old})
+    read_batch(pilot, new)
+    pilot.gateway.call('post_message', {'notification_id':new, 'body':'Fresh fenced reply'})
+
+
+def test_claim_response_loss_waits_for_lease_and_does_not_double_claim(pilot):
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    relay = pilot.hub.relay
+    dropped = [False]
+    def lose_claim(operation, **kwargs):
+        result = relay(operation, **kwargs)
+        if operation == 'claim' and result['status'] == 'ready' and not dropped[0]:
+            dropped[0] = True
+            raise cloud.GatewayError('Synthetic response lost')
+        return result
+    pilot.hub.relay = lose_claim
+    with pytest.raises(cloud.GatewayError): pilot.gateway.tick()
+    for _ in range(4): pilot.gateway.tick()
+    assert len(pilot.sent) == 1  # Only callback verification, no model start via a callback.
+    binding = active_binding(pilot)
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
+    pilot.now[0] += 301
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 2
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 2
+
+
+def test_reply_response_loss_reconciles_and_retries_without_duplicate(pilot):
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    read_batch(pilot, identifier)
+    post = pilot.hub.post
+    dropped = [False]
+    def lose_reply(*args, **kwargs):
+        result = post(*args, **kwargs)
+        if not dropped[0]:
+            dropped[0] = True
+            raise cloud.GatewayError('Synthetic response lost')
+        return result
+    pilot.hub.post = lose_reply
+    with pytest.raises(cloud.GatewayError):
+        pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Exactly once'})
+    pilot.gateway.db.close()
+    pilot.gateway = cloud.Gateway(pilot.config, pilot.hub, box=cloud.SecretBox(KEY), sender=pilot.sender, clock=lambda:pilot.now[0])
+    pilot.gateway.tick()
+    result = pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Exactly once'})
+    events = pilot.hub.read(result['sequence'] - 1, 10, full_text=True)['items']
+    assert sum(x.get('body') == 'Exactly once' for x in events) == 1
+    assert result['delivery_receipt']['status'] == 'replied'
+
+
+def test_unsubscribe_and_stop_disconnect_only_owned_generation(pilot):
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    old = notification(pilot)
+    first = active_binding(pilot)
+    pilot.gateway.unsubscribe(unsubscribe())
+    assert pilot.hub.relay('heartbeat', binding_id=first['binding_id'])['status'] == 'disconnected'
+    with pytest.raises(cloud.GatewayError): pilot.gateway.call('read_delta', {'notification_id':old})
+    another = URL + '-another'
+    pilot.gateway.subscribe(subscription(url=another))
+    second = active_binding(pilot)
+    assert second['generation'] > first['generation']
+    assert second['processed_sequence'] == first['processed_sequence']
+    pilot.gateway.stop()
+    assert pilot.hub.relay('heartbeat', binding_id=second['binding_id'])['status'] == 'disconnected'
+
+
+def test_hub_http_budget_error_retries_one_full_event_only(tmp_path, monkeypatch):
+    config = {'hub_url':'https://hub.example.test', 'project_id':'pilot', 'session_id':'a'*32,
+        'ca_file':str(tmp_path/'ca.crt'), 'ca_sha256':'a'*64}
+    monkeypatch.setattr(cloud, 'verified_context', lambda value: True)
+    client = cloud.HubClient(config, 'synthetic-worker-token')
+    client.http.close()
+    calls = []
+    def handler(request):
+        args = json.loads(request.content)['arguments']
+        calls.append(args)
+        if len(calls) == 1:
+            return httpx.Response(422, json={'error':'response_budget_too_small', 'message':'bounded fixture'})
+        return httpx.Response(200, json={'session':{'project_id':'pilot', 'session_id':'a'*32}, 'items':[]})
+    client.http = httpx.Client(transport=httpx.MockTransport(handler))
+    client.read(12, 10, full_text=True, delivery={'delivery_id':'d'*32, 'lease_id':'e'*32})
+    assert [x['max_bytes'] for x in calls] == [16384,65536]
+    assert [x['limit'] for x in calls] == [10,1]
+    assert all(x['full_text'] and x['delivery_id']=='d'*32 and x['lease_id']=='e'*32 for x in calls)
+
+
+def test_expired_batch_gets_fresh_notification_and_old_reply_cannot_write(pilot):
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    old = notification(pilot)
+    read_batch(pilot, old)
+    pilot.now[0] += 301
+    with pytest.raises(cloud.GatewayError, match='expired'):
+        pilot.gateway.call('post_message', {'notification_id':old, 'body':'Late reply'})
+    pilot.gateway.tick()
+    new = notification(pilot)
+    assert new != old
+    rows = pilot.gateway.db.execute('SELECT delivery FROM batches ORDER BY rowid').fetchall()
+    before, after = [pilot.gateway.box.decrypt(x[0]) for x in rows]
+    assert before['delivery_id'] == after['delivery_id']
+    assert before['reply_idempotency_key'] == after['reply_idempotency_key']
+    assert before['lease_id'] != after['lease_id']
+    assert not pilot.hub.posts
+    read_batch(pilot, new)
+    pilot.gateway.call('post_message', {'notification_id':new, 'body':'Live reply'})
+
+
+def test_ambiguous_join_reuses_key_and_never_resets_cursor_or_budget(pilot):
+    relay = pilot.hub.relay
+    dropped = [False]
+    def lose_join(operation, **kwargs):
+        result = relay(operation, **kwargs)
+        if operation == 'join' and not dropped[0]:
+            dropped[0] = True
+            raise cloud.GatewayError('Synthetic join response lost')
+        return result
+    pilot.hub.relay = lose_join
+    with pytest.raises(cloud.GatewayError): pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.subscribe(subscription())
+    binding = active_binding(pilot)
+    assert binding['generation'] == 1
+    pilot.gateway.tick()
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
+    assert len(pilot.sent[-1][1]['data']['message_ids']) == 1
+
+
+def test_manual_read_has_full_text_path_before_monitoring(pilot):
+    before = pilot.hub.sequence
+    body = 'Full message ' * 300
+    pilot.hub.add(body=body)
+    page = pilot.gateway.call('read_delta', {'after_sequence':before})
+    assert page['items'][0]['body'] == body and not page['items'][0]['body_truncated']
+    assert 'delivery_receipt' not in page
