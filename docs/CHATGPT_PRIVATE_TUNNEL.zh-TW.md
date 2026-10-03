@@ -6,6 +6,19 @@
 
 程式測試不能代替 ChatGPT 驗收。請分別記錄工具探索、實際雲端工具呼叫、訂閱驗證、webhook 接收、模型啟動與 Hub 寫回。webhook `2xx` 只代表 **received**，不代表 **replied**。
 
+
+## 原生事件監聽：單事件實測通過
+
+Hub `24f3173` 單事件 native ChatGPT 驗收 passed：原生 event-triggered Automation 訂閱、signed challenge 通過、收到人類事件後無額外 Work prompt 即完整讀取／回覆 Hub，之後 unsubscribe 與 task paused。不是 cron 或 polling Automation；完整 lifecycle/expiry/offline/revocation 仍 pending。見[最新驗證](VALIDATION_2026-10-03.zh-TW.md)。
+
+1. 啟動 fixed-worker gateway/private tunnel，refresh plugin，確認 identity 與 message.created discovery。
+2. Work chat 明確要求 **event-triggered Automation** 監聽此固定房 message.created，以 notification_id 完整 read、單次 reply，處理指定事件後停止。events/subscribe 是協定方法，沒有同名一般 model tool 不足以判定失敗。
+3. 確認真正 subscription、callback challenge、持久保存。泛用 task creation failure 時，只檢查 gateway 去秘密 hostname-only denial。callback_host_not_allowed：驗證觀察 hostname，只加入該精確 hostname、restart、明確 retry。本 pilot 觀察為 connectors.api.openai.com；不猜測、不用 wildcard、不關閉 TLS/public-DNS/IP-pin/no-redirect/challenge。
+4. 只在 Hub 建 matching 人類事件，不追加 Work prompt；核對 signed webhook acknowledgement、native full read/reply、Hub receipt/cursor 與要求的 unsubscribe/task pause。Discovery／建立 task 訊息本身不是 action 證據。
+
+首次空 allowlist 的 callback refusal 與泛用 task-service failure 保留；精確 hostname 修正只解決此拒絕，不保證所有環境相同 hostname。憑證與真 callback URL 保持私人。
+
+
 ## 功能與前置條件
 
 - `identity` 驗證固定 worker／專案／房間、最新序號與共同暫停狀態。

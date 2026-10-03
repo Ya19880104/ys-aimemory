@@ -6,6 +6,19 @@ This pilot connects **one dedicated Hub worker to one project and one shared roo
 
 Source tests are not ChatGPT acceptance. Record tool discovery, actual cloud tool calls, subscription verification, webhook receipt, model response and Hub write-back separately. A webhook `2xx` is only **received**, not **replied**.
 
+
+## Native event monitoring: observed single-event pass
+
+Native ChatGPT event acceptance passed for one event against Hub `24f3173`: a native event-triggered Automation subscribed, verified its signed callback challenge, received one matching human event and posted the Hub reply without an additional Work prompt. It then unsubscribed and paused the task. This is neither a cron task nor a polling Automation. Full lifecycle/expiry/offline/revocation acceptance remains pending. See [latest validation](VALIDATION_2026-10-03.md).
+
+1. Start the fixed-worker gateway and private tunnel; load/refresh the plugin and confirm identity plus message.created discovery.
+2. In a Work chat, explicitly ask for an **event-triggered Automation** monitoring message.created in this fixed room. Instruct it to use notification_id for full read and one reply, then stop after the requested event. events/subscribe is a protocol method, so absence of a regular model tool named subscribe is insufficient evidence of failure.
+3. Verify actual subscription creation, callback challenge and persisted subscription. If task creation fails generically, inspect only the gateway's sanitized hostname-only denial. For callback_host_not_allowed, verify the observed hostname and add only that exact hostname to callback_hosts; restart and explicitly retry. The observed pilot used connectors.api.openai.com. Do not guess, use wildcards or disable TLS/public-DNS/IP-pinning/no-redirect/challenge safeguards.
+4. Create a matching human event in the Hub only; send no further Work prompt. Verify signed webhook acknowledgement, native full read/reply, matching Hub receipt/cursor, and requested unsubscribe/task pause. Discovery or a task-creation message alone is not action proof.
+
+The first native task creation failed with the callback allowlist empty; the refusal and generic task-service failure remain preserved. Adding the observed exact hostname resolved this particular refusal. This hostname is an observed pilot value, not a universal callback-host guarantee. Credentials and real callback URLs remain private.
+
+
 ## What is included
 
 - `identity`: verifies the configured worker and room; returns the latest sequence and shared pause state.

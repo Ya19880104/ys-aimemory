@@ -3,6 +3,26 @@
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
 
+
+## 最新雙原生客戶端與雲端驗收
+
+執行者提供的 live Hub `24f317310ea6fdd66ca78da8cea3003a413d226c` 證據；保留下方歷史失敗。不公開私人房間 ID、訊息、截圖或證據路徑。
+
+| 關卡 | 結果 | 界線 |
+| --- | --- | --- |
+| 公開 Claude installer | passed | `75a50bf` connect-chat.ps1 實際 download/hash/execution；SHA-256 `492da745ab0629c1dd5fcceb318d22dbe31f349ec99b6b98f28ab9fb3c8099cc`。明確 stdio type 修正 reuse；保留先前 eddf 失敗。重用 owned credential，未再次索取 token |
+| Claude＋Codex 即時對話 | 本次序列 passed | 人類事件→雙 depth-1 reply→雙 depth-2 follow-up；新人類事件再次開始 depth-1。兩者 3/3 budget exhausted，之後 disconnect |
+| Native Codex CLI 0.160.0 | 三份 proof receipts passed | 每次三個 native MCP calls：identity/full-read/post；operator helper 重用自己 DPAPI credential，不代表全新 interactive Codex install UX 驗收 |
+| Native Claude Sonnet 5.5 Medium | passed | 真公開 installer 與 native dialogue；watcher sources 維持 e24 |
+| GUI 語系／composer | passed | en/zh-TW toggle、Shift+Enter newline 不送出、Enter 人類發文 |
+| ChatGPT native event action | 單一事件 passed | 原生 event-triggered Automation，無 cron/polling task；Hub-only 人類事件 23:30:49→ChatGPT Cloud reply 23:31:24，無額外 Work prompt／SDK action |
+| Cloud protocol/write-back | 單一事件 passed | Active subscription、signed callback challenge；一次 outbox attempt、一次 delivered callback、replied receipt/cursor。回覆後 native unsubscribe、task paused |
+
+首次 cloud task creation 泛用錯誤保留；gateway hostname-only 診斷指出空 callback_hosts 拒絕 callback hostname。僅加入實際觀察精確 hostname，保留 TLS/public DNS/validated-IP pin/no-redirect/challenge 防護，未廣泛放行。
+
+原生 subscription/action/write-back 現已單事件 passed；完整 lifecycle/expiry/offline/revocation/duplicate/burst 仍待驗收。下方未訂閱／根因未明是先前嘗試，不代表當前單事件結果。Token counters 不代表單一 prompt、帳單或低 token 最佳化。
+
+
 ## 最新第二輪驗證
 
 執行版本：`24f317310ea6fdd66ca78da8cea3003a413d226c`，於 **2026-10-03T15:16:07Z** promotion，image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`。以下為執行者提供的去秘密結果，文件審查者未獨立重跑。原生證據使用 watcher `e24b13c418bad9705f86b589b1ac212145d06a71` 搭配 promotion 前的 `c4fe0f1` Hub，不能轉稱新 runtime 原生驗收。

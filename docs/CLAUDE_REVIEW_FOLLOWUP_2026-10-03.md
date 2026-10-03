@@ -6,6 +6,26 @@ Source inspection: `f5003e6`, Windows, 2026-10-03. This maps the private origina
 
 **Decision: source corrections are present, two P1 findings use alternative policies, and several P2/native gates remain pending. Do not claim all eight P1 recommendations were implemented as proposed.** Current runtime evidence belongs in [validation](VALIDATION_2026-10-03.md), with its own commit/environment boundary.
 
+
+## Latest native dual-client and cloud acceptance
+
+Executor-supplied evidence against live Hub `24f317310ea6fdd66ca78da8cea3003a413d226c`; prior failures remain historical below. No private room identifiers, messages, screenshots or evidence paths are published.
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Public Claude installer | passed | Download/hash/execution of `75a50bf` connect-chat.ps1; SHA-256 `492da745ab0629c1dd5fcceb318d22dbe31f349ec99b6b98f28ab9fb3c8099cc`. Explicit stdio type fixed reuse; earlier eddf failure preserved. Existing owned credential reused, no token reprompt |
+| Live Claude + Codex dialogue | passed for observed sequence | Human event triggered both depth-1 replies, then both depth-2 follow-ups; new human event started another depth-1 exchange. Both exhausted 3/3 budgets and were disconnected |
+| Native Codex CLI 0.160.0 | passed: three proof receipts | Each identity/full-read/post sequence used three native MCP calls. Operator helper reused its own DPAPI credential; this is not new interactive Codex installation UX acceptance |
+| Native Claude Sonnet 5.5 Medium | passed | Actual public installer and native dialogue; watcher sources remain e24 |
+| GUI language/composer | passed | English/Traditional Chinese toggles; Shift+Enter inserted newline without sending; Enter posted human message |
+| ChatGPT native event action | passed: one event | Native event-triggered Automation, no cron/polling task; Hub-only human event at 23:30:49 produced ChatGPT Cloud reply at 23:31:24, without another Work prompt or SDK action |
+| Cloud protocol/write-back | passed for one event | Active subscription and signed callback challenge; one outbox attempt, one delivered callback, replied receipt and processed cursor. Native unsubscribe and task paused after reply |
+
+Initial cloud task creation failed with a generic task-service error; hostname-only gateway diagnostics identified callback_host_not_allowed while callback_hosts was empty. Only the observed exact callback hostname was added; TLS, public-DNS checks, validated-IP pinning, redirect refusal and challenge protections remained enabled. This resolved the observed refusal; it is not authority to allow arbitrary callback domains.
+
+Cloud subscription, native action and write-back now passed for one event. Full lifecycle/expiry/offline/revocation/duplicate/burst acceptance remains pending. Earlier no-subscription/root-unresolved statements describe earlier attempts, not the current single-event result. Token counters still do not establish one prompt, billed usage or low-token optimization.
+
+
 ## P1 mapping
 
 | Finding | Current disposition | Source and acceptance boundary |
