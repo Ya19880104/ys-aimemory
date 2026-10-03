@@ -3308,12 +3308,12 @@
     "zh-TW": "在 Windows PowerShell 下載、驗證並審閱安裝器，再執行。使用 Python 3.12 並登入所選模型供應商。自己的專用 worker Token 僅輸入安裝器的隱藏提示，勿貼入 AI 對話或網址。確認其身分符合下列 worker ID。"
   },
   "ui_aa001011": {
-    "en": "Choose the exact existing local project directory opened by Claude Code and replace REPLACE_WITH_EXACT_LOCAL_PROJECT. Run the installer, then open a NEW Claude chat in that directory and send the exact activation prompt printed by the installer. Verify its receipt and use its disconnect command to stop.",
-    "zh-TW": "選擇 Claude Code 開啟的確切既有本機專案目錄，替換 REPLACE_WITH_EXACT_LOCAL_PROJECT。執行安裝器後在該目錄開啟新的 Claude 對話，送出安裝器顯示的完整啟用提示。驗證回條並使用其 disconnect 命令停止。"
+    "en": "Choose the exact existing local project directory opened by Claude Code and replace REPLACE_WITH_EXACT_LOCAL_PROJECT. After reviewing the installer, remove the leading # from the installation command and run it. Open a NEW Claude chat in that directory and send the exact activation prompt printed by the installer. To stop, follow the automatic-chat guide using the receipt’s lifecycle_python and lifecycle_script fields.",
+    "zh-TW": "選擇 Claude Code 開啟的確切既有本機專案目錄，替換 REPLACE_WITH_EXACT_LOCAL_PROJECT。審閱安裝器後移除安裝命令開頭的 # 再執行。在該目錄開啟新的 Claude 對話，送出安裝器顯示的完整啟用提示。停止時依自動接話指南，使用回條的 lifecycle_python 與 lifecycle_script 欄位。"
   },
   "ui_aa001012": {
-    "en": "This command installs only. Review the receipt’s exact start_command, stop_command and inspect_command; explicitly run start_command to enable bounded replies. It starts dedicated Codex CLI turns and does not inject an existing Desktop chat.",
-    "zh-TW": "此命令僅安裝。審閱回條中的確切 start_command、stop_command 與 inspect_command，再明確執行 start_command 啟用有限回合回覆。它啟動專用 Codex CLI 回合，不會注入既有桌面對話。"
+    "en": "After reviewing the installer, remove the leading # from the installation command and run it. This command installs only. Review the receipt’s exact start_command, stop_command and inspect_command; explicitly run start_command to enable bounded replies. It starts dedicated Codex CLI turns and does not inject an existing Desktop chat.",
+    "zh-TW": "審閱安裝器後移除安裝命令開頭的 # 再執行。此命令僅安裝。審閱回條中的確切 start_command、stop_command 與 inspect_command，再明確執行 start_command 啟用有限回合回覆。它啟動專用 Codex CLI 回合，不會注入既有桌面對話。"
   },
   "ui_aa001013": {
     "en": "Ask your administrator for a dedicated worker ID and its matching Token for this same project. Enter the Token only in the local installer’s hidden prompt; existing credential lists cannot reveal it again.",
@@ -3322,5 +3322,13 @@
   "ui_aa001014": {
     "en": "Claude requires the exact existing local project directory opened by Claude Code. Your local AI should confirm that directory before installing.",
     "zh-TW": "Claude 需要與 Claude Code 開啟位置相同的確切既有本機專案目錄。請讓地端 AI 在安裝前確認該目錄。"
+  },
+  "ui_aa001015": {
+    "en": "STEP 1 — Download, verify, and review. This section does not install or activate a receiver.",
+    "zh-TW": "步驟一：下載、驗證及審閱。此區塊不會安裝或啟用接收器。"
+  },
+  "ui_aa001016": {
+    "en": "STEP 2 — Only after reviewing the file, run the installation command below by removing its leading #. It is intentionally a comment so pasting this entire guide cannot install or activate a receiver.",
+    "zh-TW": "步驟二：審閱檔案後，移除下方安裝命令開頭的 # 再執行。命令刻意保持註解，貼上整份指引不會安裝或啟用接收器。"
   }
 }

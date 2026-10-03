@@ -263,3 +263,51 @@ copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if
 """
     result = subprocess.run([node, '-e', harness], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_complete_installation_payload_is_safe_powershell_with_hostile_worker():
+    import shutil
+    import subprocess
+    from memory_hub.web_chat_assets import CHAT_JS
+    from memory_hub.i18n import CATALOG
+    node = shutil.which('node')
+    powershell = shutil.which('pwsh') or shutil.which('powershell')
+    if not node or not powershell:
+        pytest.skip('Node.js and PowerShell required for generated payload parser check')
+    worker = "worker;$(Write-Output 'SHOULD_NOT_EXECUTE')"
+    handler = CHAT_JS[CHAT_JS.index("  $('auto-client').onchange="):CHAT_JS.index("  $('copy-invite').onclick=")]
+    harness = "const CATALOG=" + json.dumps({key: value for key, value in CATALOG.items() if key.startswith("ui_aa001") or key in ("ui_872bc28ee946", "ui_ce0fe4db3088")}, ensure_ascii=True) + ";" + r"""
+const fields={'auto-worker':{value:WORKER},'auto-hours':{value:'1'},'auto-turns':{value:'6'},'auto-client':{value:'codex'},'auto-instructions':{},'auto-setup-status':{}};
+const $=id=>fields[id]||(fields[id]={});
+const state={project:'shared',room:{session_id:'a'.repeat(32)}};
+const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32)}};
+let UI_LANGUAGE='en';const uiText=key=>CATALOG[key][UI_LANGUAGE];let copied='';
+const navigator={clipboard:{writeText:async text=>{copied=text;}}};
+""".replace('WORKER', json.dumps(worker)) + handler + r"""
+(async()=>{const payloads=[];for(const lang of ['en','zh-TW'])for(const client of ['claude','codex']){UI_LANGUAGE=lang;fields['auto-client'].value=client;await $('copy-auto-setup').onclick();payloads.push({text:copied,worker:fields['auto-worker'].value,client});}console.log(JSON.stringify(payloads));})().catch(e=>{console.error(e);process.exitCode=1});
+"""
+    generated = subprocess.run([node, '-e', harness], capture_output=True, text=True, encoding='utf-8')
+    assert generated.returncode == 0, generated.stderr
+    parser = r"""
+[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
+$items = [Console]::In.ReadToEnd() | ConvertFrom-Json
+foreach ($item in $items) {
+    $tokens=$null; $errors=$null
+    $ast=[System.Management.Automation.Language.Parser]::ParseInput($item.text,[ref]$tokens,[ref]$errors)
+    if ($errors.Count) { throw 'Complete guide failed PowerShell parsing' }
+    $commands=@($ast.FindAll({param($n) $n -is [System.Management.Automation.Language.CommandAst]},$true))
+    foreach ($command in $commands) { if ($command.GetCommandName() -notin @('Join-Path','Invoke-WebRequest','Get-FileHash','notepad')) { throw 'Unexpected executable command in complete guide' } }
+    $line=@($item.text -split "`n" | Where-Object { $_.StartsWith('# & $Installer ') })
+    if ($line.Count -ne 1) { throw 'Missing separate commented installation command' }
+    $install=[System.Management.Automation.Language.Parser]::ParseInput($line[0].Substring(2),[ref]$tokens,[ref]$errors)
+    if ($errors.Count) { throw 'Installation command failed parsing' }
+    $calls=@($install.FindAll({param($n) $n -is [System.Management.Automation.Language.CommandAst]},$true))
+    if ($calls.Count -ne 1) { throw 'Worker added an executable command' }
+    if ($item.client -eq 'codex') {
+        $literal=@($install.FindAll({param($n) $n -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $n.Value -eq $item.worker},$true))
+        if ($literal.Count -ne 1) { throw 'Worker is not an exact literal parameter' }
+    }
+}
+"""
+    checked = subprocess.run([powershell, '-NoProfile', '-NonInteractive', '-Command', parser], input=generated.stdout, capture_output=True, text=True, encoding='utf-8')
+    assert checked.returncode == 0, checked.stderr
