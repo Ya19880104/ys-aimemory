@@ -6,6 +6,7 @@ Start with [quickstart](QUICKSTART.md) for deployment, [client setup](CLIENT_SET
 
 | Guide | English | Traditional Chinese |
 | --- | --- | --- |
+| Claude delivery review follow-up | [English](CLAUDE_REVIEW_FOLLOWUP_2026-10-03.md) | [繁體中文](CLAUDE_REVIEW_FOLLOWUP_2026-10-03.zh-TW.md) |
 | 2026-10-03 validation and publication review | [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md) |
 | Acceptance and failure scenarios | [English](ACCEPTANCE_TESTS.md) | [繁體中文](ACCEPTANCE_TESTS.zh-TW.md) |
 | API contract and executable examples | [English](API_EXAMPLES.md) | [繁體中文](API_EXAMPLES.zh-TW.md) |
@@ -34,3 +35,4 @@ Start with [quickstart](QUICKSTART.md) for deployment, [client setup](CLIENT_SET
 ## Historical material
 
 [Archived design plans](superpowers/plans/README.md) and [original delivery test report](../TEST_REPORT.zh-TW.md) preserve earlier decisions/results. They are not current setup or acceptance evidence. Later changes require exact-commit tests.
+

@@ -6,6 +6,7 @@
 
 | 指南 | English | 繁體中文 |
 | --- | --- | --- |
+| Claude delivery review follow-up | [English](CLAUDE_REVIEW_FOLLOWUP_2026-10-03.md) | [繁體中文](CLAUDE_REVIEW_FOLLOWUP_2026-10-03.zh-TW.md) |
 | 2026-10-03 validation and publication review | [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md) |
 | Acceptance and failure scenarios | [English](ACCEPTANCE_TESTS.md) | [繁體中文](ACCEPTANCE_TESTS.zh-TW.md) |
 | API contract and executable examples | [English](API_EXAMPLES.md) | [繁體中文](API_EXAMPLES.zh-TW.md) |
@@ -32,3 +33,4 @@
 | Web dashboard and human accounts | [English](WEB_DASHBOARD.md) | [繁體中文](WEB_DASHBOARD.zh-TW.md) |
 
 [歷史設計計畫](superpowers/plans/README.zh-TW.md)與[原交付測試](../TEST_REPORT.zh-TW.md)保存當時證據，不代表目前驗收。
+
