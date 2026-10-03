@@ -266,12 +266,13 @@ async function deliveryStateAndPause() {
   let paused=false,version=1;
   const participants=[{worker_id:'worker-a',display_name:'Codex',status:'processing',relay_online:true,turns_used:2,max_turns:20,latest_delivery:{status:'dispatched',through_sequence:9}},
     {worker_id:'worker-b',display_name:'Claude',status:'offline',relay_online:false,turns_used:1,max_turns:10,latest_delivery:{status:'replied',through_sequence:8,reply_sequence:10}},
-    {worker_id:'worker-c',display_name:'Disconnected client',status:'disconnected',relay_online:false}];
+    {worker_id:'worker-c',display_name:'Disconnected client',status:'disconnected',relay_online:false,latest_delivery:{status:'retry_ready',through_sequence:11}}];
   const ui=boot(q=>{if(q.op==='list')return listing([roomB]);if(q.op==='read')return reading(roomB);if(q.op==='nonce'){assert.equal(q.action,'set_session_delivery_paused');return {nonce:'single-use-browser-nonce'};}assert.equal(q.op,'delivery');return {control:{paused,version},participants,has_more:false};},roomB.session_id,
     {deliveryHandler:true,writeHandler:body=>{assert.equal(body.action,'set_session_delivery_paused');assert.equal(body.nonce,'single-use-browser-nonce');assert.equal(body.arguments.expected_version,version);assert.equal(body.arguments.project_id,'alpha');assert.equal(body.arguments.session_id,roomB.session_id);assert.ok(body.arguments.idempotency_key);paused=body.arguments.paused;version++;return {paused,version,running_turns_cancelled:false};}});
   await settle();assert.equal(ui.get('pause-delivery').hidden,false);assert.equal(ui.get('pause-delivery').disabled,false);
   assert.ok(ui.get('delivery-participants').textContent.includes(label('Handed to client', '已交給客戶端')));
   assert.ok(ui.get('delivery-participants').textContent.includes(label('Disconnected', '已中斷自動接話')));
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Ready to retry', '待重試認領')));
   assert.ok(!ui.get('delivery-participants').textContent.includes(label('AI received', 'AI 已收到')),'Transport receipt must not imply model read');
   assert.ok(ui.get('delivery-participants').textContent.includes(label('Reply to #10', '回覆 #10')));
   assert.ok(ui.get('delivery-participants').textContent.includes(label('Connection offline', '接線離線')));

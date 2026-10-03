@@ -3258,5 +3258,9 @@
   "automatic_setup_guide": {
     "zh-TW": "安裝、加入、續期與中斷步驟",
     "en": "Install, join, renew, and disconnect instructions"
+  },
+  "ui_642fcc1b1e7f": {
+    "zh-TW": "待重試認領",
+    "en": "Ready to retry"
   }
 }
