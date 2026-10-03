@@ -12,9 +12,9 @@
 
 工具定義、回傳內容、模型推理與客戶端快取都會影響成本。compact 可減少初始工具清單，但第一次搜尋／取得 schema 多了來回，不保證每個任務都較省，也沒有固定節省百分比。
 
-## 1.1.0 compact adapter 的契約
+## 1.1.1 compact adapter 的契約
 
-從已驗證 HTTPS 下載 `/downloads/ys-memory-stdio-1.1.0.zip`，按 [客戶端接線](CLIENT_SETUP.zh-TW.md) 在自選新目錄建立 `.venv`。推薦產生 compact 設定：
+從已驗證 HTTPS 下載 `/downloads/ys-memory-stdio-1.1.1.zip`，按 [客戶端接線](CLIENT_SETUP.zh-TW.md) 在自選新目錄建立 `.venv`。推薦產生 compact 設定：
 
 ```powershell
 .\.venv\Scripts\python.exe .\bridge.py --compact --print-claude-config
@@ -29,6 +29,8 @@ compact 的 `initialize`／`tools/list` 只在本機驗證公開 CA 與連線配
 - `memory_call(name, arguments)`：將原工具的完整 arguments 送到 Hub 一次。**這個通用入口可能寫入**，不是唯讀工具；Hub 仍依原 token 驗證 worker、角色、project 和 schema。
 
 搜尋與呼叫都會以啟動程序的 `YS_AIMEMORY_TOKEN` 開啟一次新的、嚴格驗證 TLS 的 MCP session；完成即關閉。不快取 token、schema 或歷史，不自動重試。compact 的 **Connected 只表示本機 adapter 就緒**，不能證明 Hub 在線、token 有效或模型完成對話。需實際呼叫身份工具驗收。
+
+1.1.1 修正 SDK 在 `memory_call` 成功後自動查詢輸出 schema 的額外 `tools/list`：現在呼叫本身不抓整份目錄，也不會因事後發現服務失敗而丟失已成功的結果。`memory_tools` 的搜尋／取 schema 仍會讀取上游目錄，但只回傳受限結果；這是傳輸與正確性修正，不是已量測的模型 Token 節省百分比。
 
 例如先呼叫 `memory_tools`：
 

@@ -47,7 +47,7 @@ bash scripts/preflight.sh --tls
 docker compose --profile tls up -d --build
 ```
 
-從 Windows 瀏覽器開 `https://已驗證主機名:8443/ui`，支援 Streamable HTTP 的官方 AI 客戶端各接 `/mcp`。Claude Code 可從同一 HTTPS origin 的 `/downloads/ys-memory-stdio-1.1.0.zip` 下載 stdio → HTTPS 安裝包；CA 與專案設定步驟見 [客戶端接線](CLIENT_SETUP.zh-TW.md)。按 [演練](API_EXAMPLES.zh-TW.md) 與 [驗收清單](ACCEPTANCE_TESTS.zh-TW.md) 驗證身份隔離和交接，安裝不代表原生對話已通過。
+從 Windows 瀏覽器開 `https://已驗證主機名:8443/ui`，支援 Streamable HTTP 的官方 AI 客戶端各接 `/mcp`。Claude Code 可從同一 HTTPS origin 的 `/downloads/ys-memory-stdio-1.1.1.zip` 下載 stdio → HTTPS 安裝包；CA 與專案設定步驟見 [客戶端接線](CLIENT_SETUP.zh-TW.md)。按 [演練](API_EXAMPLES.zh-TW.md) 與 [驗收清單](ACCEPTANCE_TESTS.zh-TW.md) 驗證身份隔離和交接，安裝不代表原生對話已通過。
 
 ## 5. 備份、還原演練與更新
 

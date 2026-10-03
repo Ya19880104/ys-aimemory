@@ -23,7 +23,7 @@ xAI Remote MCP 由雲端代連服務，支援 Streaming HTTP / SSE 及自訂驗�
 - [Hub 伺服器與 Docker 部署](QUICKSTART.zh-TW.md#部署-hub)：包含環境檔、憑證位置、preflight、啟動和備份。
 - [Claude / Codex 手動設定](CLIENT_SETUP.zh-TW.md)：包含直接 HTTPS 與 stdio 設定。
 - [按需載入與省 Token](EFFICIENT_MCP.zh-TW.md)：包含 compact 兩工具、專案範圍與增量讀取。
-- 已部署主機的 `/help#clients`：HTML 教學與 `/downloads/ys-memory-stdio-1.1.0.zip` 安裝包。ZIP 由自己的 Hub 依部署網址及公開 CA 產生，不是帶著固定真實主機資訊的 GitHub release。
+- 已部署主機的 `/help#clients`：HTML 教學與 `/downloads/ys-memory-stdio-1.1.1.zip` 安裝包。ZIP 由自己的 Hub 依部署網址及公開 CA 產生，不是帶著固定真實主機資訊的 GitHub release。
 - [伺服器腳本](../scripts/)：preflight、備份、還原檢查；[套件產生程式](../memory_hub/client_bundle.py)負責提供 adapter 與公開連線配置。
 
 目前有可逐步執行的命令與 adapter，**沒有自動覆寫各 AI 設定的一鍵安裝器**。設定合併和模型登入仍由使用者控制。使用已有 Hub 不需要再部署一套伺服器。
@@ -36,10 +36,10 @@ xAI Remote MCP 由雲端代連服務，支援 Streaming HTTP / SSE 及自訂驗�
 
 ```powershell
 if (Test-Path -LiteralPath .\ys-memory-client) { throw '安裝目錄已存在，請選另一個新目錄' }
-if (Test-Path -LiteralPath .\ys-memory-stdio-1.1.0.zip) { throw '下載檔已存在，請另選目錄' }
-curl.exe --cacert .\ys-ai-memory-ca.crt --fail --output .\ys-memory-stdio-1.1.0.zip 'https://YOUR_VERIFIED_HUB_HOST/downloads/ys-memory-stdio-1.1.0.zip'
+if (Test-Path -LiteralPath .\ys-memory-stdio-1.1.1.zip) { throw '下載檔已存在，請另選目錄' }
+curl.exe --cacert .\ys-ai-memory-ca.crt --fail --output .\ys-memory-stdio-1.1.1.zip 'https://YOUR_VERIFIED_HUB_HOST/downloads/ys-memory-stdio-1.1.1.zip'
 if ($LASTEXITCODE -ne 0) { throw 'HTTPS 下載失敗' }
-Expand-Archive -LiteralPath .\ys-memory-stdio-1.1.0.zip -DestinationPath .\ys-memory-client -ErrorAction Stop
+Expand-Archive -LiteralPath .\ys-memory-stdio-1.1.1.zip -DestinationPath .\ys-memory-client -ErrorAction Stop
 Set-Location .\ys-memory-client -ErrorAction Stop
 py -3.12 -m venv .venv
 if ($LASTEXITCODE -ne 0) { throw '建立 Python 環境失敗' }

@@ -76,6 +76,8 @@ def local_https(tmp_path, monkeypatch):
                                                   data.get('params', {}).get('name')))
             if data.get('method') == 'tools/call' and getattr(app.state, 'fail_tool_transport', False):
                 return Response('synthetic-private-upstream-error-' + bearer, status_code=503)
+            if data.get('method') == 'tools/list' and getattr(app.state, 'fail_discovery', False):
+                return Response('synthetic-private-discovery-error-' + bearer, status_code=503)
         return await call_next(request)
     server = uvicorn.Server(uvicorn.Config(app, log_level='critical', access_log=False,
         ssl_certfile=str(cert_file), ssl_keyfile=str(key_file), lifespan='on'))
@@ -90,7 +92,7 @@ def local_https(tmp_path, monkeypatch):
         context.load_verify_locations(cafile=str(ca_file))
         context.verify_flags |= ssl.VERIFY_X509_STRICT
         with httpx.Client(verify=context, trust_env=False) as client:
-            response = client.get(url + '/downloads/ys-memory-stdio-1.1.0.zip')
+            response = client.get(url + '/downloads/ys-memory-stdio-1.1.1.zip')
             assert response.status_code == 200
         bundle = tmp_path / 'fresh client directory'
         bundle.mkdir()
@@ -151,13 +153,14 @@ def test_downloaded_adapter_rejects_hostname_mismatch_before_any_tool_call(local
         asyncio.run(run())
 
 
-def test_compact_stdio_is_locally_ready_without_token_or_upstream_requests(local_https, monkeypatch):
+@pytest.mark.parametrize('missing_token', ['', '${YS_AIMEMORY_TOKEN}', '${YS_AIMEMORY_TOKEN:-}'])
+def test_compact_stdio_is_locally_ready_without_token_or_upstream_requests(local_https, monkeypatch, missing_token):
     bundle, _, app, _ = local_https
     monkeypatch.delenv('YS_AIMEMORY_TOKEN', raising=False)
 
     async def run():
         params = StdioServerParameters(command=sys.executable, args=['-B', str(bundle / 'bridge.py'), '--compact'],
-                                       env={'YS_AIMEMORY_TOKEN': ''})
+                                       env={'YS_AIMEMORY_TOKEN': missing_token})
         with anyio.fail_after(20):
             async with stdio_client(params) as (read, write):
                 async with ClientSession(read, write) as session:
@@ -169,6 +172,8 @@ def test_compact_stdio_is_locally_ready_without_token_or_upstream_requests(local
                     assert app.state.transport_requests == []
                     missing = await session.call_tool('memory_tools', {'query': 'inbox'})
                     assert missing.isError
+                    assert 'TOKEN_MISSING' in missing.content[0].text
+                    assert 'Hub tool not invoked' in missing.content[0].text
                     assert app.state.transport_requests == []
     asyncio.run(run())
 
@@ -250,7 +255,67 @@ def test_compact_tls_failure_occurs_only_on_call_and_is_sanitized(local_https):
                     result = await session.call_tool('memory_call', {'name': 'get_worker_inbox', 'arguments': {}})
                     assert result.isError
                     text = result.model_dump_json()
-                    assert 'outcome unconfirmed' in text
+                    assert 'TLS_VERIFY_FAILED' in text
+                    assert 'Hub tool not invoked' in text
                     assert token not in text and url not in text and 'localhost' not in text
                     assert app.state.transport_requests == []
     asyncio.run(run())
+
+
+def test_compact_success_does_not_depend_on_post_call_discovery(local_https):
+    bundle, token, app, _ = local_https
+    from memory_hub.models import Principal
+    admin = Principal(worker_id='setup', projects=['only'], role='admin')
+    room = app.state.hub.call('create_session', {'project_id': 'only',
+        'title': 'Post-call discovery regression', 'idempotency_key': 'setup-room'}, admin)
+    # A successful authenticated call must survive unavailable discovery. The
+    # SDK's convenience call_tool otherwise fetches the whole output catalog
+    # after the operation, losing its successful result when that fetch fails.
+    app.state.fail_discovery = True
+
+    async def run():
+        params = StdioServerParameters(command=sys.executable,
+            args=['-B', str(bundle / 'bridge.py'), '--compact'], env={'YS_AIMEMORY_TOKEN': token})
+        with anyio.fail_after(20):
+            async with stdio_client(params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    await session.list_tools()
+                    result = await session.call_tool('memory_call', {
+                        'name': 'get_worker_inbox', 'arguments': {'arguments': {'project_id': 'only'}}})
+                    assert not result.isError, result
+                    payload = result.structuredContent or json.loads(result.content[0].text)
+                    assert payload['worker_id'] == 'real-bearer'
+                    sent = await session.call_tool('memory_call', {'name': 'post_session_message',
+                        'arguments': {'arguments': {'project_id': 'only', 'session_id': room['session_id'],
+                            'body': 'Exactly one committed message', 'idempotency_key': 'one-message'}}})
+                    assert not sent.isError, sent
+                    receipt = sent.structuredContent or json.loads(sent.content[0].text)
+                    assert receipt['message_id']
+    asyncio.run(run())
+    methods = [r[1] for r in app.state.transport_requests]
+    assert methods.count('tools/call') == 2
+    assert methods.count('tools/list') == 0
+    events = app.state.hub.call('read_session', {'project_id': 'only',
+        'session_id': room['session_id'], 'full_text': True}, admin)['items']
+    messages = [e for e in events if e['type'] == 'message']
+    assert len(messages) == 1 and messages[0]['body'] == 'Exactly one committed message'
+
+
+def test_compact_wrong_token_reports_auth_rejection_without_tool_attempt(local_https):
+    bundle, _, app, _ = local_https
+
+    async def run():
+        params = StdioServerParameters(command=sys.executable,
+            args=['-B', str(bundle / 'bridge.py'), '--compact'],
+            env={'YS_AIMEMORY_TOKEN': 'synthetic-wrong-token'})
+        with anyio.fail_after(20):
+            async with stdio_client(params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.call_tool('memory_tools', {'query': 'inbox'})
+                    text = result.model_dump_json()
+                    assert result.isError and 'AUTH_REJECTED' in text
+                    assert 'Hub tool not invoked' in text and 'synthetic-wrong-token' not in text
+    asyncio.run(run())
+    assert not any(r[1] == 'tools/call' for r in app.state.transport_requests)

@@ -1,4 +1,4 @@
-# Exact dependency versions for client adapter 1.1.0; Python 3.12.
+# Exact dependency versions for client adapter 1.1.1; Python 3.12.
 # Explicit local-venv installation only; no automatic runtime installs.
 annotated-types==0.8.0
 anyio==4.15.1

@@ -12,10 +12,11 @@ from cryptography.hazmat.primitives import hashes, serialization
 from fastapi.responses import Response
 
 from .web import e, page
+from .web_quickstart import walkthrough, install_walkthrough_images
 
 
 CA_DOWNLOAD = "/downloads/ys-ai-memory-ca.crt"
-BUNDLE_DOWNLOAD = "/downloads/ys-memory-stdio-1.1.0.zip"
+BUNDLE_DOWNLOAD = "/downloads/ys-memory-stdio-1.1.1.zip"
 MAX_CA_BYTES = 65536
 _PEM_CERT = re.compile(rb"-----BEGIN CERTIFICATE-----\r?\n[A-Za-z0-9+/=\r\n]+-----END CERTIFICATE-----")
 _DNS_NAME = re.compile(r"(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?")
@@ -87,9 +88,9 @@ def _manual(base, ca):
     ca_status = (f'<p><a class="button" href="{CA_DOWNLOAD}">下載公開 CA 憑證</a></p>'
                  f'<p>憑證 DER 的 SHA-256 指紋：</p><p class="path">{e(ca.fingerprint)}</p>') if ca else (
                  '<p class="alert">公開 CA 尚未提供。手冊仍可閱讀；請向管理者取得經確認的公開 CA，下載暫不可用。</p>')
-    bundle_status = (f'<p><a id="stdio-bundle-download" class="button" href="{e(base + BUNDLE_DOWNLOAD)}">下載 Codex／Claude stdio 安裝包 1.1.0（HTTPS）</a></p>') if ca else (
+    bundle_status = (f'<p><a id="stdio-bundle-download" class="button" href="{e(base + BUNDLE_DOWNLOAD)}">下載 Codex／Claude stdio 安裝包 1.1.1（HTTPS）</a></p>') if ca else (
                     '<p class="alert">公開 CA 尚未提供，stdio 安裝包暫不可用。請先聯絡管理者。</p>')
-    bundle_download_command = 'curl.exe --cacert .\\ys-ai-memory-ca.crt --fail --output .\\ys-memory-stdio-1.1.0.zip "' + base + BUNDLE_DOWNLOAD + '"'
+    bundle_download_command = 'curl.exe --cacert .\\ys-ai-memory-ca.crt --fail --output .\\ys-memory-stdio-1.1.1.zip "' + base + BUNDLE_DOWNLOAD + '"'
     bundle_install_command = r'''py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
 .\.venv\Scripts\python.exe .\bridge.py --compact --print-claude-config'''
@@ -111,6 +112,7 @@ codex'''
 <a class="button" href="{e(base)}/ui/chat">開啟共享對話</a></header>
 <nav class="panel" aria-label="手冊目錄"><a href="#overview">先認識介面</a><a href="#trust">1. CA 與 HTTPS</a><a href="#project">2. 專案與 Token</a><a href="#clients">3. 接入 Codex／Claude</a><a href="#sessions">4. 開始共同對話</a><a href="#results">5. 文件、附件與搜尋</a><a href="#efficient">6. 少讀紀錄、省 Token</a><a href="#memory">7. 正式任務</a><a href="#handoff">8. 接手與交接</a><a href="#accounts">9. 帳號管理</a><a href="#tokens">10. Token 輪替</a><a href="#problems">常見問題</a></nav>
 
+{walkthrough(base)}
 <section id="overview" class="panel"><h2>Session 就是「一個有主題的對話」</h2>
 <p>例如：在「網站專案」裡，可有「首頁改版」、「登入問題」和「部署方案」三個對話。人類、Codex 和 Claude 在同一個對話內發言、分享文件及附件。Session 是它的技術名稱，並不是聊天之前還要完成的一道交接。</p>
 <table><thead><tr><th>介面名稱</th><th>用途</th><th>AI 工具中的名稱</th></tr></thead><tbody><tr><td>專案</td><td>劃分專案及可讀寫的成員範圍</td><td><code>project_id</code></td></tr><tr><td>對話</td><td>保存一個主題的共同討論</td><td><code>session_id</code>／Session</td></tr><tr><td>訊息</td><td>人或 AI 的單次發言，可回覆及附檔</td><td><code>message_id</code>、序號</td></tr><tr><td>共同成果</td><td>由討論整理出的文件、方案、摘要及提案</td><td><code>artifact_id</code></td></tr></tbody></table>
@@ -141,9 +143,12 @@ codex'''
 <p>安裝包有 <code>bridge.py</code>、<code>connection.json</code>、公開 CA、<code>requirements.lock</code> 和 <code>README.txt</code>，不含 Token、私鑰或模型登入。移動安裝目錄或換電腦後，重新建立環境並產生當地路徑。CA 輪替時重新核對新版安裝包，不會自動更新信任。</p>
 
 <h3>3.2 Claude：直接從已登入的 Desktop／IDE 使用</h3>
+<p><strong>第一次需要：安裝轉接器 → 合併 MCP 設定 → 提供 worker Token。</strong>把 JSON 或網址貼到聊天不會自動完成設定；設定完成後，日常只需貼指定專案／对話的加入指引。</p>
 <p>已登入 Claude Code 的 IDE 或 Desktop Code 分頁，就用這個客戶端；不需要另外登入獨立 CLI。以下是 Desktop 的<strong>本機 Code 工作</strong>路徑，其他 IDE 需核對自己的設定位置。</p>
+<p><strong>一般操作：</strong>把產生的設定合併到專案 <code>.mcp.json</code>，將 <code>env.YS_AIMEMORY_TOKEN</code> 的值換成自己的 worker Token，保存後開新的 Local Code 對話。含 Token 的設定只放本機並加入 <code>.gitignore</code>，不要當公開設定檔分享。下方是選擇保留引用、不把 Token 寫入設定檔的進階做法。</p>
 <ol><li>選擇要使用記憶的本機專案，將上方輸出的 <code>mcpServers.ys_memory</code> 合併到此專案 <code>.mcp.json</code>；保留其他 server，以及 <code>${{YS_AIMEMORY_TOKEN}}</code> 引用。已有同名項目就更新它，勿讓 HTTP 與 stdio 同名並存。</li><li>讓 MCP 子程序取得 Claude 自己的 Token。Desktop 可在 Code 工作的 Local 環境旁齒輪開啟環境編輯器，加入 <code>YS_AIMEMORY_TOKEN</code>；Token 值只輸入該秘密欄位，不貼進對話。</li><li>Desktop 會加密保存該環境變數，但它會影響<strong>所有新本機工作</strong>，不是只影響這個 Hub 對話。需要嚴格限制單一專案時，使用自己受保護的啟動流程；本安裝包尚未提供專案秘密載入器。</li><li>保存目前工作，依客戶端方式重新載入 MCP 或重新開啟這個專案。審閱專案信任與工具核准，再進行第 3.4 節的實際身份檢查。</li></ol>
 <p>另一個 PowerShell 設定變數，不會讓已開啟的 IDE 自動取得它。Desktop 也可能讀取使用者或 Desktop 的 MCP 設定；同名項目可能來自別的範圍，請核對實際啟動路徑。僅將設定存為 <code>.mcp.ys-memory.json</code> 不會讓 IDE 自動接入，那是 CLI 顯式選用的檔名。</p>
+<p>環境編輯器填入的是<strong>實際 Token 值</strong>，不是 <code>${{YS_AIMEMORY_TOKEN}}</code> 這段引用文字。1.1.1 產生的 stdio 設定使用 <code>${{YS_AIMEMORY_TOKEN:-}}</code>；缺值時回報 <code>TOKEN_MISSING</code>，不會把引用文字當 Token 送出。保存後開新 Local Code 對話；若仍用舊環境，先保存工作再重新啟動 Desktop。不要為此另外登入 CLI 或改成繞過工具權限。</p>
 <details><summary>選用：從 PowerShell 啟動 Claude CLI</summary><p>在已合併 <code>.mcp.json</code> 的專案目錄，以隱藏輸入提供自己的 worker Token：</p><pre class="path"><code>{e(bundle_start_command)}</code></pre><p>這是 CLI 的選用路徑，不是已登入 IDE 的先決步驟。仍由你處理模型登入與工具核准。</p></details>
 
 <h3>3.3 Codex：合併到選定專案</h3>
@@ -165,6 +170,11 @@ finally {{ Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }}</c
 <p>compact 啟動時只有 <code>memory_tools</code> 和 <code>memory_call</code> 兩個入口，不連 Hub、不讀對話，也不檢查 Token。先請 AI 執行：<strong>「取得 get_worker_inbox 的 schema，實際呼叫，回報自己的 worker_id 與指定專案；不要認領任務。」</strong></p>
 <details><summary>工具參數：compact 的兩層 arguments</summary><p>先對 <code>memory_tools</code> 傳入：</p><pre class="path"><code>{{"name":"get_worker_inbox"}}</code></pre><p>再對 <code>memory_call</code> 傳入；將 <code>my-project</code> 換成自己的專案 ID：</p><pre class="path"><code>{{"name":"get_worker_inbox","arguments":{{"arguments":{{"project_id":"my-project"}}}}}}</code></pre><p>完整 relay 直接呼叫原工具時，參數是 <code>{{"arguments":{{"project_id":"my-project"}}}}</code>。雙層是目前 Hub 的工具 envelope，依實際 schema 使用，不能自行移除。</p></details>
 <p>看到當次成功工具結果且 worker 正確，才確認這個客戶端有實際連到主機。SDK 測試、Connected 或 AI 自述不代表原生模型驗收；兩個客戶端都要各自實際讀取、生成及寫入新訊息。</p>
+<details><summary>1.1.1 連線錯誤怎麼處理</summary><table><thead><tr><th>錯誤</th><th>處理方式</th></tr></thead><tbody><tr><td>TOKEN_MISSING</td><td>Token 未進入 MCP 程序或仍是引用文字；補上自己的秘密環境值。</td></tr><tr><td>AUTH_REJECTED</td><td>主機拒絕身分，核對 Token 和授權。</td></tr><tr><td>TLS_VERIFY_FAILED</td><td>核對 CA、主機名與有效期，不停用 TLS。</td></tr><tr><td>UPSTREAM_FAILED</td><td>核對主機可達、服務與 connection.json。</td></tr></tbody></table><p>Hub tool not invoked：尚未呼叫 Hub 業務工具，可能已進行初始化或工具發現。outcome unconfirmed：請求可能已送出，先查伺服器結果及冪等鍵再重試。舊版只有泛用錯誤；下載新版到新目錄、更新專案路徑並重載 MCP，既有安裝不會自動升級。</p></details>
+<h3>3.5 Gemini 與 Grok 能否加入</h3>
+<p>Gemini CLI 官方支援 stdio，可在專案 <code>.gemini/settings.json</code> 設定同一 compact 轉接器，使用 Gemini 自己的 worker Token；本專案尚未完成 Gemini 原生模型驗收。</p>
+<p>Grok 的 xAI API Remote MCP 由雲端連到 HTTPS 服務，不能直接到達一般內網 IP／私有 CA。這也不代表 grok.com 網頁支援貼入此設定。目前沒有另外開放公網入口，也沒有 HTTP compact 端點；本機 compact 只有 stdio。Grok 端到端驗收仍為 not_run。</p>
+<p>GitHub 的<a href="https://github.com/Ya19880104/ys-aimemory/blob/main/docs/MULTI_CLIENT_SETUP.zh-TW.md">多客戶端安裝教學</a>提供相容表、逐步命令、Gemini 範例與 Grok 限制。使用已有 Hub 不需要重新部署伺服器。<a href="https://geminicli.com/docs/tools/mcp-server/">Gemini 官方文件</a> · <a href="https://docs.x.ai/developers/tools/remote-mcp">xAI 官方文件</a></p>
 <details><summary>進階：已確認相容的直接 HTTP 配置</summary><p>stdio 是本機子程序，不是另一個 LAN URL。若目標客戶端已確認支援此 CA，亦可改用 HTTP；同名項目不要並存。</p><h4>Codex</h4><pre class="path"><code>{e(codex)}</code></pre><pre class="path"><code>{e(codex_command)}</code></pre><h4>Claude Code</h4><pre class="path"><code>{e(claude)}</code></pre><pre class="path"><code>{e(process_command)}</code></pre><p>Claude 曾遇到 <code>UNSUPPORTED_CONSTRAINT_TYPE</code>。增加 CA 信任不能保證修正 TLS runtime 相容性；這時用保留嚴格驗證的 stdio 安裝包，不要停用 TLS 或主機名驗證。</p></details></section>
 
 <section id="sessions" class="panel"><h2>4. 開始一個人與 AI 共同對話</h2>
@@ -259,10 +269,15 @@ finally {{ Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }}</c
 def install_help(app):
     base = public_base_url()
     ca_path = os.getenv("HUB_PUBLIC_CA_FILE") or "/app/public/ys-ai-memory-ca.crt"
+    install_walkthrough_images(app)
 
     @app.api_route("/help", methods=["GET", "HEAD"], include_in_schema=False)
     def help_page():
-        return page(_manual(base, _public_ca(ca_path)))
+        response = page(_manual(base, _public_ca(ca_path)), css='.manual figure{margin:20px 0}.manual img{display:block;max-width:100%;height:auto;border-radius:10px}.manual figcaption{margin-top:8px;color:#aabbca}')
+        # Only this public manual displays bundled screenshots. The validated
+        # configured HTTPS origin also works when opening the HTTP help page.
+        response.headers['Content-Security-Policy'] += "; img-src 'self' " + base
+        return response
 
     @app.api_route(CA_DOWNLOAD, methods=["GET", "HEAD"], include_in_schema=False)
     def download_ca():

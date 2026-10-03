@@ -132,11 +132,11 @@ bearer_token_env_var = "YS_AIMEMORY_TOKEN"
 
 ### Claude Code：stdio 安裝包
 
-从 Hub 的 `/help#clients` 或 `/ui/mcp` 取得 HTTPS `/downloads/ys-memory-stdio-1.1.0.zip`。私有 CA 先經可信通道核對；在已放好公開 CA 的 PowerShell 可用：
+从 Hub 的 `/help#clients` 或 `/ui/mcp` 取得 HTTPS `/downloads/ys-memory-stdio-1.1.1.zip`。私有 CA 先經可信通道核對；在已放好公開 CA 的 PowerShell 可用：
 
 ```powershell
-curl.exe --cacert .\ys-ai-memory-ca.crt --fail --output .\ys-memory-stdio-1.1.0.zip 'https://hub.example.test:8443/downloads/ys-memory-stdio-1.1.0.zip'
-Expand-Archive -LiteralPath .\ys-memory-stdio-1.1.0.zip -DestinationPath .\ys-memory-client
+curl.exe --cacert .\ys-ai-memory-ca.crt --fail --output .\ys-memory-stdio-1.1.1.zip 'https://hub.example.test:8443/downloads/ys-memory-stdio-1.1.1.zip'
+Expand-Archive -LiteralPath .\ys-memory-stdio-1.1.1.zip -DestinationPath .\ys-memory-client
 Set-Location .\ys-memory-client
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock

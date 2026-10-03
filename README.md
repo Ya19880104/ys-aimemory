@@ -15,6 +15,7 @@ Repository：[Ya19880104/ys-aimemory](https://github.com/Ya19880104/ys-aimemory)
 - **回報問題與分支開發：** [Issues](https://github.com/Ya19880104/ys-aimemory/issues)、[貢獻方式](CONTRIBUTING.md)。
 - **第一次操作：** [完整操作教學入口與驗收](docs/OPERATION_MANUAL.zh-TW.md)，主機 `/help` 提供 CA、Token、IDE 接入及共同對話的逐步 HTML 教學。
 - **人與 AI 共同討論：** [共享對話、成果與附件](docs/SHARED_SESSIONS.zh-TW.md)，後台 `/ui/chat`。
+- **自動接話進度：** [原生實測與待整合功能](docs/AUTOMATIC_CHAT.zh-TW.md)。背景接線原型已驗證；一般安裝及任意 Codex Desktop 喚醒尚未完成。
 - **有需要才讀記憶：** [Codex／Claude 按需接入與省 Token](docs/EFFICIENT_MCP.zh-TW.md)，支援兩工具 compact adapter。
 - **確認模型真的連上：** [原生工具與共享對話驗收](docs/NATIVE_CLIENT_CHECK.zh-TW.md)，分辨 transport、SDK、工具核准與模型登入。
 
@@ -29,7 +30,7 @@ Repository：[Ya19880104/ys-aimemory](https://github.com/Ya19880104/ys-aimemory)
 - 專案修訂失效、讀取收據、限時租約、續租、fencing token
 - checkpoint、指定接手者、提案／核准、完成聲明與稽核
 - 管理員可附原因與版本門檻重新分派離線／退役 worker 的任務，舊租約立即失效
-- 共享 Session：管理員／成員與 AI 即時交換訊息、搜尋紀錄、保存文件／方案／摘要與提案，並分享有配額的附件
+- 共享 Session：管理員／成員與 AI 共用訊息紀錄（網頁即時同步；AI 自動接話尚未完成）、搜尋紀錄、保存文件／方案／摘要與提案，並分享有配額的附件
 - DB 人類帳號：管理員／成員／唯讀、明確專案範圍、線上密碼與停用管理、權限變更後登入失效；帳號管理能力獨立
 - PostgreSQL GIN／SQLite FTS5 索引搜尋，明確中文子字串回退
 - 原子批次匯入、CAS 版本比較、冪等重試、來源歷史與索引健康／重建
@@ -74,7 +75,7 @@ python -m pytest -q
 uvicorn memory_hub.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-`GET /healthz` 為健康檢查。工具透過 `POST /v1/tools/{tool_name}` 或 MCP `/mcp` 呼叫，後者使用 Streamable HTTP。Claude Code／Codex 可由 HTTPS `/downloads/ys-memory-stdio-1.1.0.zip` 取得本機 stdio → HTTPS 轉接器；在自選新目錄建立 Python 3.12 環境，再手動合併專案設定，token 僅從 `YS_AIMEMORY_TOKEN` 讀取。步驟與 CA name constraints 相容限制見[客戶端接線](docs/CLIENT_SETUP.zh-TW.md)及公開 `/help#clients`。安裝不修改全域設定，不自動授權模型或喚醒 AI；仍須分別驗收實際客戶端與雙向對話。
+`GET /healthz` 為健康檢查。工具透過 `POST /v1/tools/{tool_name}` 或 MCP `/mcp` 呼叫，後者使用 Streamable HTTP。Claude Code／Codex 可由 HTTPS `/downloads/ys-memory-stdio-1.1.1.zip` 取得本機 stdio → HTTPS 轉接器；在自選新目錄建立 Python 3.12 環境，再手動合併專案設定，token 僅從 `YS_AIMEMORY_TOKEN` 讀取。步驟與 CA name constraints 相容限制見[客戶端接線](docs/CLIENT_SETUP.zh-TW.md)及公開 `/help#clients`。安裝不修改全域設定，不自動授權模型或喚醒 AI；仍須分別驗收實際客戶端與雙向對話。
 
 ## 部署起點
 

@@ -131,7 +131,7 @@ def test_help_bundle_download_uses_configured_https_origin(tmp_path, monkeypatch
         response = browser.get("/help", headers={"Host": "attacker.invalid", "X-Forwarded-Proto": "http"})
         parsed = Downloads()
         parsed.feed(response.text)
-        assert parsed.links.get("stdio-bundle-download") == base + "/downloads/ys-memory-stdio-1.1.0.zip"
+        assert parsed.links.get("stdio-bundle-download") == base + "/downloads/ys-memory-stdio-1.1.1.zip"
         path.write_bytes(b"not a public CA")
         unavailable = Downloads()
         response = browser.get("/help")
@@ -223,3 +223,30 @@ def test_public_base_default_uses_environment(monkeypatch):
     from memory_hub.web_help import public_base_url
     monkeypatch.setenv("HUB_PUBLIC_BASE_URL", "https://example.test")
     assert public_base_url() == "https://example.test"
+
+
+def test_bundled_tutorial_images_are_public_only_on_the_exact_allowlist(tmp_path, monkeypatch):
+    from memory_hub.app import create_app
+    from memory_hub.web_quickstart import IMAGES
+    monkeypatch.setenv('HUB_PUBLIC_BASE_URL', 'https://example.test')
+    app = create_app(database_url='sqlite:///' + str(tmp_path / 'images.db'), allow_sqlite=True,
+        auth_tokens=json.dumps({'synthetic-image-test-worker-token': {
+            'worker_id': 'reader', 'projects': ['image-test'], 'role': 'worker'}}))
+    with TestClient(app) as browser:
+        help_page = browser.get('/help')
+        assert help_page.status_code == 200
+        assert "img-src 'self' https://example.test" in help_page.headers['content-security-policy']
+        assert 'id="automatic-chat"' in help_page.text
+        for name, mime in IMAGES.items():
+            response = browser.get('/help/images/' + name)
+            assert response.status_code == 200
+            assert response.content.startswith(b'\xff\xd8\xff' if mime == 'image/jpeg' else b'\x89PNG\r\n\x1a\n')
+            assert response.headers['content-type'] == mime
+            assert response.headers['x-content-type-options'] == 'nosniff'
+            head = browser.head('/help/images/' + name)
+            assert head.status_code == 200 and head.content == b''
+            assert head.headers['content-length'] == str(len(response.content))
+            assert browser.post('/help/images/' + name).status_code == 401
+        for path in ('/help/images/connection.json', '/help/images/.mcp.json', '/help/images/missing.png'):
+            assert browser.get(path).status_code == 401
+        assert browser.get('/v1/tools/read_session').status_code == 401
