@@ -218,3 +218,48 @@ def test_account_cookie_paths_are_precise_and_account_data_omits_hashes(room):
 def traditional_interface(monkeypatch):
     """Retain legacy copy assertions as explicit Traditional Chinese coverage."""
     monkeypatch.setenv("HUB_WEB_LANGUAGE", "zh-TW")
+
+
+def test_automatic_setup_uses_configured_origin_and_public_ca(room, monkeypatch):
+    from types import SimpleNamespace
+    import memory_hub.web_sessions as sessions
+    client, _, _ = room
+    monkeypatch.setenv('HUB_PUBLIC_BASE_URL', 'https://hub.example.com')
+    monkeypatch.setattr(sessions, '_public_ca', lambda path: SimpleNamespace(fingerprint='AB:' * 31 + 'AB'))
+    page = client.get('/ui/chat?project=shared&lang=en', headers={'X-Forwarded-Host': 'attacker.example'})
+    assert page.status_code == 200
+    assert 'Set up automatic replies' in page.text
+    assert 'data-setup-base="https://hub.example.com"' in page.text
+    assert 'attacker.example' not in page.text
+    assert 'synthetic-room-worker-token-1234' not in page.text
+    assert page.text.count('id="auto-setup"') == 1
+    assert '/ui/mcp?' in page.text
+    monkeypatch.setattr(sessions, '_public_ca', lambda path: None)
+    assert 'data-setup-base=""' in client.get('/ui/chat?project=shared').text
+
+
+def test_automatic_setup_commands_escape_values_and_do_not_activate():
+    import shutil
+    import subprocess
+    from memory_hub.web_chat_assets import CHAT_JS
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node.js unavailable for generated command execution')
+    handler = CHAT_JS[CHAT_JS.index('  const psQuote='):CHAT_JS.index("  $('copy-invite').onclick=")]
+    harness = r"""
+const fields = { 'auto-worker':{value:"worker'o"}, 'auto-hours':{value:'1'}, 'auto-turns':{value:'6'}, 'auto-client':{value:'codex'}, 'auto-instructions':{}, 'auto-setup-status':{} };
+const $=id=>fields[id]||(fields[id]={});
+const state={project:"project'o",room:{session_id:'a'.repeat(32)}};
+const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32)}};
+const UI_LANGUAGE='en'; const uiText=key=>key;
+let copied=''; const navigator={clipboard:{writeText:async text=>{copied=text;}}};
+""" + handler + r"""
+(async()=>{await $('copy-auto-setup').onclick();
+if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('112849D6CF4F025E4EB2BB6F31FA9F1A040A0A6DC524A14F60A70840A2AE1BA1'))throw Error('Codex command');
+fields['auto-client'].value='claude';await $('copy-auto-setup').onclick();
+if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('85337175B42B566797F7523F510086FE2D70AC653132B734A7846EBB35BD9876'))throw Error('Claude command');
+copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if(copied)throw Error('invalid budget copied');
+})().catch(e=>{console.error(e);process.exitCode=1});
+"""
+    result = subprocess.run([node, '-e', harness], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr

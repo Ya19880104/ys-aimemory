@@ -3266,5 +3266,53 @@
   "tutorial_workflow_illustration_caption": {
     "en": "Workflow illustration with synthetic labels; not a native verification screenshot.",
     "zh-TW": "操作流程示意，使用合成標籤；不是原生驗證截圖。"
+  },
+  "ui_aa001001": {
+    "en": "Set up automatic replies",
+    "zh-TW": "設定自動接話"
+  },
+  "ui_aa001002": {
+    "en": "Copying instructions does not activate replies. Install locally and explicitly enable a bounded receiver. Cloud plugins remain a separate pilot.",
+    "zh-TW": "複製指引不會啟用回覆。請在本機安裝並明確啟用有時限及回合上限的接收器。雲端外掛仍是獨立試行。"
+  },
+  "ui_aa001003": {
+    "en": "Local client",
+    "zh-TW": "地端用戶端"
+  },
+  "ui_aa001004": {
+    "en": "Exact dedicated worker ID (not its Token)",
+    "zh-TW": "專用 worker 的確切 ID（不是 Token）"
+  },
+  "ui_aa001005": {
+    "en": "Worker credentials (ask your administrator if unavailable)",
+    "zh-TW": "Worker 憑證（無權限時請向管理員索取）"
+  },
+  "ui_aa001006": {
+    "en": "Hours (1–8)",
+    "zh-TW": "時數（1–8）"
+  },
+  "ui_aa001007": {
+    "en": "Maximum turns (1–100)",
+    "zh-TW": "回合上限（1–100）"
+  },
+  "ui_aa001008": {
+    "en": "Copy complete installation instructions",
+    "zh-TW": "複製完整安裝指引"
+  },
+  "ui_aa001009": {
+    "en": "Select a room and enter the exact worker ID and valid limits. A configured HTTPS Hub origin and trusted public CA are required.",
+    "zh-TW": "請選擇聊天室並輸入確切 worker ID 與有效上限。需已設定的 HTTPS Hub 網址與可信公開 CA。"
+  },
+  "ui_aa001010": {
+    "en": "In Windows PowerShell, download and verify this installer, then review it before running. Use Python 3.12 and sign in to the selected model provider. Keep your own dedicated worker Token only for the installer’s hidden prompt; never paste it into AI chat or a URL. Confirm its identity matches the worker ID below.",
+    "zh-TW": "在 Windows PowerShell 下載、驗證並審閱安裝器，再執行。使用 Python 3.12 並登入所選模型供應商。自己的專用 worker Token 僅輸入安裝器的隱藏提示，勿貼入 AI 對話或網址。確認其身分符合下列 worker ID。"
+  },
+  "ui_aa001011": {
+    "en": "Choose the exact existing local project directory opened by Claude Code and replace REPLACE_WITH_EXACT_LOCAL_PROJECT. Run the installer, then open a NEW Claude chat in that directory and send the exact activation prompt printed by the installer. Verify its receipt and use its disconnect command to stop.",
+    "zh-TW": "選擇 Claude Code 開啟的確切既有本機專案目錄，替換 REPLACE_WITH_EXACT_LOCAL_PROJECT。執行安裝器後在該目錄開啟新的 Claude 對話，送出安裝器顯示的完整啟用提示。驗證回條並使用其 disconnect 命令停止。"
+  },
+  "ui_aa001012": {
+    "en": "This command installs only. Review the receipt’s exact start_command, stop_command and inspect_command; explicitly run start_command to enable bounded replies. It starts dedicated Codex CLI turns and does not inject an existing Desktop chat.",
+    "zh-TW": "此命令僅安裝。審閱回條中的確切 start_command、stop_command 與 inspect_command，再明確執行 start_command 啟用有限回合回覆。它啟動專用 Codex CLI 回合，不會注入既有桌面對話。"
   }
 }
