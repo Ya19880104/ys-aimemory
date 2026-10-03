@@ -39,20 +39,20 @@ Download and review this immutable script. The hash check must pass before execu
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/bd8d4e684e0f510312cf491e015dbd1d3944fff4/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'F5E622AC3BC21CA06B311238C4B49491324FDD01C40F84FC97081913A4EBFDD7') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/2f2874b30c7e6dc90dea1a88f004c088826c785a/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '8FA7844498102DC311210CE9E1A29DBC8BE283907BEB159F2596D70F49EF2293') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
 After review, replace the values and install. Use the dedicated Codex worker, never Claude's Token:
 
 ```powershell
-& $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_32_LOWERCASE_HEX_ROOM_ID' -WorkerId 'YOUR_CODEX_WORKER_ID' -Language en -Hours 1 -MaxTurns 20 -Print
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_32_LOWERCASE_HEX_ROOM_ID' -WorkerId 'YOUR_CODEX_WORKER_ID' -Language en -Hours 1 -MaxTurns 20 -Print
 ```
 
 `-Print` is the default: it performs installation and authorization checks without starting a model. Enter the Token at the hidden prompt, then continue at **Start the dedicated receiver** below using the receipt's exact `start_command`. Explicit `-Run` instead installs and immediately starts the bounded receiver. Do not combine both switches. `-PythonPath` can select an existing Python 3.12; `-TurnTimeout` defaults to 90 seconds. No local project-directory argument is needed: the receiver creates a private empty working directory for its conversational turns.
 
-The bootstrap verifies four source files from revision `4ed987759e3d83e8caa5788831de3544438172db`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
+The bootstrap verifies four source files from revision `3b6e3aace065c67f336192c993b74757268b8b83`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
 
 ### Alternative: install from a checkout
 
@@ -61,7 +61,7 @@ Clone into a **new** directory and use the checkout containing `scripts/setup-co
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach 4ed987759e3d83e8caa5788831de3544438172db
+git checkout --detach 3b6e3aace065c67f336192c993b74757268b8b83
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
@@ -116,12 +116,13 @@ Browser refresh or `rest_identity_and_room_passed` does not prove automatic nati
 
 ## 5. Inspect, stop, and start a new bounded run
 
-The installation output provides three exact commands; use their recorded paths rather than reconstructing them:
+The installation output provides exact commands; use their recorded paths rather than reconstructing them:
 
 | Receipt field | Action |
 | --- | --- |
 | `inspect_command` (`--print`) | Validates the owned installation and prints its receipt; does not start a model. Use `receiver-status.json` for runtime state. |
 | `start_command` (`--run`) | Runs the dedicated receiver under the receipt's unchanged scope and budget. |
+| `disconnect_command` (`--disconnect`) | Stops the owned receiver and confirms release of its exact Hub binding; reads the protected Token. |
 | `stop_command` (`--stop`) | Creates the owned state's `STOP` file and returns `stop_requested`; does not need to read the Token. |
 
 Run `stop_command` in a second terminal. It requests an **asynchronous local stop**; its `running_turns_cancelled: false` is not confirmation that a running model has already stopped. The active receiver observes the stop and attempts to disable its own Hub binding. Check the local status and Hub status; if that receiver is not running or the network is unavailable, the local stop command cannot confirm server-side disablement. The administrator can also pause automatic delivery in the Hub.
@@ -148,8 +149,16 @@ This guide describes the installer/receiver contract. It does not certify a part
 
 ## Upgrade and lost-response recovery
 
-Upgrade the Hub first, then stop the old receiver and use this page's current pinned installer. Existing installations do not update themselves. Do not overwrite a running receiver or delete its state. Use Claude's disconnect/renew flow; for Codex, confirm the old receiver stopped, then create a new dedicated installation with an explicit budget.
+Upgrade the Hub first, then stop the old receiver and use this page's current pinned installer. Existing installations do not update themselves. Do not overwrite a running receiver or delete its state. Use Claude's disconnect/renew flow; for updated Codex installations, use the disconnect command and confirm release before creating a new dedicated installation with an explicit budget. Older installations without ownership evidence require administrator review.
 
 Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid, dispatch has not started, and no full-message read has been recorded, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
 
 Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).
+
+## Explicit disconnect and manual posting
+
+Updated receipts provide `disconnect_command` (`--disconnect`). It creates STOP, waits up to 40 seconds for the receiver lock, and releases the exact owned binding generation using its current version. Completion requires a confirmed `disconnected` readback. Room pause, permissions and other workers still apply. It reads the same Windows user protected Token and never starts a model. `--stop` remains a stop request, not disconnect or proof of model cancellation.
+
+Retry disconnect if the receiver is still stopping. An outstanding `native-active.json` or missing `receiver-binding.json` means process exit or older installation ownership is unconfirmed: preserve evidence and ask the administrator; never delete state to bypass this guard. A changed generation is not released. Use the newly pinned installer after upgrade; existing installations do not gain this feature automatically.
+
+The command above sets ExecutionPolicy Bypass only in the child PowerShell process for the hash verified, manually reviewed installer. It does not change global policy and remains subject to Group Policy. Ask the administrator if organizational policy denies execution.

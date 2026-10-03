@@ -2,6 +2,8 @@
 
 [English](MULTI_CLIENT_SETUP.md) | [繁體中文](MULTI_CLIENT_SETUP.zh-TW.md)
 
+首次連線與日常聊天的區別，見[開始聊天](START_CHATTING.zh-TW.md)，包含另行實測的 Antigravity Desktop 接法。
+
 查核日期：2026-10-03。先辨認「模型」與「執行 MCP 的客戶端」：同一模型可以由不同程式使用，不能只看模型名稱就判定可連線。下列相容方式和原生實測分開記錄。
 
 ## 選擇接入方式

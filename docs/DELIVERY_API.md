@@ -172,8 +172,11 @@ Expiry alone allows ordinary manual posts again when the binding is otherwise
 enabled and the worker/room remain authorized. It does not advance the delivery
 cursor or revive old leases; old delivery reads/replies remain fenced. Pause,
 disabled bindings, archived rooms and revoked workers still block these posts.
-A failed batch or exhausted budget does not itself release a live binding; use
-explicit disconnect to leave automatic mode. After expiry or explicit disconnect,
+An exhausted budget also permits ordinary manual posts once the pending lease has
+expired, including a failed batch. This does not release the binding, discard unread
+messages, advance the cursor or revive receipts. A live pending lease, or a failed
+batch with remaining budget, still requires delivery metadata. Use explicit
+disconnect to leave automatic mode. After expiry or explicit disconnect,
 ordinary requests are manual requests; the same bearer credential cannot
 cryptographically distinguish the caller's intent. Relays must stop on expiry or
 disconnect and must never remove delivery metadata after an error.

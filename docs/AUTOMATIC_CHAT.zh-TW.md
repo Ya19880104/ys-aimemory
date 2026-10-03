@@ -12,16 +12,18 @@ Hub 保存房間訊息，已啟用的接收程式接收事件，綁定的原生�
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/7b666c6dae39d49fbc700540ad2248829c133b80/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'BBE80FCE04A2707C84C4F0501DE1DA8359205EDC89D00A179EF4AE7851A28E89') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/2f2874b30c7e6dc90dea1a88f004c088826c785a/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '757861E45CE53F207940F825779B63F66B5BD7CCB7F0A5F67A1337CEE09B6F58') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
 檢視後將參數換成自己的資料再執行。專案資料夾必須已存在，而且要與本機 Claude 開啟的目錄相同：
 
 ```powershell
-& $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -Project 'C:\work\my-project' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_ROOM_ID' -Language zh-TW -Hours 8 -MaxTurns 20
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -Project 'C:\work\my-project' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_ROOM_ID' -Language zh-TW -Hours 8 -MaxTurns 20
 ```
+
+執行政策選項只套用執行已驗證安裝器的子程序，不更動已儲存的 PowerShell 政策；組織 Group Policy 仍優先。
 
 找不到 Python 時可加上 `-PythonPath 'C:\Python312\python.exe'`。`Language` 支援 `en`／`zh-TW`，`Hours` 為 1–8 小時，`MaxTurns` 為 1–100 次啟動；預設為英文、8 小時、20 次。聊天室必須已存在；安裝器不會建立帳號或聊天室。
 
@@ -29,7 +31,7 @@ notepad $Installer
 2. 收據會顯示 `configured_waiting_for_native_hook`、到期時間、回合上限、停止檔位置與 **`activation_prompt`**。在相同專案開啟新的本機 Claude 對話，或透過客戶端重新載入該專案的 MCP 與 Hooks。將收據的完整 `activation_prompt` 貼到要接話的 Claude 對話。必須由 Claude 原樣回覆產生的 `YS_MEMORY_JOIN_...` 字串；不要自行替換原生對話 ID，也不要只把該字串當成人類留言貼上。
 3. 回覆後到 Hub 聊天室核對參與者／接收程式狀態，新增一則人類訊息，讓 Claude 維持閒置。驗收必須看到真正的原生 `chat_read`、`chat_reply`，派送／讀取／回覆收據對應，且回覆出現在聊天室。安裝成功或接收程式在線上，都**不等於原生驗收通過**。新加入從最新訊息開始，所以測試留言要在啟用後才發送。
 
-啟動腳本從固定來源版本 `5b54867a4204e8218a541b7d87039a2700bf22ac` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply` 三條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
+啟動腳本從固定來源版本 `3b6e3aace065c67f336192c993b74757268b8b83` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply` 三條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
 
 已有 `ys_memory` 時，必須同時符合完整設定雜湊、原安裝收據、launcher、Hub／CA 與經驗證安裝包才能沿用。未知、被修改或已啟用聊天室的設定會原樣保留並拒絕覆寫，請勿刪除設定繞過檢查；應先檢視設定或使用原收據的解除流程。如果 MCP 已安裝完成、聊天室步驟才失敗，保留該 MCP 安裝供檢查；安裝器不會自行啟動模型回合。
 
@@ -82,3 +84,5 @@ py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PR
 新版接收器先儲存領取請求，遇到暫時網路錯誤會在期限與停止控制內退避重試。相同請求只在尚未派送、沒有完整訊息讀取紀錄且租約有效時取回原通知，不重複扣交付嘗試或回合。已派送後重啟不會逕自再啟動同一輪模型；租約真正到期後重新交付仍有預算成本。這不保證模型恰好執行一次，也不代表已測完原生程序的所有中斷情境。
 
 綁定單純到期後可以一般手動發文；房間暫停、停用綁定、封存或撤銷權限仍然有效。過期自動回覆不得拔掉交付欄位改成手動重發。詳見[交付 API](DELIVERY_API.zh-TW.md)。
+
+遠端解除連線或 generation 失效後，此安裝的 watcher 會終止，須明確續期或重新設定才恢復。dispatch 前後均檢查 STOP 與到期；同時發生的停止仍可能與傳送中的 dispatch 競合，因此派送紀錄不能證明提醒已送到模型。

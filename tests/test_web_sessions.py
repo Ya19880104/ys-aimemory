@@ -264,11 +264,11 @@ const location={href:'https://hub.example.com/ui/chat'};
 let copied=''; const navigator={clipboard:{writeText:async text=>{copied=text;}}};
 """ + handler + r"""
 (async()=>{ $('auto-client').onchange(); if(!$('auto-project-hint').hidden)throw Error('Codex path hint'); await $('copy-auto-setup').onclick();
-if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('F5E622AC3BC21CA06B311238C4B49491324FDD01C40F84FC97081913A4EBFDD7'))throw Error('Codex command');
+if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('8FA7844498102DC311210CE9E1A29DBC8BE283907BEB159F2596D70F49EF2293'))throw Error('Codex command');
 if(!copied.includes('# https://docs.example.test/CODEX_CHAT_SETUP.md'))throw Error('Codex guide');
 if(copied.includes('# undefined')||!copied.includes('# '+expected.codex))throw Error('Codex translated instructions');
 fields['auto-client'].value='claude';$('auto-client').onchange();if($('auto-project-hint').hidden)throw Error('Claude path hint');await $('copy-auto-setup').onclick();
-if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('BBE80FCE04A2707C84C4F0501DE1DA8359205EDC89D00A179EF4AE7851A28E89'))throw Error('Claude command');
+if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('757861E45CE53F207940F825779B63F66B5BD7CCB7F0A5F67A1337CEE09B6F58'))throw Error('Claude command');
 if(!copied.includes('# https://hub.example.com/help?lang=en'))throw Error('Claude offline guide');
 if(copied.includes('# undefined')||!copied.includes('# '+expected.claude))throw Error('Claude translated instructions');
 copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if(copied)throw Error('invalid budget copied');
@@ -311,12 +311,13 @@ foreach ($item in $items) {
     if ($errors.Count) { throw 'Complete guide failed PowerShell parsing' }
     $commands=@($ast.FindAll({param($n) $n -is [System.Management.Automation.Language.CommandAst]},$true))
     foreach ($command in $commands) { if ($command.GetCommandName() -notin @('Join-Path','Invoke-WebRequest','Get-FileHash','notepad')) { throw 'Unexpected executable command in complete guide' } }
-    $line=@($item.text -split "`n" | Where-Object { $_.StartsWith('# & $Installer ') })
+    $line=@($item.text -split "`n" | Where-Object { $_.StartsWith('# powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer ') })
     if ($line.Count -ne 1) { throw 'Missing separate commented installation command' }
     $install=[System.Management.Automation.Language.Parser]::ParseInput($line[0].Substring(2),[ref]$tokens,[ref]$errors)
     if ($errors.Count) { throw 'Installation command failed parsing' }
     $calls=@($install.FindAll({param($n) $n -is [System.Management.Automation.Language.CommandAst]},$true))
     if ($calls.Count -ne 1) { throw 'Worker added an executable command' }
+    if ($calls[0].GetCommandName() -ne 'powershell.exe') { throw 'Expected process-scoped installer invocation' }
     if ($item.client -eq 'codex') {
         $literal=@($install.FindAll({param($n) $n -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $n.Value -eq $item.worker},$true))
         if ($literal.Count -ne 1) { throw 'Worker is not an exact literal parameter' }

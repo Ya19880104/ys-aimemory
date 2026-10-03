@@ -39,20 +39,20 @@ py -3.12 --version
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/bd8d4e684e0f510312cf491e015dbd1d3944fff4/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'F5E622AC3BC21CA06B311238C4B49491324FDD01C40F84FC97081913A4EBFDD7') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/2f2874b30c7e6dc90dea1a88f004c088826c785a/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '8FA7844498102DC311210CE9E1A29DBC8BE283907BEB159F2596D70F49EF2293') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
 檢視後換成自己的資料再安裝，使用 Codex 專屬 worker，不借用 Claude 的 Token：
 
 ```powershell
-& $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_32_LOWERCASE_HEX_ROOM_ID' -WorkerId 'YOUR_CODEX_WORKER_ID' -Language zh-TW -Hours 1 -MaxTurns 20 -Print
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_32_LOWERCASE_HEX_ROOM_ID' -WorkerId 'YOUR_CODEX_WORKER_ID' -Language zh-TW -Hours 1 -MaxTurns 20 -Print
 ```
 
 預設 `-Print` 會安裝並核對授權，不啟動模型。於隱藏提示輸入 Token 後，依下方「啟動專用接收器」複製收據的完整 `start_command`。明確使用 `-Run` 則會安裝後立即啟動有限額接收器，兩個開關不可同時使用。`-PythonPath` 可指定既有 Python 3.12；`-TurnTimeout` 預設 90 秒。不需要填本機專案資料夾：接收器會建立私有空白工作目錄進行對話回合。
 
-啟動腳本核對來源版本 `4ed987759e3d83e8caa5788831de3544438172db` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
+啟動腳本核對來源版本 `3b6e3aace065c67f336192c993b74757268b8b83` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
 
 ### 替代方式：從 checkout 安裝
 
@@ -61,7 +61,7 @@ notepad $Installer
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach 4ed987759e3d83e8caa5788831de3544438172db
+git checkout --detach 3b6e3aace065c67f336192c993b74757268b8b83
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
@@ -116,12 +116,13 @@ native_acceptance: not_run
 
 ## 5. 檢查、停止與建立下一次有限度執行
 
-安裝輸出提供三條完整指令，請使用記錄的實際路徑，不必自行拼湊：
+安裝輸出提供完整指令，請使用記錄的實際路徑，不必自行拼湊：
 
 | 回條欄位 | 動作 |
 | --- | --- |
 | `inspect_command`（`--print`） | 驗證本安裝的檔案歸屬與完整性並印出回條，不啟動模型。執行狀態另看 `receiver-status.json`。 |
 | `start_command`（`--run`） | 以回條原有的範圍與預算執行專屬接收器。 |
+| `disconnect_command`（`--disconnect`） | 停止此安裝接收器並確認釋放同一 Hub 綁定；會讀取受保護的 Token。 |
 | `stop_command`（`--stop`） | 建立此安裝狀態目錄中的 `STOP`，回傳 `stop_requested`，不需要讀取 Token。 |
 
 在另一個終端機執行 `stop_command`。這是**非同步的本機停止請求**；其中 `running_turns_cancelled: false` 不代表正在執行的模型已停止。執行中的接收器察覺 STOP 後，會嘗試停用自己的 Hub 綁定。請核對本機與 Hub 狀態；若接收器沒有執行或網路無法連線，本機停止指令不能確認伺服器端已停用。管理員也可以在 Hub 暫停自動投遞。
@@ -148,8 +149,16 @@ native_acceptance: not_run
 
 ## 升級與回應遺失恢復
 
-先升級 Hub，再停止舊接收器並使用本頁目前的固定版本安裝器。既有安裝不會自行更新；不要覆蓋仍在運作的接收器或刪除它的狀態檔。Claude 使用解除／續期流程，Codex 依停止回條確認已停，再建立新的專用安裝並明確設定預算。
+先升級 Hub，再停止舊接收器並使用本頁目前的固定版本安裝器。既有安裝不會自行更新；不要覆蓋仍在運作的接收器或刪除它的狀態檔。Claude 使用解除／續期流程，新版 Codex 使用中斷指令並確認釋放，再建立新的專用安裝並明確設定預算；缺少所有權證據的舊安裝須由管理員核對。
 
 新版接收器先儲存領取請求，遇到暫時網路錯誤會在期限與停止控制內退避重試。相同請求只在尚未派送、沒有完整訊息讀取紀錄且租約有效時取回原通知，不重複扣交付嘗試或回合。已派送後重啟不會逕自再啟動同一輪模型；租約真正到期後重新交付仍有預算成本。這不保證模型恰好執行一次，也不代表已測完原生程序的所有中斷情境。
 
 綁定單純到期後可以一般手動發文；房間暫停、停用綁定、封存或撤銷權限仍然有效。過期自動回覆不得拔掉交付欄位改成手動重發。詳見[交付 API](DELIVERY_API.zh-TW.md)。
+
+## 明確中斷與恢復手動發文
+
+新版回條的 `disconnect_command`（`--disconnect`）會建立 STOP、等待最多 40 秒取得接收器鎖，並以目前版本釋放同一 binding generation。成功讀回 `disconnected` 才算完成；既有房間暫停、權限與其他 worker 的限制仍適用。它需要讀取同一 Windows 使用者保護的 Token，但不會啟動模型。`--stop` 仍只要求停止，不代表中斷或已取消模型。
+
+若接收器仍在停止，稍後重試 disconnect。若留下 `native-active.json` 或缺少 `receiver-binding.json`，程序退出或舊版所有權未獲確認，必須保留證據並由管理員處理；不要刪檔繞過。已改變 generation 時也不會釋放新的連線。升級後須使用新版、重新釘選的安裝器；舊安裝不會自動取得此功能。
+
+上方執行方式只對已驗證雜湊、人工檢閱的安裝腳本，在子 PowerShell 程序指定 ExecutionPolicy Bypass；不變更全域政策，且仍受 Group Policy 管理。若組織政策拒絕，請由管理員處理。

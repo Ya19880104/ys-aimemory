@@ -190,6 +190,7 @@ def receipt_output(receipt):
     prefix = '& ' + ps_quote(receipt['python']) + ' ' + ps_quote(script) + ' --receipt ' + ps_quote(directory / 'codex-install.json')
     return {**receipt, 'receipt_path': str(directory / 'codex-install.json'),
             'start_command': prefix + ' --run', 'stop_command': prefix + ' --stop',
+            'disconnect_command': prefix + ' --disconnect',
             'inspect_command': prefix + ' --print', 'native_acceptance': 'not_run'}
 
 
@@ -277,14 +278,14 @@ def read_receipt(path):
     return receipt
 
 
-def start(receipt):
+def start(receipt, *, disconnect=False):
     directory = Path(receipt['client_directory'])
     codex = codex_executable(receipt['codex'])
     file_path(Path(receipt['python']), 20 * 1048576)
     credential = directory / 'worker.dpapi'
     if credential.is_symlink() or not credential.is_file() or not 0 < credential.stat().st_size <= 16384:
         raise SetupError('owned_credential_missing')
-    if (plain_path(receipt['state_directory']) / 'STOP').exists():
+    if not disconnect and (plain_path(receipt['state_directory']) / 'STOP').exists():
         raise SetupError('receiver_was_stopped_keep_evidence_and_provision_new_bounded_run')
     command = [receipt['python'], '-B', str(directory / 'scripts/run-codex-chat.py'),
         '--client-dir', str(directory), '--credential', str(credential),
@@ -293,6 +294,8 @@ def start(receipt):
         '--state-dir', receipt['state_directory'], '--codex', str(codex), '--python', receipt['python'],
         '--ttl-seconds', str(receipt['ttl_seconds']), '--max-turns', str(receipt['max_turns']),
         '--turn-timeout', str(receipt['turn_timeout']), '--language', receipt['language']]
+    if disconnect:
+        command.append('--disconnect')
     return subprocess.run(command, cwd=directory, check=False).returncode
 
 
@@ -312,6 +315,7 @@ def main():
     action = parser.add_mutually_exclusive_group()
     action.add_argument('--print', action='store_true', dest='print_only', help='Provision/inspect only (default), no model')
     action.add_argument('--run', action='store_true', help='Explicitly start the bounded dedicated receiver')
+    action.add_argument('--disconnect', action='store_true', help='Stop then release the exact owned binding; needs the protected Token')
     action.add_argument('--stop', action='store_true', help='Request stop via an existing receipt; does not read Token')
     try:
         args = parser.parse_args()
@@ -322,16 +326,18 @@ def main():
                 raise SetupError('receipt_scope_cannot_be_overridden')
             receipt = read_receipt(args.receipt)
         else:
-            if args.stop or not all((args.url, args.expected_ca, args.project_id, args.session_id, args.worker_id)):
+            if args.stop or args.disconnect or not all((args.url, args.expected_ca, args.project_id, args.session_id, args.worker_id)):
                 raise SetupError('required_installation_arguments_missing')
             receipt = install(args.url, args.expected_ca, args.project_id, args.session_id, args.worker_id,
                 codex=args.codex, language=args.language or 'en', hours=1 if args.hours is None else args.hours,
                 max_turns=20 if args.max_turns is None else args.max_turns,
                 turn_timeout=90 if args.turn_timeout is None else args.turn_timeout)
-        if args.stop:
+        if args.stop or args.disconnect:
             state = plain_path(receipt['state_directory'])
             state.mkdir(exist_ok=True)
             plain_path(state / 'STOP').touch(exist_ok=True)
+            if args.disconnect:
+                return start(receipt, disconnect=True)
             print(json.dumps({'status': 'stop_requested', 'stop_file': str(state / 'STOP'),
                               'running_turns_cancelled': False}))
             return 0

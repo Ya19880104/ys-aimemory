@@ -12,16 +12,18 @@ Download this immutable installer in PowerShell, check its hash and review it:
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/7b666c6dae39d49fbc700540ad2248829c133b80/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'BBE80FCE04A2707C84C4F0501DE1DA8359205EDC89D00A179EF4AE7851A28E89') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/2f2874b30c7e6dc90dea1a88f004c088826c785a/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '757861E45CE53F207940F825779B63F66B5BD7CCB7F0A5F67A1337CEE09B6F58') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
 After review, run it with your values. The project directory must already exist and be the same directory opened by local Claude:
 
 ```powershell
-& $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -Project 'C:\work\my-project' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_ROOM_ID' -Language en -Hours 8 -MaxTurns 20
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -Project 'C:\work\my-project' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_ROOM_ID' -Language en -Hours 8 -MaxTurns 20
 ```
+
+The execution-policy option applies only to this child process running the verified installer; it does not change your saved PowerShell policy. Organization Group Policy still takes precedence.
 
 If Python is not detected, append `-PythonPath 'C:\Python312\python.exe'`. `Language` supports `en` and `zh-TW`; `Hours` is 1–8 and `MaxTurns` is 1–100. English, 8 hours and 20 starts are the defaults. A room must already exist; this installer does not create accounts or rooms.
 
@@ -29,7 +31,7 @@ If Python is not detected, append `-PythonPath 'C:\Python312\python.exe'`. `Lang
 2. The receipt reports `configured_waiting_for_native_hook`, expiry, turn budget, a stop-file path and **`activation_prompt`**. Open a new local Claude conversation in the same project, or reload that project's MCP and hooks in your client. Paste the receipt's complete `activation_prompt` into the intended conversation. Claude must reply with the exact generated `YS_MEMORY_JOIN_...` line; do not substitute a conversation ID or simply paste that line yourself.
 3. After the reply, check the Hub room for the participant/receiver state. Send a new human message in the Hub and leave Claude idle. Acceptance requires an actual native `chat_read` and `chat_reply` with matching delivery/read/reply receipts, visible in the room. A successful installer or online receiver alone is **not** native acceptance. New joins start from the latest message; send the test message after activation.
 
-The bootstrap downloads exactly five SHA-256-checked files from source revision `5b54867a4204e8218a541b7d87039a2700bf22ac`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the three exact `chat_status`, `chat_read`, `chat_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
+The bootstrap downloads exactly five SHA-256-checked files from source revision `3b6e3aace065c67f336192c993b74757268b8b83`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the three exact `chat_status`, `chat_read`, `chat_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
 
 An existing `ys_memory` entry is reused only when its complete config hash, installer receipt, launcher, Hub/CA and verified bundle match. Unknown, edited or active-chat configurations are preserved and rejected; do not delete them to bypass the check. Review the configuration or use the original receipt's disconnect procedure first. If MCP installation completes but the chat step fails, that MCP installation remains available for inspection; no model turn is started by the installer.
 
@@ -84,3 +86,5 @@ Upgrade the Hub first, then stop the old receiver and use this page's current pi
 Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid, dispatch has not started, and no full-message read has been recorded, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
 
 Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).
+
+A remote disconnect or generation fence makes this watcher terminal for the current installation. Explicitly renew or reconfigure to resume. STOP and expiry are checked before and after dispatch; a concurrent stop can still race an in-flight dispatch, whose receipt does not prove that a reminder was emitted.

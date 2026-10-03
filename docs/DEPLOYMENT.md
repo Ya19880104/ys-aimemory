@@ -44,3 +44,5 @@ Measure canonical aggregate size, lock contention, retention, index quality, sto
 For a disconnected LAN, set `HUB_DOCS_BASE_URL=/help`: links open the existing localized built-in help landing page (`/help?lang=en` or `/help?lang=zh-TW`), rather than nonexistent per-guide routes. This is a summarized local manual, not a copy of every full guide.
 
 Only HTTPS or root-relative directory URLs are accepted. Credentials, query/fragment, percent escapes, backslashes, control/non-ASCII characters, repeated path separators and dot traversal are rejected; use ASCII/punycode URLs. Invalid values safely fall back to local `/help` without breaking UI requests. Trailing slashes are normalized. Compose passes this setting to the app. Restart the configured runtime after changing deployment settings. Pinned installer downloads and upstream vendor references remain independent; this setting neither rewrites nor trusts installer sources.
+
+An invalid `HUB_DOCS_BASE_URL` falls back to localized `/help` and emits one warning per application middleware startup. The rejected value is not logged.

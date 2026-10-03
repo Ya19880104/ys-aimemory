@@ -230,3 +230,50 @@ def test_partial_tool_read_without_dispatch_prevents_ready_replay(collaboration)
     assert read_delivery(hub, s, delivery, after_sequence=messages[0]['sequence'], limit=1)[
         'delivery_receipt']['status'] == 'tool_read'
     reply(hub, s, delivery)
+
+
+def test_exhausted_expired_pending_restores_manual_preserves_unread(collaboration):
+    hub, _, _ = collaboration
+    clock = [1000.0]; hub.clock = lambda: clock[0]
+    s = room(hub); binding = join(hub, s, max_turns=1)
+    message = post(hub, s, B)
+    delivery = claim(hub, binding, lease_seconds=15)['delivery']
+    reject('delivery_metadata_required', lambda: post(hub, s, A))
+    clock[0] += 16
+    assert claim(hub, binding)['status'] == 'budget_exhausted'
+    post(hub, s, A, body='Manual after final lease expiry')
+    observed = status(hub, s)['participants'][0]
+    assert observed['processed_sequence'] == binding['processed_sequence']
+    assert observed['turns_used'] == 1
+    reject('stale_delivery', lambda: read_delivery(hub, s, delivery))
+    reject('stale_delivery', lambda: reply(hub, s, delivery))
+    call(hub, 'disconnect', project_id='p', binding_id=binding['binding_id'], expected_version=1)
+    renewed = join(hub, s)
+    assert message['message_id'] in claim(hub, renewed)['delivery']['message_ids']
+
+
+@pytest.mark.parametrize('control', ['pause', 'disable', 'archive', 'revoke', 'remaining_budget', 'failed_remaining', 'failed_exhausted'])
+def test_exhausted_expired_pending_safety_edges(collaboration, control):
+    hub, _, _ = collaboration
+    clock = [1000.0]; hub.clock = lambda: clock[0]
+    s = room(hub); binding = join(hub, s, max_turns=2 if control in {'remaining_budget', 'failed_remaining'} else 1)
+    post(hub, s, B); delivery = claim(hub, binding, lease_seconds=15)['delivery']
+    clock[0] += 16
+    if control.startswith('failed_'):
+        with hub.store.engine.begin() as conn:
+            t = DELIVERY_TABLES['deliveries']
+            conn.execute(t.update().where(t.c.delivery_id == delivery['delivery_id']).values(status='failed'))
+    if control == 'pause':
+        call(hub, 'pause', ADMIN, **values(s, paused=True, expected_version=1))
+    elif control == 'disable':
+        call(hub, 'control', ADMIN, project_id='p', binding_id=binding['binding_id'], enabled=False, expected_version=1)
+    elif control == 'archive':
+        hub.call('archive_session', values(s, archived=True, expected_version=1, idempotency_key='archive'), ADMIN)
+    elif control == 'revoke':
+        hub._principals = tuple(p for p in hub._principals if p.worker_id != A.worker_id)
+    if control == 'failed_exhausted':
+        post(hub, s, A)
+        assert status(hub, s)['participants'][0]['latest_delivery']['status'] == 'failed'
+    else:
+        code = 'delivery_metadata_required' if control in {'remaining_budget', 'failed_remaining'} else 'session_archived' if control == 'archive' else 'delivery_stopped'
+        reject(code, lambda: post(hub, s, A))

@@ -52,6 +52,31 @@ class Visible(HTMLParser):
         if not self.hidden: self.values.append(data)
 
 
+def test_invalid_docs_mirror_warns_once_without_leaking_value(monkeypatch, caplog):
+    from memory_hub.i18n import LanguageMiddleware, documentation_base_url
+    monkeypatch.setenv('HUB_DOCS_BASE_URL', 'https://user:synthetic-secret@example.test/docs?token=secret')
+    with caplog.at_level('WARNING', logger='memory_hub.i18n'):
+        LanguageMiddleware(None)
+        assert documentation_base_url() == '/help'
+        assert documentation_base_url() == '/help'
+    assert len(caplog.records) == 1
+    assert 'Invalid HUB_DOCS_BASE_URL' in caplog.text and '/help' in caplog.text
+    assert 'synthetic-secret' not in caplog.text and 'token=' not in caplog.text
+
+
+@pytest.mark.parametrize('language,title,prompt', [
+    ('en', 'Start chatting: three steps', 'Read new messages in full'),
+    ('zh-TW', '開始聊天：三個步驟', '完整讀取新訊息'),
+])
+def test_short_chat_guide_precedes_installation(localized, language, title, prompt):
+    client, _, _ = localized
+    page = client.get('/help?lang='+language).text
+    assert title in page and prompt in page
+    assert page.index('id="start-chatting"') < page.index('id="local-claude-setup"')
+    guide = 'START_CHATTING.md' if language == 'en' else 'START_CHATTING.zh-TW.md'
+    assert '/docs/'+guide in page
+
+
 @pytest.mark.parametrize('path', ['/login','/help','/ui?project=visible', '/ui?project=visible&view=tasks',
     '/ui?project=visible&view=memory','/ui?project=visible&view=connections','/ui/chat?project=visible',
     '/ui/manage?project=visible&area=memory','/ui/manage?project=visible&area=tasks',
