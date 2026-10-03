@@ -1,5 +1,7 @@
 # API 契約與可執行範例
 
+[English](API_EXAMPLES.md) | [繁體中文](API_EXAMPLES.zh-TW.md)
+
 以程式碼 `memory_hub/models.py` 的工具模型與 MCP `tools/list` 為最終欄位依據。本版關閉 OpenAPI 公開路由。REST 與 MCP 共用 Hub 邏輯；REST 不是 MCP transport，不能將 `/v1/tools` 直接填成 MCP URL。
 
 ## REST
@@ -43,7 +45,7 @@ Evidence 必須是當前 packet.required_sources 中的 `{source_id, sha256}`；
 
 ## MCP 訊息
 
-目前工具集為 28 個。以下是 `send_message` 的 REST body；目標 project 與收件人必須已存在且獲授權，每次新演練換 thread／key：
+工具集隨版本更新，以目標伺服器 tools/list 核對。以下是 `send_message` 的 REST body；目標 project 與收件人必須已存在且獲授權，每次新演練換 thread／key：
 
 ```json
 {"arguments":{"project_id":"conversation-sandbox","recipient_worker_id":"agent-b","thread_id":"hello-20261002","body":"你好，請回覆驗收碼 A-123。","idempotency_key":"a-hello-001","reply_to_message_id":null}}

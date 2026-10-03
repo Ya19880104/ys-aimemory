@@ -346,15 +346,17 @@ def test_sessions_leave_task_state_and_knowledge_revision_unchanged(collaboratio
 
 def test_v5_additive_migration_preserves_private_messages_and_credentials(collaboration):
     hub,url,sqlite=collaboration
-    from memory_hub.store import SESSION_TABLES
+    from memory_hub.store import SESSION_TABLES, DELIVERY_TABLES
     private=hub.call('send_message',{'project_id':'p','recipient_worker_id':B.worker_id,
         'thread_id':'original','body':'Private remains private','idempotency_key':'v4'},A)
     issued=hub.credentials.issue('p','migration-worker','operator',10.0)
     with hub.store.engine.begin() as conn:
         before=conn.execute(select(projects.c.state).where(projects.c.id=='p')).scalar_one()
+        for name in ('joins','deliveries','bindings','controls'):
+            DELIVERY_TABLES[name].drop(conn)
         for name in ('requests','attachments','artifacts','events','sessions'):
             SESSION_TABLES[name].drop(conn)
-        conn.execute(hub.store.index.migrations.delete().where(hub.store.index.migrations.c.version==5))
+        conn.execute(hub.store.index.migrations.delete().where(hub.store.index.migrations.c.version>=5))
     def start(_):
         upgraded=Hub(Store(url,allow_sqlite=sqlite),principals=IDENTITIES)
         assert upgraded.credentials.authenticate(issued['token']).worker_id=='migration-worker'
@@ -363,7 +365,7 @@ def test_v5_additive_migration_preserves_private_messages_and_credentials(collab
         with upgraded.store.engine.connect() as conn:
             assert conn.execute(select(projects.c.state).where(projects.c.id=='p')).scalar_one()==before
             assert conn.execute(select(upgraded.store.index.migrations.c.version).order_by(
-                upgraded.store.index.migrations.c.version)).scalars().all()==[1,2,3,4,5]
+                upgraded.store.index.migrations.c.version)).scalars().all()==[1,2,3,4,5,6]
     with ThreadPoolExecutor(3) as pool:
         list(pool.map(start,range(3)))
 

@@ -10,6 +10,7 @@ import pytest
 from memory_hub.app import create_app
 from memory_hub.models import Principal
 from memory_hub.web_password import hash_password
+from memory_hub.store import HubError
 
 
 @pytest.fixture
@@ -20,6 +21,7 @@ def room(tmp_path, monkeypatch):
     monkeypatch.setenv('HUB_WEB_ROLE', 'admin')
     monkeypatch.setenv('HUB_WEB_COOKIE_SECURE', 'false')
     monkeypatch.setenv('HUB_WEB_MCP_ENABLED', 'false')
+    monkeypatch.setenv('HUB_WORKER_DISPLAY_NAMES', json.dumps({'ai-a': 'Codex 測試端'}))
     app = create_app(database_url='sqlite:///' + str(tmp_path / 'room.db'), allow_sqlite=True,
         auth_tokens=json.dumps({'synthetic-room-worker-token-1234': {
             'worker_id': 'ai-a', 'projects': ['shared'], 'role': 'worker'}}))
@@ -51,7 +53,9 @@ def test_chat_page_and_incremental_human_worker_conversation(room):
     client, hub, _ = room
     page = client.get('/ui/chat?project=shared')
     assert page.status_code == 200
-    assert '共享對話' in page.text and '人類管理員' in page.text
+    assert '共享對話' in page.text and '以 管理員 ' in page.text
+    assert '人類管理員' not in page.text
+    assert 'Enter 傳送' in page.text and 'Shift+Enter 換行' in page.text
     assert "connect-src 'self'" in page.headers['content-security-policy']
     created = action(client, 'create_session', {'project_id': 'shared', 'title': '<script>room</script>'})
     assert created.status_code == 200, created.text
@@ -67,10 +71,74 @@ def test_chat_page_and_incremental_human_worker_conversation(room):
     data = client.get('/ui/chat/data', params={'op': 'read', 'project': 'shared', 'session': sid}).json()
     messages = [item for item in data['items'] if item['type'] == 'message']
     assert [item['actor']['kind'] for item in messages] == ['human', 'worker']
+    assert messages[1]['actor']['display_name'] == 'Codex 測試端'
+    assert messages[1]['actor']['id'] == 'ai-a'
     assert messages[0]['body'].startswith('<img')  # JSON data, rendered by textContent.
     empty = client.get('/ui/chat/data', params={'op': 'read', 'project': 'shared',
         'session': sid, 'after': data['next_after_sequence']}).json()
     assert empty['items'] == []
+
+
+def test_latest_artifacts_index_is_scoped_bounded_and_omits_contents(room):
+    client, hub, admin = room
+    sid = action(client, 'create_session', {'project_id': 'shared', 'title': 'Index'}).json()['session_id']
+    for index in range(12):
+        hub.call('create_session_artifact', {'project_id': 'shared', 'session_id': sid,
+            'kind': 'plan', 'title': f'Plan {index}', 'content': 'private full content',
+            'covered_through_sequence': 0, 'idempotency_key': f'plan-{index}'}, admin)
+    data = client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'shared', 'session': sid})
+    assert data.status_code == 200
+    result = data.json()
+    assert [item['title'] for item in result['items']] == [f'Plan {i}' for i in range(11, 1, -1)]
+    assert result['has_more'] and 'private full content' not in data.text
+    assert all('content' not in item and 'reference_message_ids' not in item for item in result['items'])
+    assert client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'private', 'session': sid}).status_code == 404
+    assert client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'shared', 'session': '0'*32}).status_code == 404
+    client.cookies.clear()
+    assert client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'shared', 'session': sid}).status_code == 401
+
+
+def test_delivery_browser_adapter_preserves_csrf_nonce_scope_and_version(room, monkeypatch):
+    client, hub, _ = room
+    sid = action(client, 'create_session', {'project_id': 'shared', 'title': 'Delivery'}).json()['session_id']
+    calls = []
+
+    class DeliveryContract:
+        """Contract double: backend delivery behavior has its own service tests."""
+        def call(self, name, args, actor):
+            calls.append((name, args, actor))
+            assert actor.kind == 'human' and actor.role == 'admin'
+            if name == 'status':
+                return {'control': {'paused': False, 'version': 4}, 'participants': [
+                    {'worker_id': 'ai-a', 'display_name': 'Original alias', 'status': 'offline'}]}
+            if args['expected_version'] != 4:
+                raise HubError('stale_control', 'Room control changed', 409)
+            return {'paused': args['paused'], 'version': 5, 'running_turns_cancelled': False}
+
+    monkeypatch.setattr(hub, 'delivery', DeliveryContract(), raising=False)
+    response = client.get('/ui/chat/data', params={'op': 'delivery', 'project': 'shared', 'session': sid})
+    assert response.status_code == 200
+    assert response.json()['participants'][0] == {'worker_id': 'ai-a', 'display_name': 'Codex 測試端', 'status': 'offline'}
+    assert client.get('/ui/chat/data', params={'op': 'delivery', 'project': 'private', 'session': sid}).status_code == 404
+    assert len(calls) == 1
+    args = {'project_id': 'shared', 'session_id': sid, 'paused': True, 'expected_version': 4}
+    denied = client.post('/ui/chat/action', json={'action': 'set_session_delivery_paused', 'arguments': args})
+    assert denied.status_code == 403 and len(calls) == 1
+    result = action(client, 'set_session_delivery_paused', args, 'pause-once')
+    assert result.status_code == 200 and result.json()['running_turns_cancelled'] is False
+    assert calls[-1][1]['idempotency_key'] == 'pause-once'
+    stale = action(client, 'set_session_delivery_paused', {**args, 'expected_version': 3}, 'stale-pause')
+    assert stale.status_code == 409
+    client.cookies.clear()
+    assert client.get('/ui/chat/data', params={'op': 'delivery', 'project': 'shared', 'session': sid}).status_code == 401
+
+
+def test_delivery_missing_service_reports_unavailable_not_disconnected(room, monkeypatch):
+    client, hub, _ = room
+    monkeypatch.delattr(hub, 'delivery', raising=False)
+    result = client.get('/ui/chat/data?op=delivery&project=shared&session=' + 'a'*32)
+    assert result.status_code == 503
+    assert result.json()['error'] == 'unavailable'
 
 
 def test_chat_rejects_csrf_actor_forgery_and_cross_project(room):
@@ -144,3 +212,102 @@ def test_account_cookie_paths_are_precise_and_account_data_omits_hashes(room):
     assert client.get('/ui/account/password').status_code == 200
     assert client.get('/ui/users/unknown').status_code == 401
     assert client.post('/ui/users/create', data={'username':'forged'}).status_code == 403
+
+
+@pytest.fixture(autouse=True)
+def traditional_interface(monkeypatch):
+    """Retain legacy copy assertions as explicit Traditional Chinese coverage."""
+    monkeypatch.setenv("HUB_WEB_LANGUAGE", "zh-TW")
+
+
+def test_automatic_setup_uses_configured_origin_and_public_ca(room, monkeypatch):
+    from types import SimpleNamespace
+    import memory_hub.web_sessions as sessions
+    client, _, _ = room
+    monkeypatch.setenv('HUB_PUBLIC_BASE_URL', 'https://hub.example.com')
+    monkeypatch.setattr(sessions, '_public_ca', lambda path: SimpleNamespace(fingerprint='AB:' * 31 + 'AB'))
+    page = client.get('/ui/chat?project=shared&lang=en', headers={'X-Forwarded-Host': 'attacker.example'})
+    assert page.status_code == 200
+    assert 'Set up automatic replies' in page.text
+    assert 'data-setup-base="https://hub.example.com"' in page.text
+    assert 'attacker.example' not in page.text
+    assert 'synthetic-room-worker-token-1234' not in page.text
+    assert page.text.count('id="auto-setup"') == 1
+    assert '/ui/mcp?' in page.text
+    monkeypatch.setattr(sessions, '_public_ca', lambda path: None)
+    assert 'data-setup-base=""' in client.get('/ui/chat?project=shared').text
+
+
+def test_automatic_setup_commands_escape_values_and_do_not_activate():
+    import shutil
+    import subprocess
+    from memory_hub.web_chat_assets import CHAT_JS
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node.js unavailable for generated command execution')
+    handler = CHAT_JS[CHAT_JS.index("  $('auto-client').onchange="):CHAT_JS.index("  $('copy-invite').onclick=")]
+    harness = r"""
+const fields = { 'auto-worker':{value:"worker'o"}, 'auto-hours':{value:'1'}, 'auto-turns':{value:'6'}, 'auto-client':{value:'codex'}, 'auto-instructions':{}, 'auto-setup-status':{} };
+const $=id=>fields[id]||(fields[id]={});
+const state={project:"project'o",room:{session_id:'a'.repeat(32)}};
+const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32)}};
+const UI_LANGUAGE='en'; const uiText=key=>key;
+let copied=''; const navigator={clipboard:{writeText:async text=>{copied=text;}}};
+""" + handler + r"""
+(async()=>{ $('auto-client').onchange(); if(!$('auto-project-hint').hidden)throw Error('Codex path hint'); await $('copy-auto-setup').onclick();
+if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('3A9DC4603260D40E39FC04A3B639F35DF72533B53C809CAC3D6E317E0AC22B81'))throw Error('Codex command');
+fields['auto-client'].value='claude';$('auto-client').onchange();if($('auto-project-hint').hidden)throw Error('Claude path hint');await $('copy-auto-setup').onclick();
+if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('85337175B42B566797F7523F510086FE2D70AC653132B734A7846EBB35BD9876'))throw Error('Claude command');
+copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if(copied)throw Error('invalid budget copied');
+})().catch(e=>{console.error(e);process.exitCode=1});
+"""
+    result = subprocess.run([node, '-e', harness], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+def test_complete_installation_payload_is_safe_powershell_with_hostile_worker():
+    import shutil
+    import subprocess
+    from memory_hub.web_chat_assets import CHAT_JS
+    from memory_hub.i18n import CATALOG
+    node = shutil.which('node')
+    powershell = shutil.which('pwsh') or shutil.which('powershell')
+    if not node or not powershell:
+        pytest.skip('Node.js and PowerShell required for generated payload parser check')
+    worker = "worker;$(Write-Output 'SHOULD_NOT_EXECUTE')"
+    handler = CHAT_JS[CHAT_JS.index("  $('auto-client').onchange="):CHAT_JS.index("  $('copy-invite').onclick=")]
+    harness = "const CATALOG=" + json.dumps({key: value for key, value in CATALOG.items() if key.startswith("ui_aa001") or key in ("ui_872bc28ee946", "ui_ce0fe4db3088")}, ensure_ascii=True) + ";" + r"""
+const fields={'auto-worker':{value:WORKER},'auto-hours':{value:'1'},'auto-turns':{value:'6'},'auto-client':{value:'codex'},'auto-instructions':{},'auto-setup-status':{}};
+const $=id=>fields[id]||(fields[id]={});
+const state={project:'shared',room:{session_id:'a'.repeat(32)}};
+const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32)}};
+let UI_LANGUAGE='en';const uiText=key=>CATALOG[key][UI_LANGUAGE];let copied='';
+const navigator={clipboard:{writeText:async text=>{copied=text;}}};
+""".replace('WORKER', json.dumps(worker)) + handler + r"""
+(async()=>{const payloads=[];for(const lang of ['en','zh-TW'])for(const client of ['claude','codex']){UI_LANGUAGE=lang;fields['auto-client'].value=client;await $('copy-auto-setup').onclick();payloads.push({text:copied,worker:fields['auto-worker'].value,client});}console.log(JSON.stringify(payloads));})().catch(e=>{console.error(e);process.exitCode=1});
+"""
+    generated = subprocess.run([node, '-e', harness], capture_output=True, text=True, encoding='utf-8')
+    assert generated.returncode == 0, generated.stderr
+    parser = r"""
+[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
+$items = [Console]::In.ReadToEnd() | ConvertFrom-Json
+foreach ($item in $items) {
+    $tokens=$null; $errors=$null
+    $ast=[System.Management.Automation.Language.Parser]::ParseInput($item.text,[ref]$tokens,[ref]$errors)
+    if ($errors.Count) { throw 'Complete guide failed PowerShell parsing' }
+    $commands=@($ast.FindAll({param($n) $n -is [System.Management.Automation.Language.CommandAst]},$true))
+    foreach ($command in $commands) { if ($command.GetCommandName() -notin @('Join-Path','Invoke-WebRequest','Get-FileHash','notepad')) { throw 'Unexpected executable command in complete guide' } }
+    $line=@($item.text -split "`n" | Where-Object { $_.StartsWith('# & $Installer ') })
+    if ($line.Count -ne 1) { throw 'Missing separate commented installation command' }
+    $install=[System.Management.Automation.Language.Parser]::ParseInput($line[0].Substring(2),[ref]$tokens,[ref]$errors)
+    if ($errors.Count) { throw 'Installation command failed parsing' }
+    $calls=@($install.FindAll({param($n) $n -is [System.Management.Automation.Language.CommandAst]},$true))
+    if ($calls.Count -ne 1) { throw 'Worker added an executable command' }
+    if ($item.client -eq 'codex') {
+        $literal=@($install.FindAll({param($n) $n -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $n.Value -eq $item.worker},$true))
+        if ($literal.Count -ne 1) { throw 'Worker is not an exact literal parameter' }
+    }
+}
+"""
+    checked = subprocess.run([powershell, '-NoProfile', '-NonInteractive', '-Command', parser], input=generated.stdout, capture_output=True, text=True, encoding='utf-8')
+    assert checked.returncode == 0, checked.stderr

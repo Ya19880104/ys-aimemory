@@ -1,24 +1,25 @@
 ---
-name: 問題回報
-about: 回報可重現的程式、部署或客戶端問題
-title: '[Bug] '
-labels: ''
+name: Bug report / 問題回報
+about: Reproducible behavior with sanitized evidence / 可重現問題與去秘密證據
+title: ''
+labels: bug
 assignees: ''
 ---
 
-## 環境
+## Problem / 問題
 
-- Commit：
-- OS／Python：
-- 客戶端與版本：
-- 測試層級：SDK／原生模型／網頁／部署
+Expected behavior and actual behavior / 預期與實際行為：
 
-## 重現步驟
+## Reproduction / 重現
 
-1.
+Minimal steps using synthetic data / 使用合成資料的最小步驟：
 
-## 預期與實際結果
+## Environment / 環境
 
-## 去除秘密的錯誤與驗證
+Commit, OS, Python, client/version, transport, project-scoped setup / commit、OS、Python、客戶端版號、傳輸與專案設定：
 
-請勿附 token、SSH/TLS 私鑰、cookie、.env、真實資料庫／備份或私人聊天內容。
+## Evidence / 證據
+
+Commands, first error, passed/failed/skipped/not_run. Identify SDK versus native tools, manual versus automatic replies / 命令、首次錯誤與結果，區分 SDK／原生、手動／自動：
+
+Do not attach tokens, cookies, `.env`, private keys, real databases/backups, user chats, or private screenshots. Security reports should use private reporting if available / 不附憑證、真實資料或私密畫面；安全問題使用私人回報管道。

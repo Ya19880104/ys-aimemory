@@ -1,4 +1,5 @@
 """Explicit, role-scoped management forms sharing Hub authorization and gates."""
+from .i18n import tr
 import hmac
 import json
 import secrets
@@ -32,26 +33,26 @@ def shell(title, body, project='', role='read_only', *, config=None, identity=No
     if config is not None and identity is not None:
         from .web import workspace_shell
         return workspace_shell(title,body,project,config,identity,csrf,section,tab)
-    return '<main class="management"><h1>'+e(title)+'</h1><p><a href="'+link('/ui',project=project)+'">返回專案總覽</a></p>'+body+'</main>'
+    return '<main class="management"><h1>'+e(title)+'</h1><p><a href="'+link('/ui',project=project)+(tr('ui_91f780ea4d94') + '</a></p>')+body+'</main>'
 
 
 def install_management(app, hub, config, session, parse_form, redirect, auth, clock):
     def principal(current):
         identity = auth.principal(current)
-        if identity is None: raise HubError('unauthorized', '登入已失效。', 401)
-        if not identity.projects: raise HubError('forbidden', '尚無專案授權。', 403)
+        if identity is None: raise HubError('unauthorized', (tr('ui_446e2f1aa692')), 401)
+        if not identity.projects: raise HubError('forbidden', (tr('ui_dcad8fbfc554')), 403)
         return Principal(worker_id='human:' + identity.user_id, projects=list(identity.projects), role='admin' if identity.role=='admin' else 'worker')
 
     def scoped(project, current):
         identity = auth.principal(current)
         if identity is None or project not in identity.projects:
-            raise HubError('forbidden','此專案不在網頁帳號授權範圍',403)
+            raise HubError('forbidden',(tr('ui_86967d4d8942')),403)
 
     def snapshot(project, current):
         scoped(project, current)
         with hub.store.engine.connect() as conn:
             state=conn.execute(select(projects.c.state).where(projects.c.id==project)).scalar_one_or_none()
-        if state is None: raise HubError('not_found','專案尚未建立',404)
+        if state is None: raise HubError('not_found',(tr('ui_cbdd5ca271db')),404)
         return state
 
     def form_start(action, current, project, extra=None):
@@ -64,11 +65,11 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
         return '<div class="alert" role="status">'+e(message)+'</div>' if message else ''
 
     def error(exc, project=''):
-        return page(shell('無法完成請求','<div class="alert">'+e(exc.message)+'</div>',project,'read_only'),exc.status)
+        return page(shell((tr('ui_4ba5138d7ab8')),'<div class="alert">'+e(exc.message)+'</div>',project,'read_only'),exc.status)
 
     def selected(request, current):
         identity = auth.principal(current)
-        if identity is None: raise HubError('unauthorized', '登入已失效。', 401)
+        if identity is None: raise HubError('unauthorized', (tr('ui_446e2f1aa692')), 401)
         project=request.query_params.get('project') or next(iter(identity.projects), '')
         scoped(project, current)
         return project
@@ -84,33 +85,33 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
             with hub.store.engine.connect() as conn:
                 state=conn.execute(select(projects.c.state).where(projects.c.id==project)).scalar_one_or_none()
             area=request.query_params.get('area','tasks')
-            if area not in ('tasks','memory','project'): raise HubError('not_found','找不到此管理頁',404)
+            if area not in ('tasks','memory','project'): raise HubError('not_found',(tr('ui_b8bba1727b76')),404)
             if area=='tasks' and request.query_params.get('after'):
                 return redirect('/ui?'+urlencode({'project':project,'view':'tasks','after':request.query_params['after']}))
             section='settings' if area=='project' else area
-            title={'tasks':'建立任務','memory':'登錄與審核','project':'建立專案'}[area]
+            title={'tasks':(tr('ui_e14e0d0691bd')),'memory':(tr('ui_eb29d2c20f3d')),'project':(tr('ui_181ad3312ed1'))}[area]
             body=flash(current)
             if identity.role!='admin':
-                body+='<div class="alert">管理表單需專案管理員角色。</div>'
+                body+=('<div class="alert">' + tr('ui_d6e4fa400fb7') + '</div>')
             elif not state:
-                body+='<section class="panel"><h2>建立專案 '+e(project)+'</h2><p>僅能建立配置中已授權的專案 ID。</p>'+form_start('project',current,project)+'<button>建立專案</button></form></section>'
+                body+=('<section class="panel"><h2>' + tr('ui_3eebd8826f15'))+e(project)+('</h2><p>' + tr('ui_58cad6d1703a') + '</p>')+form_start('project',current,project)+('<button>' + tr('ui_181ad3312ed1') + '</button></form></section>')
             elif area=='project':
-                body+='<p>目前專案已建立。請選擇已獲授權但尚未建立的專案，或請管理員調整授權。</p>'
+                body+=('<p>' + tr('ui_73660a4bb402') + '</p>')
             elif area=='memory':
                 revision=state['revision']
-                body+='<section class="panel"><h2>登錄／更新來源</h2>'+form_start('source',current,project,{'expected_revision':revision})+input_field('source_id','來源 ID')+input_field('uri','來源位置（只記錄，不會自動抓取）')+input_field('commit','Commit／版本標記')+input_field('content','完整來源內容（未信任參考資料）',textarea=True)+'<p><button>儲存來源</button></p></form></section>'
-                body+='<details class="panel"><summary>批次匯入來源</summary><p>貼上 JSON 陣列，每筆包含 source_id、content、uri、commit。最多20筆、內容合計750 KB；中文長文請分批。URI只用於追溯，不會自動抓取。</p>'+form_start('import',current,project,{'expected_revision':revision})+input_field('sources_json','來源 JSON',textarea=True)+'<p><button>驗證並匯入</button></p></form></details>'
-                body+='<section class="panel"><h2>待審提案</h2>'
+                body+=('<section class="panel"><h2>' + tr('ui_48aad83cc581') + '</h2>')+form_start('source',current,project,{'expected_revision':revision})+input_field('source_id',(tr('ui_5870714ed92b')))+input_field('uri',(tr('ui_ff9b45886551')))+input_field('commit',(tr('ui_91d0a92b121c')))+input_field('content',(tr('ui_5ecbd4a59a5a')),textarea=True)+('<p><button>' + tr('ui_bc14ab540219') + '</button></p></form></section>')
+                body+=('<details class="panel"><summary>' + tr('ui_186014b30943') + '</summary><p>' + tr('ui_23ed74e2e27f') + '</p>')+form_start('import',current,project,{'expected_revision':revision})+input_field('sources_json',(tr('ui_4a5fa83c1125')),textarea=True)+('<p><button>' + tr('ui_9e58d4454514') + '</button></p></form></details>')
+                body+=('<section class="panel"><h2>' + tr('ui_3725eec2805c') + '</h2>')
                 proposals=[d for d in state['decisions'].values() if d['status']=='proposed']
                 for decision in proposals:
-                    body+='<div class="row"><p class="body-text">'+e(decision['text'])+'</p>'+badge('提案 r'+str(decision['binding']['context_revision']))+form_start('approve',current,project,{'decision_id':decision['decision_id'],'expected_revision':revision})+'<p><button>核准為權威記憶</button></p></form></div>'
-                if not proposals: body+='<p class="muted">目前沒有待審提案</p>'
+                    body+='<div class="row"><p class="body-text">'+e(decision['text'])+'</p>'+badge((tr('ui_9b00b9349366'))+str(decision['binding']['context_revision']))+form_start('approve',current,project,{'decision_id':decision['decision_id'],'expected_revision':revision})+('<p><button>' + tr('ui_63810e5e4468') + '</button></p></form></div>')
+                if not proposals: body+=('<p class="muted">' + tr('ui_ef2a4f39d4ad') + '</p>')
                 body+='</section>'
             else:
-                body+='<section class="panel"><p>先在「記憶 → 登錄與審核」建立必要來源，再指定任務目標與驗收條件。</p>'+form_start('task',current,project)+input_field('task_id','任務 ID')+input_field('goal','工作目標',textarea=True)+input_field('allowed_paths','允許路徑（每行一項）',textarea=True)+input_field('acceptance_criteria','驗收條件（每行一項）',textarea=True)+input_field('source_ids','必要來源 ID（每行一項）',textarea=True)+'<p><button>建立任務</button></p></form></section>'
+                body+=('<section class="panel"><p>' + tr('ui_107a5411fdba') + '</p>')+form_start('task',current,project)+input_field('task_id',(tr('ui_51ee41dadd5f')))+input_field('goal',(tr('ui_8772a4a5c85c')),textarea=True)+input_field('allowed_paths',(tr('ui_267ba789655d')),textarea=True)+input_field('acceptance_criteria',(tr('ui_b5098ba99b97')),textarea=True)+input_field('source_ids',(tr('ui_7f5d451a617c')),textarea=True)+('<p><button>' + tr('ui_e14e0d0691bd') + '</button></p></form></section>')
             return page(shell(title,body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section=section,tab='project' if area=='project' else 'edit'))
         except HubError as exc: return error(exc)
-        except ValidationError: return error(HubError('invalid_page','分頁參數格式不正確',400))
+        except ValidationError: return error(HubError('invalid_page',(tr('ui_0896e2f444ee')),400))
 
     @app.post('/ui/action/{action}')
     async def mutate(action: str, request: Request):
@@ -118,15 +119,15 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
         if not current: return redirect('/login')
         identity=auth.principal(current)
         if identity is None: return redirect('/login')
-        if identity.role!='admin': return error(HubError('forbidden','此帳號沒有管理權限',403))
-        if action not in ACTIONS: return error(HubError('not_found','未知的管理動作',404))
+        if identity.role!='admin': return error(HubError('forbidden',(tr('ui_8617503dff2b')),403))
+        if action not in ACTIONS: return error(HubError('not_found',(tr('ui_132ed37a1565')),404))
         values=await parse_form(request,max_bytes=1048576,max_fields=16)
         project=values.get('project_id','')
         try:
             scoped(project, current)
-            if not hmac.compare_digest(values.get('csrf','').encode(),current['csrf'].encode()): raise HubError('csrf','表單驗證失敗，請重新載入頁面',403)
+            if not hmac.compare_digest(values.get('csrf','').encode(),current['csrf'].encode()): raise HubError('csrf',(tr('ui_b83e91cb3ea8')),403)
             if not auth.consume_nonce(values.get('nonce',''),current,action,project):
-                raise HubError('duplicate_or_expired','表單已送出或已過期，請重新載入確認最新狀態',409)
+                raise HubError('duplicate_or_expired',(tr('ui_8f2924ca9f58')),409)
             args={'project_id':project}
             if action=='source': args.update({k:values.get(k,'') for k in ('source_id','content','uri','commit')},expected_revision=int(values.get('expected_revision','')))
             elif action=='import':
@@ -141,12 +142,12 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
                 args.update(task_id=values.get('task_id',''),reason=values.get('reason',''),to_worker=values.get('to_worker') or None)
                 for key in ('expected_revision','expected_generation','expected_fence'): args[key]=int(values.get(key,''))
             hub.call(ACTIONS[action],args,principal(current))
-            auth.set_flash(current,'操作成功，已儲存並更新最新狀態。')
+            auth.set_flash(current,(tr('ui_f4b608198048')))
         except HubError as exc:
             if exc.status==403: return error(exc,project)
-            auth.set_flash(current,'未儲存：'+exc.message+'（'+exc.code+'）。請核對最新資料後重新提交。')
+            auth.set_flash(current,(tr('ui_87e0643505a3'))+exc.message+'（'+exc.code+(tr('ui_55775aa3704b')))
         except (ValueError,TypeError,ValidationError):
-            auth.set_flash(current,'未儲存：表單或匯入資料格式不正確。請核對必填欄位、JSON 結構及數量限制。')
+            auth.set_flash(current,(tr('ui_80a23df7c046')))
         area='memory' if action in ('source','import','approve') else 'project' if action=='project' else 'tasks'
         return redirect('/ui/manage?'+urlencode({'project':project,'area':area}))
 
@@ -160,24 +161,24 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
             project=selected(request, current)
             query=request.query_params.get('q','')
             try: offset=max(0,int(request.query_params.get('offset','0')))
-            except ValueError: raise HubError('invalid_page','頁碼格式不正確',400)
-            if offset>10000: raise HubError('invalid_page','分頁位置超出範圍',400)
-            body='<form><input type="hidden" name="project" value="'+e(project)+'">'+input_field('q','搜尋專案記憶',query)+'<p><button>搜尋</button></p></form>'
+            except ValueError: raise HubError('invalid_page',(tr('ui_3065be8cd83c')),400)
+            if offset>10000: raise HubError('invalid_page',(tr('ui_0d1a1f951a6d')),400)
+            body='<form><input type="hidden" name="project" value="'+e(project)+'">'+input_field('q',(tr('ui_1fde667343dc')),query)+('<p><button>' + tr('ui_03c481a6ab85') + '</button></p></form>')
             if query:
                 result=hub.call('search_knowledge',{'project_id':project,'query':query,'limit':20,'offset':offset},principal(current))
                 matches=result.get('matches',[])
-                body+='<p>'+badge('檢索引擎 '+str(result.get('search','unknown')))+badge('脈絡 r'+str(result.get('context_revision','?')))+'</p>'
-                body+='<p class="muted">檢索結果不代表已完成 read_source 或已取得寫入資格。待審提案仍非權威記憶。</p>'
+                body+='<p>'+badge((tr('ui_c703d730ca8f'))+str(result.get('search','unknown')))+badge((tr('ui_4a33e56b5d6f'))+str(result.get('context_revision','?')))+'</p>'
+                body+=('<p class="muted">' + tr('ui_91745782d160') + '</p>')
                 for match in matches:
-                    body+='<article class="panel task"><h3>'+e(match.get('source_id') or match.get('decision_id') or match.get('title','記憶'))+'</h3>'+badge(match.get('kind',''))+badge(match.get('status','來源參考'))+'<p class="body-text">'+e(match.get('excerpt') or match.get('text',''))+'</p><div class="path">'+e(match.get('uri',''))+'</div></article>'
-                if not matches: body+='<div class="empty">沒有符合的記憶，請換個關鍵字</div>'
+                    body+='<article class="panel task"><h3>'+e(match.get('source_id') or match.get('decision_id') or match.get('title',(tr('ui_2892879e37b9'))))+'</h3>'+badge(match.get('kind',''))+badge(match.get('status',(tr('ui_f83cbd06e928'))))+'<p class="body-text">'+e(match.get('excerpt') or match.get('text',''))+'</p><div class="path">'+e(match.get('uri',''))+'</div></article>'
+                if not matches: body+=('<div class="empty">' + tr('ui_e32a4b2acadf') + '</div>')
                 body+='<p>'
-                if offset: body+='<a href="'+link('/ui/search',project=project,q=query,offset=max(0,offset-20))+'">← 上一頁</a> '
-                if result.get('next_offset') is not None: body+='<a href="'+link('/ui/search',project=project,q=query,offset=result['next_offset'])+'">下一頁 →</a>'
+                if offset: body+='<a href="'+link('/ui/search',project=project,q=query,offset=max(0,offset-20))+(tr('ui_fdb930b35d3a') + '</a> ')
+                if result.get('next_offset') is not None: body+='<a href="'+link('/ui/search',project=project,q=query,offset=result['next_offset'])+(tr('ui_631484f1c5e0') + '</a>')
                 body+='</p>'
-            return page(shell('搜尋記憶',body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section='memory',tab='search'))
+            return page(shell((tr('ui_4fe7d65a0b2d')),body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section='memory',tab='search'))
         except HubError as exc: return error(exc)
-        except ValidationError: return error(HubError('invalid_query','搜尋詞長度必須為 1–200 字元',400))
+        except ValidationError: return error(HubError('invalid_query',(tr('ui_71e9e1be9255')),400))
 
     @app.get('/ui/inbox')
     def inbox(request: Request):
@@ -190,16 +191,16 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
             state=snapshot(project, current)
             worker=request.query_params.get('worker','')
             candidates=sorted({p.worker_id for p in hub.principals if project in p.projects})
-            if worker and worker not in candidates: raise HubError('not_found','找不到已設定的身分',404)
-            body='<form>'+hidden('project',project)+'<label>依 AI 身分篩選</label><select name="worker"><option value="">全部身分</option>'+''.join('<option value="'+e(w)+'"'+(' selected' if worker==w else '')+'>'+e(w)+'</option>' for w in candidates)+'</select><p><button>篩選</button></p></form><p class="muted">這是管理檢視，不會代替 AI 認領或接受交接。</p>'
-            groups=[('等待接手',lambda t:t.get('pending_recipient') and (not worker or t['pending_recipient']==worker)),('有效認領',lambda t:t.get('owner') and t.get('lease_until',0)>clock() and (not worker or t['owner']==worker)),('可認領／租約過期',lambda t:t.get('status')!='completed' and not t.get('pending_recipient') and (not t.get('owner') or t.get('lease_until',0)<=clock()))]
+            if worker and worker not in candidates: raise HubError('not_found',(tr('ui_3850c1980144')),404)
+            body='<form>'+hidden('project',project)+('<label>' + tr('ui_5d3886bca810') + '</label><select name="worker"><option value="">' + tr('ui_d4e679b49fd6') + '</option>')+''.join('<option value="'+e(w)+'"'+(' selected' if worker==w else '')+'>'+e(w)+'</option>' for w in candidates)+('</select><p><button>' + tr('ui_9bd5d8ac48f4') + '</button></p></form><p class="muted">' + tr('ui_7bb958c3774b') + '</p>')
+            groups=[((tr('ui_0a927d059929')),lambda t:t.get('pending_recipient') and (not worker or t['pending_recipient']==worker)),((tr('ui_a75c19e4500f')),lambda t:t.get('owner') and t.get('lease_until',0)>clock() and (not worker or t['owner']==worker)),((tr('ui_5305ab88c7ec')),lambda t:t.get('status')!='completed' and not t.get('pending_recipient') and (not t.get('owner') or t.get('lease_until',0)<=clock()))]
             for title,predicate in groups:
                 body+='<section class="panel task"><h2>'+title+'</h2>'
                 rows=[(tid,t) for tid,t in state['tasks'].items() if predicate(t)]
-                for tid,t in rows: body+='<div class="row"><a href="'+link('/ui/task',project=project,task=tid)+'">'+e(tid)+'</a> · '+e(t['goal'])+'<div class="meta">'+e(t.get('pending_recipient') or t.get('owner') or '尚無持有者')+'</div></div>'
-                if not rows: body+='<p class="muted">目前沒有符合項目</p>'
+                for tid,t in rows: body+='<div class="row"><a href="'+link('/ui/task',project=project,task=tid)+'">'+e(tid)+'</a> · '+e(t['goal'])+'<div class="meta">'+e(t.get('pending_recipient') or t.get('owner') or (tr('ui_b61ba9478bc4')))+'</div></div>'
+                if not rows: body+=('<p class="muted">' + tr('ui_4bfe1dc46056') + '</p>')
                 body+='</section>'
-            return page(shell('任務收件匣',body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section='tasks',tab='inbox'))
+            return page(shell((tr('ui_c2a348d13c8f')),body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section='tasks',tab='inbox'))
         except HubError as exc: return error(exc)
 
     @app.get('/ui/task')
@@ -211,12 +212,12 @@ def install_management(app, hub, config, session, parse_form, redirect, auth, cl
         try:
             project=selected(request, current); state=snapshot(project, current)
             tid=request.query_params.get('task',''); task=state['tasks'].get(tid)
-            if not task: raise HubError('not_found','找不到任務',404)
-            body='<section class="panel"><h2>'+e(tid)+'</h2><p>'+e(task['goal'])+'</p><p>'+badge(task['status'])+badge('fence '+str(task['fence']))+badge('generation '+str(task['generation']))+'</p><div class="meta">持有者 '+e(task.get('owner') or '—')+' · 指定接手 '+e(task.get('pending_recipient') or '—')+'</div><h3>允許路徑</h3><p class="path">'+e('\n'.join(task['allowed_paths']))+'</p><h3>驗收條件</h3><ul>'+''.join('<li>'+e(x)+'</li>' for x in task['acceptance_criteria'])+'</ul></section>'
+            if not task: raise HubError('not_found',(tr('ui_1cee42032be4')),404)
+            body='<section class="panel"><h2>'+e(tid)+'</h2><p>'+e(task['goal'])+'</p><p>'+badge(task['status'])+badge('fence '+str(task['fence']))+badge('generation '+str(task['generation']))+('</p><div class="meta">' + tr('ui_d37f774c768b'))+e(task.get('owner') or '—')+(tr('ui_0ff81ddf4273'))+e(task.get('pending_recipient') or '—')+('</div><h3>' + tr('ui_978b18869668') + '</h3><p class="path">')+e('\n'.join(task['allowed_paths']))+('</p><h3>' + tr('ui_3987e519aade') + '</h3><ul>')+''.join('<li>'+e(x)+'</li>' for x in task['acceptance_criteria'])+'</ul></section>'
             for handoff in task.get('handoffs',[]): body+=render_handoff(handoff)
             for recovery in task.get('recoveries',[]): body+=render_recovery(recovery)
             for cp in task.get('checkpoints',[]): body+='<div class="panel task"><h3>'+e(cp['kind'])+'</h3><p class="body-text">'+e(cp['summary'])+'</p><div class="path">'+e(cp['binding']['commit'])+'</div></div>'
             if identity.role=='admin':
-                body+='<section class="panel"><h2>管理員復原／重新指定接手</h2><div class="alert">這會撤銷目前認領與舊 fence，讓舊持有者失去後續 Hub 寫入資格。請確認已與協作者核對。</div>'+form_start('recover',current,project,{'task_id':tid,'expected_revision':state['revision'],'expected_generation':task['generation'],'expected_fence':task['fence']})+input_field('reason','復原原因（寫入審計）',textarea=True)+'<label for="to_worker">重新指定接手者</label><select id="to_worker" name="to_worker"><option value="">開放重新認領</option>'+''.join('<option>'+e(w)+'</option>' for w in sorted({p.worker_id for p in hub.principals if project in p.projects}))+'</select><p><button>確認撤銷認領並復原</button></p></form></section>'
-            return page(shell('任務詳情',body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section='tasks',tab='list'))
+                body+=('<section class="panel"><h2>' + tr('ui_2a275c6a2d68') + '</h2><div class="alert">' + tr('ui_f2de93df4c0d') + '</div>')+form_start('recover',current,project,{'task_id':tid,'expected_revision':state['revision'],'expected_generation':task['generation'],'expected_fence':task['fence']})+input_field('reason',(tr('ui_5fa30f4d7d17')),textarea=True)+('<label for="to_worker">' + tr('ui_9e39a5e93967') + '</label><select id="to_worker" name="to_worker"><option value="">' + tr('ui_1f915f20acf4') + '</option>')+''.join('<option>'+e(w)+'</option>' for w in sorted({p.worker_id for p in hub.principals if project in p.projects}))+('</select><p><button>' + tr('ui_d7e17b4d8b16') + '</button></p></form></section>')
+            return page(shell((tr('ui_63a3974a04ce')),body,project,identity.role,config=config,identity=identity,csrf=current['csrf'],section='tasks',tab='list'))
         except HubError as exc: return error(exc)

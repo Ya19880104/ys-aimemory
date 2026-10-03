@@ -1,17 +1,21 @@
 ---
-name: 功能建議
-about: 提出使用情境與可驗收的改善
-title: '[Feature] '
-labels: ''
+name: Feature proposal / 功能提案
+about: Describe the user need and acceptance / 使用需求與驗收
+title: ''
+labels: enhancement
 assignees: ''
 ---
 
-## 想解決的使用問題
+## User need / 使用需求
 
-## 預期操作方式
+Who needs this and what action is difficult? / 誰需要、哪個操作有困難？
 
-## 如何判定完成
+## Proposed behavior / 提議行為
 
-## 相容性與權限影響
+Concrete before/after example and scope / 具體前後差異與範圍：
 
-使用合成例子，不附私人專案內容或憑證。
+## Acceptance / 驗收
+
+Observable results, permission boundaries, compatibility, and failure cases / 可觀察結果、權限界線、相容性與失敗情境：
+
+Use synthetic examples; do not include secrets or private project content / 使用合成例子，不附秘密或私人專案內容。

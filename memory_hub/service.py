@@ -8,6 +8,7 @@ from .credential_store import Registry
 from .message_store import MessageStore
 from .session_models import SESSION_MODELS
 from .session_service import SessionActor, SessionService
+from .delivery_service import DeliveryService
 from sqlalchemy import select
 
 
@@ -23,6 +24,8 @@ class Hub:
         self.credentials = Registry(store, self._principals)
         self.messages = MessageStore(messages)
         self.sessions = SessionService(store, clock=lambda: self.clock())
+        self.delivery = DeliveryService(store, clock=lambda: self.clock(), principals=self._principals_for)
+        self.sessions.delivery = self.delivery
 
     @property
     def principals(self):

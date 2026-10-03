@@ -1,5 +1,7 @@
 # Ubuntu VM／PVE 部署與復原
 
+[English](DEPLOYMENT.md) | [繁體中文](DEPLOYMENT.zh-TW.md)
+
 這份指南是待操作的部署流程，不代表已經在你的主機安裝。先在隔離測試 VM 執行，再導入 LAN。公開 Internet 部署屬後續階段。
 
 第一次從 GitHub 安裝，先讀 [從零部署與 Claude／Codex 接線](QUICKSTART.zh-TW.md)。公開原始碼不代表應將運行中的 Hub 開放到 Internet。

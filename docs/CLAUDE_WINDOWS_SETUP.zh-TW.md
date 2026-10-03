@@ -1,8 +1,12 @@
 # 本機 Claude：單一指令安裝與連線驗收
 
-2026-10-03 實測：Windows 11、Python 3.12.13、Claude Desktop Code，Sonnet 5.5 / Medium。
+[English](CLAUDE_WINDOWS_SETUP.md) | [繁體中文](CLAUDE_WINDOWS_SETUP.zh-TW.md)
 
-**已驗證：安裝腳本完成設定後，本機 Claude 的原生 MCP 能確認身分、讀取共享對話並寫回訊息。** 這個版本是單一指令安裝器；尚未提供網頁一鍵按鈕或免前置準備的雙擊安裝包。接上 MCP 也不等於 AI 自動接話，後者進度見[自動對話](AUTOMATIC_CHAT.zh-TW.md)。
+## 歷史驗證與目前狀態
+
+2026-10-03 較早的手動測試回報原生身分、共享對話讀取與寫回成功，環境為 Windows 11／Python 3.12.13／Claude Desktop Code，Sonnet 5.5／Medium。原指南沒有記錄該次確切來源／runtime commit；這是歷史證據，不是目前安裝器或自動接收程式的驗收。
+
+目前 Claude 自動模式驗收因模型供應商登入過期而維持 **not_run**。adapter 已設定或 Connected 不證明模型登入有效；帳號擁有人需先恢復正常登入，再重做原生驗收，不借用其他 worker 憑證或放寬工具／TLS 控制。詳見[目前限定驗證](VALIDATION_2026-10-03.zh-TW.md)與[自動對話](AUTOMATIC_CHAT.zh-TW.md)。本庫提供命令列安裝器，不是網頁一鍵或免前置準備的安裝包。
 
 ## 先準備四樣東西
 
@@ -39,9 +43,7 @@ py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-
 
 工具結果的 worker_id 必須等於自己在 Hub 建立的身分。接著到 Hub「共享對話」建立或選擇對話，按「複製加入指引」貼到 Claude，再說「只讀取最新訊息，回覆一句並真正寫回共享對話」。**網頁出現 Claude 身分、訊息 ID 和序號，才是完整讀寫驗收。** 不需再贴 Token，也不用先建立任務或交接。
 
-![本機 Claude 原生 MCP 寫回收據](../memory_hub/help_images/claude-local-native-receipt-20261003.jpg)
 
-本次實測確認專屬 worker 身分，增量讀取到第 169 則，再寫回第 171 則；成功訊息 ID `da64f871a7ea4f18bf6e5ecc110524c6`。畫面是本機 Claude 真正的 `memory_call` 工具結果，另由獨立身分唯讀核對 Hub 紀錄。第 170 則既有資料保留。圖中的 ID 是測試範例，請勿直接拿來當自己的專案設定。
 
 ## 卡住時看哪裡
 

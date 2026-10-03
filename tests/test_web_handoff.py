@@ -1,3 +1,4 @@
+import pytest
 from memory_hub.web import render_handoff
 
 
@@ -40,3 +41,9 @@ def test_recovery_history_visible_and_escaped():
 def test_unassigned_recovery_is_explicit():
     from memory_hub.web import render_recovery
     assert '解除指定，可重新認領' in render_recovery({'reason':'Retired identity','to_worker':None})
+
+
+@pytest.fixture(autouse=True)
+def traditional_interface(monkeypatch):
+    """Retain legacy copy assertions as explicit Traditional Chinese coverage."""
+    monkeypatch.setenv("HUB_WEB_LANGUAGE", "zh-TW")

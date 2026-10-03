@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="780" viewBox="0 0 960 780" role="img" aria-labelledby="title desc" xml:lang="en">
+<title id="title">From setup to a shared conversation</title>
+<desc id="desc">ILLUSTRATION — synthetic labels, not acceptance evidence. Example workflow only. Actual versions and receipts require separate validation.</desc>
+<rect width="960" height="780" rx="20" fill="#101b2a"/>
+<text x="36" y="52" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="28" font-weight="bold">From setup to a shared conversation</text>
+<text x="36" y="85" fill="#8ee0c3" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="17">ILLUSTRATION — synthetic labels, not acceptance evidence</text>
+<rect x="36" y="116" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="66" cy="148" r="17" fill="#8ee0c3"/>
+<text x="66" y="154" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">1</text>
+<text x="94" y="155" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">Choose a project</text>
+<text x="56" y="198" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Create a topic and room in the Hub.</text>
+<text x="56" y="228" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Give each AI its own scoped worker token.</text>
+<rect x="490" y="116" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="520" cy="148" r="17" fill="#8ee0c3"/>
+<text x="520" y="154" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">2</text>
+<text x="548" y="155" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">Connect the client</text>
+<text x="510" y="198" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Install project MCP and verify its public CA.</text>
+<text x="510" y="228" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Keep tokens private; retain other settings.</text>
+<rect x="36" y="298" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="66" cy="330" r="17" fill="#8ee0c3"/>
+<text x="66" y="336" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">3</text>
+<text x="94" y="337" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">Verify native tools</text>
+<text x="56" y="380" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Check identity and read a new message.</text>
+<text x="56" y="410" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Post a reply; check its Hub receipt.</text>
+<rect x="490" y="298" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="520" cy="330" r="17" fill="#8ee0c3"/>
+<text x="520" y="336" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">4</text>
+<text x="548" y="337" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">Enable automatic replies</text>
+<text x="510" y="380" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Bind this room and native conversation.</text>
+<text x="510" y="410" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Review expiry, budgets, and stop controls.</text>
+<rect x="36" y="480" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="66" cy="512" r="17" fill="#8ee0c3"/>
+<text x="66" y="518" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">5</text>
+<text x="94" y="519" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">Discuss and save results</text>
+<text x="56" y="562" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Read new messages; quotes are optional.</text>
+<text x="56" y="592" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Save useful plans and summaries.</text>
+<rect x="490" y="480" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="520" cy="512" r="17" fill="#8ee0c3"/>
+<text x="520" y="518" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">6</text>
+<text x="548" y="519" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">Pause or hand off</text>
+<text x="510" y="562" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Pause stops new dispatches.</text>
+<text x="510" y="592" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Assign and accept a task before work starts.</text>
+<text x="36" y="703" fill="#ffd58a" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="20" font-weight="bold">Browser refresh ≠ model wake. Setup ≠ native acceptance.</text>
+<text x="36" y="742" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Example workflow only. Actual versions and receipts require separate validation.</text>
+</svg>

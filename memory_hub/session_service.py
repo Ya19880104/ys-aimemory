@@ -60,11 +60,16 @@ class SessionService:
 
     def __init__(self, store, clock=time.time):
         self.store, self.clock, self.tables = store, clock, SESSION_TABLES
+        self.delivery = None
 
     def call(self, name, arguments, actor: SessionActor):
         require(isinstance(actor, SessionActor), 'forbidden', 'Authenticated actor required', 403)
         require(name in SESSION_MODELS, 'unknown_tool', 'Unknown session tool', 404)
         a = SESSION_MODELS[name].model_validate(arguments).model_dump()
+        # Preserve pre-v6 mutation hashes for requests without delivery metadata.
+        if name in {'read_session', 'post_session_message'} and a.get('delivery_id') is None:
+            a.pop('delivery_id', None)
+            a.pop('lease_id', None)
         project = a.get('project_id')
         if project is not None:
             require(project in actor.projects, 'forbidden', 'Project not authorized', 403)
@@ -73,6 +78,13 @@ class SessionService:
         if name in {'create_session', 'archive_session'}:
             require(actor.role == 'admin', 'forbidden', 'Admin role required', 403)
         if name in self.READS:
+            if name == 'read_session' and a.get('delivery_id') is not None:
+                require(self.delivery is not None, 'delivery_unavailable', 'Delivery service unavailable', 503)
+                with self.store.transaction(project, initialize_index=False) as (_, conn):
+                    reserve, through = self.delivery.prepare_tool_read(conn, a, actor)
+                    result = self._read(name, a, actor, conn, reserve=reserve, through_sequence=through)
+                    self.delivery.record_tool_read(conn, a, actor, result)
+                    return result
             with self.store.engine.connect() as conn:
                 return self._read(name, a, actor, conn)
         with self.store.transaction(project, initialize_index=False) as (state, conn):
@@ -90,7 +102,14 @@ class SessionService:
                 return previous['result']
             if room is not None and name != 'archive_session':
                 require(room['status'] == 'open', 'session_archived', 'Session is archived')
+            if name == 'post_session_message' and a.get('delivery_id') is not None:
+                require(self.delivery is not None, 'delivery_unavailable', 'Delivery service unavailable', 503)
+                a['_automatic_reply_depth'], actor = self.delivery.validate_tool_reply(conn, a, actor)
+            elif name == 'post_session_message' and self.delivery is not None:
+                self.delivery.guard_unbound_post(conn, a, actor)
             result = self._write(name, a, actor, conn, state, room, self.clock())
+            if name == 'post_session_message' and a.get('delivery_id') is not None:
+                self.delivery.record_tool_reply(conn, a, actor, result)
             conn.execute(requests.insert().values(**key, payload_hash=digest, result=result))
             return result
 
@@ -100,6 +119,26 @@ class SessionService:
                                                table.c.session_id == session)).mappings().one_or_none()
         require(row is not None, 'not_found', 'Session or reference not found', 404)
         return dict(row)
+
+    def latest_artifacts(self, project_id, session_id, actor: SessionActor, limit=10):
+        """Small web sidebar index, independent of the loaded message window.
+
+        Keep this out of MCP read/list metadata: browser convenience must not
+        make every model poll pay for the same artifact index again.
+        """
+        require(isinstance(actor, SessionActor), 'forbidden', 'Authenticated actor required', 403)
+        require(project_id in actor.projects, 'forbidden', 'Project not authorized', 403)
+        require(type(limit) is int and 1 <= limit <= 20, 'invalid_arguments', 'Invalid index limit', 422)
+        with self.store.engine.connect() as conn:
+            room = self._room(conn, project_id, session_id)
+            artifacts = self.tables['artifacts']
+            rows = conn.execute(select(artifacts.c.metadata).where(
+                artifacts.c.project_id == project_id, artifacts.c.session_id == session_id,
+                artifacts.c.sequence <= room['latest_sequence']
+            ).order_by(artifacts.c.sequence.desc()).limit(limit + 1)).scalars().all()
+            keys = ('artifact_id', 'kind', 'title', 'sequence', 'covered_through_sequence', 'actor', 'created_at')
+            return {'items': [{key: row[key] for key in keys} for row in rows[:limit]],
+                    'has_more': len(rows) > limit}
 
     def _metadata(self, conn, room):
         artifacts = self.tables['artifacts']
@@ -176,6 +215,7 @@ class SessionService:
             attachments = self._attachments(conn, a)
             event = self._record(conn, state, name, room, actor, now, 'message',
                 {'body': a['body'], 'body_bytes': len(a['body'].encode('utf-8')),
+                 'automatic_reply_depth': a.get('_automatic_reply_depth', 0),
                  'reply_to_message_id': a['reply_to_message_id'], 'attachments': attachments}, a['body'])
             return {key: event[key] for key in ('project_id', 'session_id', 'event_id', 'message_id',
                                                'sequence', 'actor', 'created_at')}
@@ -224,7 +264,7 @@ class SessionService:
         raise AssertionError('Unhandled session mutation')
 
     @staticmethod
-    def _page(items, a, envelope, *, listing=False):
+    def _page(items, a, envelope, *, listing=False, reserve=0):
         # Account for the entire compact UTF-8 JSON result, including metadata
         # and returned_bytes itself. This is not a tokenizer-specific estimate.
         def response(returned):
@@ -240,11 +280,11 @@ class SessionService:
             return page
         returned = []
         page = response(returned)
-        require(page['returned_bytes'] <= a['max_bytes'], 'response_budget_too_small',
+        require(page['returned_bytes'] + reserve <= a['max_bytes'], 'response_budget_too_small',
                 'Increase max_bytes to include session metadata', 422)
         for item in items[:a['limit']]:
             candidate = response([*returned, item])
-            if candidate['returned_bytes'] > a['max_bytes']:
+            if candidate['returned_bytes'] + reserve > a['max_bytes']:
                 require(bool(returned), 'response_budget_too_small',
                         'Increase max_bytes or request a compact event', 422)
                 break
@@ -252,7 +292,7 @@ class SessionService:
             page = candidate
         return page
 
-    def _read(self, name, a, actor, conn):
+    def _read(self, name, a, actor, conn, *, reserve=0, through_sequence=None):
         sessions, events = self.tables['sessions'], self.tables['events']
         if name == 'list_sessions':
             statement = select(sessions).where(sessions.c.project_id.in_(actor.projects))
@@ -290,16 +330,17 @@ class SessionService:
                         artifacts.c.sequence == item['sequence'])).scalar_one()
             return self._page(items, a, {'project_id': a['project_id']})
         if name == 'read_session':
+            ceiling = room['latest_sequence'] if through_sequence is None else min(room['latest_sequence'], through_sequence)
             rows = conn.execute(select(events.c.payload).where(
                 events.c.project_id == a['project_id'], events.c.session_id == a['session_id'],
-                events.c.sequence > a['after_sequence'], events.c.sequence <= room['latest_sequence']
+                events.c.sequence > a['after_sequence'], events.c.sequence <= ceiling
             ).order_by(events.c.sequence).limit(a['limit'] + 1)).scalars().all()
             for event in rows:
                 if event['type'] == 'message':
                     if not a['full_text']:
                         event['body'] = snippet(event['body'])
                     event['body_truncated'] = len(event['body'].encode('utf-8')) < event['body_bytes']
-            return self._page(rows, a, {'session': self._metadata(conn, room)})
+            return self._page(rows, a, {'session': self._metadata(conn, room)}, reserve=reserve)
         if name == 'get_session_artifact':
             table = self.tables['artifacts']
             row = conn.execute(select(table.c.metadata, func.substr(table.c.content, a['offset'] + 1,

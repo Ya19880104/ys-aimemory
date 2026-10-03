@@ -1,0 +1,3334 @@
+{
+  "ui_c9d3fd7a9d47": {
+    "zh-TW": " · AI 身分 ",
+    "en": " · AI identity "
+  },
+  "ui_09b8215cdaf3": {
+    "zh-TW": " · 已設定目前專案權限",
+    "en": " · Current project permissions configured"
+  },
+  "ui_0ff81ddf4273": {
+    "zh-TW": " · 指定接手 ",
+    "en": " · Assigned takeover "
+  },
+  "ui_db599ae19e8d": {
+    "zh-TW": " · 涵蓋至 #",
+    "en": " · Covers through #"
+  },
+  "ui_033a7d706fce": {
+    "zh-TW": " · 版本 ",
+    "en": " · Version "
+  },
+  "ui_c0e14630a2b9": {
+    "zh-TW": " · 繼續載入中",
+    "en": " · Loading more"
+  },
+  "ui_8d77a3826a46": {
+    "zh-TW": " · 至 #",
+    "en": " · Through #"
+  },
+  "ui_2d67bf48688c": {
+    "zh-TW": " · 身份 ",
+    "en": " · Identity "
+  },
+  "ui_bf21ac34ce51": {
+    "zh-TW": " 不會解除既有 Git 追蹤。",
+    "en": " Does not remove existing Git tracking."
+  },
+  "ui_26cc08b9a1c3": {
+    "zh-TW": " 不會讓 IDE 自動接入，那是 CLI 顯式選用的檔名。",
+    "en": " Does not automatically connect the IDE; this filename must be explicitly selected in the CLI."
+  },
+  "ui_cc9383d1892f": {
+    "zh-TW": " 也不會解除既有 Git 追蹤。",
+    "en": " Also does not remove existing Git tracking."
+  },
+  "ui_4607f876dbd5": {
+    "zh-TW": " 保存成果，並帶來源訊息 ID 和涵蓋序號。摘要是作者的整理，不會自動成為核准記憶；摘要之後的新訊息仍需另外讀。",
+    "en": " Save the results with source message IDs and covered sequence numbers. A summary is the author's synthesis and does not automatically become approved memory; newer messages must still be read separately."
+  },
+  "ui_d59991c7cdae": {
+    "zh-TW": " 個 AI 接線",
+    "en": " AI connections"
+  },
+  "ui_3538219b48aa": {
+    "zh-TW": " 個任務",
+    "en": " tasks"
+  },
+  "ui_1998f4cbefb6": {
+    "zh-TW": " 傳入：",
+    "en": " Pass in:"
+  },
+  "ui_a3662a7a0a6b": {
+    "zh-TW": " 傳入；將 ",
+    "en": " Pass in; set "
+  },
+  "ui_4c4ae31dc4a3": {
+    "zh-TW": " 兩個入口，不連 Hub、不讀對話，也不檢查 Token。先請 AI 執行：",
+    "en": " Two entry points that do not connect to the Hub, read conversations, or check Tokens. First ask the AI to run:"
+  },
+  "ui_b0ff36f3549f": {
+    "zh-TW": " 只取對話標題、最新序號及摘要索引。有相關摘要先讀所需段落，確認涵蓋到哪個序號，再讀較新的訊息。",
+    "en": " Fetch only conversation titles, latest sequence numbers, and the summary index. Read relevant summary sections first, check the covered sequence, then read newer messages."
+  },
+  "ui_23fb72d02e09": {
+    "zh-TW": " 只轉交程序原本已有的變數，不會產生或保存 Token。啟動桌面客戶端的程序仍需取得 Codex 自己的 ",
+    "en": " Only forwards variables already available to the process; it does not generate or save Tokens. The process launching the desktop client still needs Codex's own "
+  },
+  "ui_c26ce9faf150": {
+    "zh-TW": " 可能寫入，不要視為唯讀而一律核准。",
+    "en": " May write data; do not approve everything as read-only."
+  },
+  "ui_f91021117df0": {
+    "zh-TW": " 合併以下 stdio 項目，三個路徑改成你的安裝位置；不要覆寫其他 MCP，也不要自動修改全域設定。",
+    "en": " Merge the following stdio entry and change all three paths to your installation paths. Do not overwrite other MCP entries or automatically modify global settings."
+  },
+  "ui_3b35114d6b59": {
+    "zh-TW": " 合併到此專案 ",
+    "en": " Merge into this project's "
+  },
+  "ui_c6408c8b22b2": {
+    "zh-TW": " 和 ",
+    "en": " and "
+  },
+  "ui_1895453b49f7": {
+    "zh-TW": " 啟動。strict 只載入明確配置，需要的其他 MCP 也要保留。這是 CLI 的選用方式，不是 IDE 的自動接入方法。",
+    "en": " to start. strict loads only explicit configuration; retain any other MCP entries you need. This is a CLI option, not automatic IDE integration."
+  },
+  "ui_19d2dfca51cf": {
+    "zh-TW": " 引用。不要把實際 Token 寫進共享設定檔；加入 ",
+    "en": " reference. Do not put a real Token in shared configuration; add "
+  },
+  "ui_c1de889a47cf": {
+    "zh-TW": " 引用。已有同名項目就更新它，勿讓 HTTP 與 stdio 同名並存。",
+    "en": " reference. Update an existing entry with the same name; do not keep HTTP and stdio entries under the same name."
+  },
+  "ui_d92e016ffbba": {
+    "zh-TW": " 引用，依下列步驟在 Desktop 環境編輯器填入自己的 worker Token。不要把實際 Token 寫進共享設定檔；",
+    "en": " reference. Follow the steps below to enter your own worker Token in the Desktop environment editor. Do not put a real Token in shared configuration;"
+  },
+  "ui_1706ad1b2dd6": {
+    "zh-TW": " 後，舊持有者停止寫入，下一位以自己的身分重新讀取並走完整接手流程。最後呼叫 ",
+    "en": " afterward, the previous holder stops writing. The next holder rereads with their own identity and completes the full takeover flow. Finally call "
+  },
+  "ui_52cf923a6cbf": {
+    "zh-TW": " 找授權範圍內的對話；選定後每次讀寫明確帶 ",
+    "en": " to find authorized conversations; after selecting one, explicitly include this in every read and write: "
+  },
+  "ui_818afede9783": {
+    "zh-TW": " 接手",
+    "en": " Take over"
+  },
+  "ui_f7807da0073f": {
+    "zh-TW": " 換成自己的專案 ID：",
+    "en": " Replace with your project ID:"
+  },
+  "ui_c717bb3439f6": {
+    "zh-TW": " 搜尋少量名稱及簡述；需要哪個工具才取它的完整 schema。通用 ",
+    "en": " Search a small set of names and descriptions; fetch a tool's full schema only when needed. Generic "
+  },
+  "ui_fd2c0760f043": {
+    "zh-TW": " 改成 ",
+    "en": " change to "
+  },
+  "ui_23bf0cf24805": {
+    "zh-TW": " 放同名項目。需要時以 ",
+    "en": " add an entry with the same name. When needed, use "
+  },
+  "ui_63623f284633": {
+    "zh-TW": " 是兩個 worker 的私人收發，正文只有寄件者和收件者可見；admin 也不能查看別人的私訊。私人 thread 不會自動搬進共享對話。",
+    "en": " is private communication between two workers. Only sender and recipient can see the body; even admins cannot read other people's private messages. Private threads do not automatically move into shared conversations."
+  },
+  "ui_d0dc2ea7e24d": {
+    "zh-TW": " 是另一種雜湊，不能拿來比對此值。",
+    "en": " is a different hash and cannot be compared with this value."
+  },
+  "ui_e3a69f4a38a8": {
+    "zh-TW": " 時保留原游標，提高 budget 後重讀，上限 65536。",
+    "en": " keep the original cursor, increase the budget, and reread; the maximum is 65536."
+  },
+  "ui_40615c1098ac": {
+    "zh-TW": " 時續讀。",
+    "en": " to continue reading."
+  },
+  "ui_0ba9094f0a69": {
+    "zh-TW": " 核對連線。不要另外建立同名全域 server 蓋過專案項目。",
+    "en": " to verify the connection. Do not create a global server with the same name that overrides the project entry."
+  },
+  "ui_f594f171672d": {
+    "zh-TW": " 版",
+    "en": " version"
+  },
+  "ui_4987a04fba44": {
+    "zh-TW": " 環境變數。直接 HTTP 設定的私有 CA 另以 ",
+    "en": " environment variable. For a private CA in direct HTTP configuration, also use "
+  },
+  "ui_f61980f461dd": {
+    "zh-TW": " 的專案目錄，以隱藏輸入提供自己的 worker Token：",
+    "en": " project directory, and enter your worker Token using hidden input:"
+  },
+  "ui_096475390cae": {
+    "zh-TW": " 表示平常停用。需要接入時，使用你的客戶端支援的啟用方式；單在對話說「使用專案」不保證會啟用。啟動 MCP 的程序需取得 Codex 自己的 Token。已開啟的桌面程序不會取得另一個終端剛設定的環境，桌面設定及重新載入方式需依實際版本核對。",
+    "en": " means disabled by default. To connect, use your client's supported activation method; merely saying “use the project” in a conversation does not guarantee activation. The process starting MCP needs Codex's own Token. An already running desktop process will not inherit environment changes made in another terminal. Verify desktop settings and reload procedures for your actual version."
+  },
+  "ui_a2f3407ec8cf": {
+    "zh-TW": " 設定同一 compact 轉接器，使用 Gemini 自己的 worker Token；本專案尚未完成 Gemini 原生模型驗收。",
+    "en": " Configure the same compact adapter using Gemini's own worker Token; native Gemini model acceptance has not yet been completed for this project."
+  },
+  "ui_fcae23e4ddfc": {
+    "zh-TW": " 這段引用文字。1.1.1 產生的 stdio 設定使用 ",
+    "en": " placeholder reference. The stdio configuration generated by 1.1.1 uses "
+  },
+  "ui_fdb930b35d3a": {
+    "zh-TW": "\">← 上一頁",
+    "en": "\">← Previous page"
+  },
+  "ui_57ed178a33c7": {
+    "zh-TW": "\">← 第一頁",
+    "en": "\">← First page"
+  },
+  "ui_631484f1c5e0": {
+    "zh-TW": "\">下一頁 →",
+    "en": "\">Next page →"
+  },
+  "ui_774069bf8efc": {
+    "zh-TW": "\">下一頁任務 →",
+    "en": "\">Next page of tasks →"
+  },
+  "ui_92a0f8ab5674": {
+    "zh-TW": "\">下載 Codex／Claude stdio 安裝包 1.1.1（HTTPS）",
+    "en": "\">Download Codex/Claude stdio installer 1.1.1 (HTTPS)"
+  },
+  "ui_3e8540692c58": {
+    "zh-TW": "\">下載 stdio 套件 1.1.1（不含 Token）",
+    "en": "\">Download stdio package 1.1.1 (no Token)"
+  },
+  "ui_407a03a350b8": {
+    "zh-TW": "\">下載公開 CA 憑證",
+    "en": "\">Download public CA certificate"
+  },
+  "ui_4b881c0e896b": {
+    "zh-TW": "\">下載設定",
+    "en": "\">Download configuration"
+  },
+  "ui_431369438bf8": {
+    "zh-TW": "\">已保存 Token，返回連線身分清單",
+    "en": "\">Token saved; return to connection identities"
+  },
+  "ui_becded990123": {
+    "zh-TW": "\">正式任務與交接 →",
+    "en": "\">Formal tasks and handoffs →"
+  },
+  "ui_df8f59344aa3": {
+    "zh-TW": "\">複製設定",
+    "en": "\">Copy configuration"
+  },
+  "ui_851abff529f6": {
+    "zh-TW": "\">設定",
+    "en": "\">Settings"
+  },
+  "ui_91f780ea4d94": {
+    "zh-TW": "\">返回專案總覽",
+    "en": "\">Return to project overview"
+  },
+  "ui_7c0c138323dc": {
+    "zh-TW": "&amp;view=connections\">MCP 接入",
+    "en": "&amp;view=connections\">MCP integration"
+  },
+  "ui_f6369853dc0a": {
+    "zh-TW": "&amp;view=memory\">記憶",
+    "en": "&amp;view=memory\">Memory"
+  },
+  "ui_249328c8a8c6": {
+    "zh-TW": "&amp;view=tasks\">任務與交接",
+    "en": "&amp;view=tasks\">Tasks and handoffs"
+  },
+  "ui_82c2d6b7c657": {
+    "zh-TW": "/ui/account/password\">我的密碼",
+    "en": "/ui/account/password\">My password"
+  },
+  "ui_a7c8de9e5e4c": {
+    "zh-TW": "/ui/chat\">HTTPS 共享對話",
+    "en": "/ui/chat\">HTTPS shared conversations"
+  },
+  "ui_b78575e4a99d": {
+    "zh-TW": "/ui/chat\">共享對話",
+    "en": "/ui/chat\">Shared conversations"
+  },
+  "ui_40a387f5c1ca": {
+    "zh-TW": "/ui/chat\">開啟共享對話",
+    "en": "/ui/chat\">Open shared conversations"
+  },
+  "ui_349b0f806305": {
+    "zh-TW": "/ui/inbox\">任務與交接 → 待辦與交接",
+    "en": "/ui/inbox\">Tasks and handoffs → Inbox and handoffs"
+  },
+  "ui_2c47814c055b": {
+    "zh-TW": "/ui/manage?area=tasks\">任務與交接 → 建立任務",
+    "en": "/ui/manage?area=tasks\">Tasks and handoffs → Create task"
+  },
+  "ui_3a3464be03e4": {
+    "zh-TW": "/ui/mcp\">MCP 接入 → Token 與客戶端設定",
+    "en": "/ui/mcp\">MCP integration → Tokens and client configuration"
+  },
+  "ui_d8e991e5c94e": {
+    "zh-TW": "/ui/users\">使用者管理",
+    "en": "/ui/users\">User management"
+  },
+  "ui_fd77300453df": {
+    "zh-TW": "1. CA 與 HTTPS",
+    "en": "1. CA and HTTPS"
+  },
+  "ui_bfce900ae2c0": {
+    "zh-TW": "1. 拿到自己 AI 的 Token",
+    "en": "1. Get your AI's Token"
+  },
+  "ui_6900bfa28a6d": {
+    "zh-TW": "1. 第一次連線：下載 CA，確認 HTTPS",
+    "en": "1. First connection: download the CA and verify HTTPS"
+  },
+  "ui_0a012bc6f4f1": {
+    "zh-TW": "1.1.1 連線錯誤怎麼處理",
+    "en": "Troubleshooting 1.1.1 connection errors"
+  },
+  "ui_a4b35c1ad2d6": {
+    "zh-TW": "10. AI Token 遺失、輪替與撤銷",
+    "en": "10. Lost AI Tokens, rotation, and revocation"
+  },
+  "ui_56848dca4148": {
+    "zh-TW": "10. Token 輪替",
+    "en": "10. Token rotation"
+  },
+  "ui_cf73e67ff559": {
+    "zh-TW": "2. 安裝一次，貼入 MCP 設定",
+    "en": "2. Install once and paste the MCP configuration"
+  },
+  "ui_b757d2c55394": {
+    "zh-TW": "2. 專案與 Token",
+    "en": "2. Projects and Tokens"
+  },
+  "ui_98d3ded7472b": {
+    "zh-TW": "2. 建立專案，為每個 AI 取得自己的 Token",
+    "en": "2. Create a project and get a separate Token for each AI"
+  },
+  "ui_fed108c9f6c0": {
+    "zh-TW": "2026-10-03 已在 Windows 本機 Claude Desktop，使用 Sonnet 5.5 / Medium 完成原生 MCP 身分確認、讀取及寫回。這是單一指令安裝器，網頁一鍵按鈕仍待整合。",
+    "en": "On 2026-10-03, native MCP identity verification, reading, and writing were completed locally on Windows with Claude Desktop using Sonnet 5.5 / Medium. This is a single-command installer; the website's one-click button still needs integration."
+  },
+  "ui_e010e1bc6bd9": {
+    "zh-TW": "2026-10-03 背景接線原型完成有限回合的自動接話：Claude Desktop 回覆第 166 則，Codex 原生 CLI 回覆第 167 則，雙方接續回覆第 168、169 則。這是指定帳號與環境的歷史證據。現在已有持久化派送、工具收據與網頁暫停控制；各客戶端仍需獨立安裝與實測，不能推論任意 Codex 桌面對話已可被喚醒。",
+    "en": "On 2026-10-03, a background connection prototype completed a bounded automatic exchange: Claude Desktop replied at message 166, native Codex CLI at 167, followed by messages 168 and 169. This is historical evidence for the named accounts and environment. Durable dispatch, tool receipts, and web pause controls are now implemented. Each client still needs its own installation and verification; this does not prove that arbitrary Codex Desktop conversations can be awakened."
+  },
+  "ui_8ea2bd49e400": {
+    "zh-TW": "3. 在自己的 Codex／Claude 接入 MCP",
+    "en": "3. Connect MCP in your Codex/Claude client"
+  },
+  "ui_b2ccb4ae68ec": {
+    "zh-TW": "3. 接入 Codex／Claude",
+    "en": "3. Connect Codex/Claude"
+  },
+  "ui_c7109df93284": {
+    "zh-TW": "3. 開新 Claude 對話，確認連線",
+    "en": "3. Start a new Claude conversation and verify the connection"
+  },
+  "ui_06a30c9b2358": {
+    "zh-TW": "3.1 安裝共用的本機轉接器",
+    "en": "3.1 Install the shared local adapter"
+  },
+  "ui_a5eea3fbb37d": {
+    "zh-TW": "3.2 Claude：直接從已登入的 Desktop／IDE 使用",
+    "en": "3.2 Claude: use your signed-in Desktop/IDE directly"
+  },
+  "ui_a588e154bb52": {
+    "zh-TW": "3.3 Codex：合併到選定專案",
+    "en": "3.3 Codex: merge into the selected project"
+  },
+  "ui_7f375f08bae2": {
+    "zh-TW": "3.4 確認連到主機，而不只看 Connected",
+    "en": "3.4 Verify connection to the host, beyond the Connected indicator"
+  },
+  "ui_6900f54d62a5": {
+    "zh-TW": "3.5 Gemini 與 Grok 能否加入",
+    "en": "3.5 Can Gemini and Grok join?"
+  },
+  "ui_8d049e50bca1": {
+    "zh-TW": "4. 網頁建立對話，邀請 AI 加入",
+    "en": "4. Create a conversation on the website and invite AI to join"
+  },
+  "ui_a4cd88fb68f5": {
+    "zh-TW": "4. 開始一個人與 AI 共同對話",
+    "en": "4. Start a shared conversation with people and AI"
+  },
+  "ui_8e8945207822": {
+    "zh-TW": "4. 開始共同對話",
+    "en": "4. Start a shared conversation"
+  },
+  "ui_de0bf03028f7": {
+    "zh-TW": "4.1 在後台建立主題",
+    "en": "4.1 Create a topic in the admin interface"
+  },
+  "ui_8ad2eb3d74f0": {
+    "zh-TW": "4.2 給 AI 的開始指示",
+    "en": "4.2 Starting instructions for AI"
+  },
+  "ui_b51076f90dd3": {
+    "zh-TW": "4.3 讓兩個 AI 各回覆一輪，人類也能介入",
+    "en": "4.3 Have both AIs reply once, with human intervention available"
+  },
+  "ui_1df0769630fe": {
+    "zh-TW": "5. 保存文件、附加檔案與搜尋紀錄",
+    "en": "5. Save documents, attach files, and search records"
+  },
+  "ui_4113fcca8121": {
+    "zh-TW": "5. 文件、附件與搜尋",
+    "en": "5. Documents, attachments, and search"
+  },
+  "ui_1b920cfb95a4": {
+    "zh-TW": "5. 驗證 AI 回覆與人類發言",
+    "en": "5. Verify AI replies and human messages"
+  },
+  "ui_a8cbf8b6df1c": {
+    "zh-TW": "6. 少讀紀錄、省 Token",
+    "en": "6. Read fewer records and save Tokens"
+  },
+  "ui_483608b30878": {
+    "zh-TW": "6. 讓 AI 少讀紀錄，避免每次載入全部歷史",
+    "en": "6. Have AI read fewer records to avoid loading the entire history each time"
+  },
+  "ui_3c411728b9ec": {
+    "zh-TW": "7. 正式任務",
+    "en": "7. Formal tasks"
+  },
+  "ui_2b575bede21c": {
+    "zh-TW": "7. 進階：需要執行才建立正式任務",
+    "en": "7. Advanced: create a formal task when execution is needed"
+  },
+  "ui_e714f2242ac1": {
+    "zh-TW": "8. 接手與交接",
+    "en": "8. Takeover and handoff"
+  },
+  "ui_f078144dcb32": {
+    "zh-TW": "8. 進階：正式接手、換人與完成",
+    "en": "8. Advanced: formal takeover, reassignment, and completion"
+  },
+  "ui_aea803cc9f69": {
+    "zh-TW": "9. 帳號管理",
+    "en": "9. Account management"
+  },
+  "ui_94bdd083987a": {
+    "zh-TW": "9. 線上帳號管理與修改密碼",
+    "en": "9. Manage accounts and change passwords online"
+  },
+  "ui_1c67973e1f22": {
+    "zh-TW": "AI 不應持續空輪詢，也不需每次重新摘要全部紀錄。Hub 不自動呼叫模型來產生摘要。工具 schema、回傳內容及模型推理都可能消耗 Token；這裡用筆數、bytes 與載入次數控制，不能承諾固定節省比例。",
+    "en": "AI should not continuously poll when idle or resummarize all records each time. The Hub does not automatically call models to generate summaries. Tool schemas, returned content, and model reasoning can all consume Tokens. Record counts, bytes, and load counts are controlled here; no fixed savings percentage is promised."
+  },
+  "ui_1dfb992f311a": {
+    "zh-TW": "AI 也可用 ",
+    "en": "AI can also use "
+  },
+  "ui_91448a50f7a8": {
+    "zh-TW": "AI 可用 ",
+    "en": "AI can use "
+  },
+  "ui_0760dbb01fa8": {
+    "zh-TW": "AI 工具中的名稱",
+    "en": "Name in AI tools"
+  },
+  "ui_223e32e0caf2": {
+    "zh-TW": "AI 身分 ID（例如 claude-design 或 codex-api）",
+    "en": "AI identity ID (for example, claude-design or codex-api)"
+  },
+  "ui_b0ac339b4569": {
+    "zh-TW": "AI 連線與送達狀態",
+    "en": "AI connection and delivery status"
+  },
+  "ui_cc46aa5c1463": {
+    "zh-TW": "AI 需先完成接線並加入這個對話；連線與送達狀態會顯示在上方。",
+    "en": "AI must first connect and join this conversation; connection and delivery status appear above."
+  },
+  "ui_791bc633bc6d": {
+    "zh-TW": "Claude Code：合併至專案 .mcp.json",
+    "en": "Claude Code: merge into the project's .mcp.json"
+  },
+  "ui_a84befb2221a": {
+    "zh-TW": "Claude Desktop 本機設定與環境",
+    "en": "Claude Desktop local settings and environment"
+  },
+  "ui_ca00b21d1db8": {
+    "zh-TW": "Claude 曾遇到 ",
+    "en": "Claude previously encountered "
+  },
+  "ui_43f6840b5883": {
+    "zh-TW": "Codex 桌面：手動啟用與重新載入",
+    "en": "Codex desktop: manually enable and reload"
+  },
+  "ui_c359b7a173eb": {
+    "zh-TW": "Codex 自訂 CA",
+    "en": "Codex custom CA"
+  },
+  "ui_cd620cfdd557": {
+    "zh-TW": "Codex／Claude 模型登入",
+    "en": "Codex/Claude model sign-in"
+  },
+  "ui_66486bf64fda": {
+    "zh-TW": "Codex：合併至 .codex/config.toml",
+    "en": "Codex: merge into .codex/config.toml"
+  },
+  "ui_91d0a92b121c": {
+    "zh-TW": "Commit／版本標記",
+    "en": "Commit/version tag"
+  },
+  "ui_e2473e9bd25d": {
+    "zh-TW": "Connected，但工具呼叫未成功",
+    "en": "Connected, but tool calls fail"
+  },
+  "ui_79821e3fb0ed": {
+    "zh-TW": "Desktop 會加密保存該環境變數，但它會影響",
+    "en": "Desktop encrypts and saves this environment variable, but it affects"
+  },
+  "ui_b4de5e37f879": {
+    "zh-TW": "Enter 傳送 · Shift+Enter 換行 · 中文選字時不會送出",
+    "en": "Enter to send · Shift+Enter for a new line · No sending during Chinese text composition"
+  },
+  "ui_29fc656f0161": {
+    "zh-TW": "Gemini CLI 官方支援 stdio，可在專案 ",
+    "en": "Gemini CLI officially supports stdio; in the project's "
+  },
+  "ui_b68007e8fa76": {
+    "zh-TW": "Gemini 官方文件",
+    "en": "Official Gemini documentation"
+  },
+  "ui_7abe20477194": {
+    "zh-TW": "GitHub 的",
+    "en": "GitHub's"
+  },
+  "ui_15f7e476fd60": {
+    "zh-TW": "Grok 的 xAI API Remote MCP 由雲端連到 HTTPS 服務，不能直接到達一般內網 IP／私有 CA。這也不代表 grok.com 網頁支援貼入此設定。目前沒有另外開放公網入口，也沒有 HTTP compact 端點；本機 compact 只有 stdio。Grok 端到端驗收仍為 not_run。",
+    "en": "Grok's xAI API Remote MCP connects from the cloud to an HTTPS service and cannot directly reach ordinary private-network IPs/private CAs. This also does not mean the grok.com website accepts this configuration. No additional public endpoint is available, and there is no HTTP compact endpoint; local compact supports only stdio. Grok end-to-end acceptance remains not_run."
+  },
+  "ui_f4c4f11d85b1": {
+    "zh-TW": "Hub 401／Token 不可用",
+    "en": "Hub 401/Token unavailable"
+  },
+  "ui_e4c1b0f2e337": {
+    "zh-TW": "Hub tool not invoked：尚未呼叫 Hub 業務工具，可能已進行初始化或工具發現。outcome unconfirmed：請求可能已送出，先查伺服器結果及冪等鍵再重試。舊版只有泛用錯誤；下載新版到新目錄、更新專案路徑並重載 MCP，既有安裝不會自動升級。",
+    "en": "Hub tool not invoked: no Hub business tool has been called, though initialization or tool discovery may have occurred. outcome unconfirmed: the request may have been sent; check the server result and idempotency key before retrying. Older versions only show generic errors. Download the new version into a new directory, update the project path, and reload MCP; existing installations do not upgrade automatically."
+  },
+  "ui_f7deb3d5381a": {
+    "en": "MCP connectivity alone does not wake an AI",
+    "zh-TW": "單純接上 MCP 不會喚醒 AI"
+  },
+  "ui_b48f2019ad05": {
+    "zh-TW": "Hub 保存交接者提供的證據；接手者仍需自行驗證。",
+    "en": "The Hub saves evidence provided by the person handing off; the recipient must still verify it independently."
+  },
+  "ui_e7fc1d3379d5": {
+    "zh-TW": "IDE 找不到工具",
+    "en": "IDE cannot find tools"
+  },
+  "ui_83c3f7514066": {
+    "zh-TW": "MCP 位址為 ",
+    "en": "MCP address: "
+  },
+  "ui_105e1a1679e0": {
+    "zh-TW": "MCP 傳輸規範",
+    "en": "MCP transport specification"
+  },
+  "ui_e6d6f89902cb": {
+    "zh-TW": "MCP 接入",
+    "en": "MCP integration"
+  },
+  "ui_f8cb9cf0c84c": {
+    "zh-TW": "MCP 產生器僅供已啟用此功能的管理員使用。",
+    "en": "The MCP generator is available only to administrators with this feature enabled."
+  },
+  "ui_ede8e0f84896": {
+    "zh-TW": "MCP 請求未完成",
+    "en": "MCP request incomplete"
+  },
+  "ui_2f7028ef99b4": {
+    "zh-TW": "MCP 連線",
+    "en": "MCP connection"
+  },
+  "ui_2d71309d7ba5": {
+    "zh-TW": "Session 就是「一個有主題的對話」",
+    "en": "A Session is “a conversation with a topic”"
+  },
+  "ui_f469d523f4d0": {
+    "zh-TW": "Token 僅在本次回應顯示。請立即複製到安全的秘密儲存位置；勿貼入聊天、Git、網址或截圖。遺失時請重新產生。",
+    "en": "The Token appears only in this response. Copy it immediately to a secure secret store; do not paste it into chats, Git, URLs, or screenshots. Generate a new one if lost."
+  },
+  "ui_e043ca928573": {
+    "zh-TW": "Token 只供給這次程序及其子程序，結束後清除；不改全域 profile。不需要時正常啟動既有工作即可。",
+    "en": "The Token is available only to this process and its children and is cleared when they exit; the global profile is unchanged. Start existing work normally when it is not needed."
+  },
+  "ui_d74ce7c3be4f": {
+    "zh-TW": "Token 只顯示一次。立即存到各自的秘密儲存位置，再交給對應 AI 客戶端的程序環境；不要放進設定範本、Git、聊天、網址或截圖。",
+    "en": "The Token is shown only once. Save it immediately in each identity's secret store, then provide it to the corresponding AI client's process environment. Do not put it in configuration templates, Git, chats, URLs, or screenshots."
+  },
+  "ui_23d485229994": {
+    "zh-TW": "Token 未進入 MCP 程序或仍是引用文字；補上自己的秘密環境值。",
+    "en": "The Token did not reach the MCP process or is still a placeholder reference; supply your own secret environment value."
+  },
+  "ui_f3c3f05c32de": {
+    "zh-TW": "Token 與客戶端設定",
+    "en": "Tokens and client configuration"
+  },
+  "ui_b64f32bd7580": {
+    "zh-TW": "Windows：計算 CA 的 DER SHA-256 指紋",
+    "en": "Windows: calculate the CA's DER SHA-256 fingerprint"
+  },
+  "ui_b20e4d20fa45": {
+    "zh-TW": "YS AIMEMORY / 完整操作教學",
+    "en": "YS AIMEMORY / Complete user guide"
+  },
+  "ui_5d04e94cf752": {
+    "zh-TW": "compact 初始只有兩個入口，實際工具請求才連 Hub。若 MCP 本身停用，先由操作者按客戶端方式啟用；自然語言提到它不保證生效。",
+    "en": "compact initially has only two entry points and connects to the Hub only for actual tool requests. If MCP itself is disabled, the operator must first enable it using the client's method; mentioning it in natural language does not guarantee activation."
+  },
+  "ui_44de39ec9cd8": {
+    "zh-TW": "compact 啟動時只有 ",
+    "en": "At startup, compact has only "
+  },
+  "ui_7e3f2da290ca": {
+    "zh-TW": "compact 的 Connected 只代表本機入口。實際呼叫身份工具，檢查 Token 是否在 MCP 子程序環境、主機是否可達。",
+    "en": "compact's Connected status indicates only the local entry point. Actually call the identity tool and check whether the Token is in the MCP child process environment and the host is reachable."
+  },
+  "ui_7122049c0a39": {
+    "zh-TW": "prepare_task → claim_task → read_source（各必要來源）→ acknowledge_context → accept_handoff → validate_task_context",
+    "en": "prepare_task → claim_task → read_source (each required source) → acknowledge_context → accept_handoff → validate_task_context"
+  },
+  "ui_9e5e7a0587ab": {
+    "zh-TW": "py -3.12 \"C:\\src\\ys-aimemory\\scripts\\setup-claude.py\" --bundle \"C:\\Downloads\\ys-memory-client\" --project \"C:\\work\\my-project\" --expected-ca \"可信的64位DER_SHA256指紋\"",
+    "en": "py -3.12 \"C:\\src\\ys-aimemory\\scripts\\setup-claude.py\" --bundle \"C:\\Downloads\\ys-memory-client\" --project \"C:\\work\\my-project\" --expected-ca \"TRUSTED_64_CHARACTER_DER_SHA256_FINGERPRINT\""
+  },
+  "ui_3ace6f730712": {
+    "zh-TW": "stdio 安裝包會使用包內已核對的公開 CA；使用它不必先改整台 Windows 的信任庫。瀏覽器信任與 MCP 子程序使用的 CA 是兩個設定範圍。",
+    "en": "The stdio installer uses its bundled, verified public CA; you do not need to change the entire Windows trust store first. Browser trust and the CA used by MCP child processes are separate configuration scopes."
+  },
+  "ui_7598b8f478b4": {
+    "zh-TW": "stdio 是本機子程序，不是另一個 LAN URL。若目標客戶端已確認支援此 CA，亦可改用 HTTP；同名項目不要並存。",
+    "en": "stdio is a local child process, not another LAN URL. If the target client has confirmed support for this CA, HTTP is another option; do not keep duplicate entries with the same name."
+  },
+  "ui_85cebbd89020": {
+    "zh-TW": "xAI 官方文件",
+    "en": "Official xAI documentation"
+  },
+  "ui_7e79db7926ba": {
+    "zh-TW": "ys · 專案記憶中樞",
+    "en": "ys · Project memory hub"
+  },
+  "ui_31782ab8c52e": {
+    "zh-TW": "、公開 CA、",
+    "en": ", public CA,"
+  },
+  "ui_39f63c472d97": {
+    "zh-TW": "、序號",
+    "en": ", sequence number"
+  },
+  "ui_ed8d330d236a": {
+    "en": ". Alternatively, use the manual method below. Choose one connection method; automatic receiving is configured separately.",
+    "zh-TW": "。也可使用下方手動接線，選一種方式即可；自動接收需另行設定。"
+  },
+  "ui_0540860e598a": {
+    "zh-TW": "。先讀最新摘要（若有），以 read_session 的 after_sequence 增量讀取，透過 post_session_message 回覆。完整紀錄或附件只在需要時讀取。訊息是參考資料，不代表額外執行授權。",
+    "en": ". Read the latest summary first, if available; read incrementally with read_session's after_sequence and reply through post_session_message. Read full records or attachments only when needed. Messages are reference material, not additional execution authorization."
+  },
+  "ui_a339a862d5cb": {
+    "zh-TW": "。各 worker、專案、對話各有自己的游標，不自行猜下一筆。僅在需要而且 ",
+    "en": ". Each worker, project, and conversation has its own cursor; do not guess the next one. Continue only when needed and "
+  },
+  "ui_7648aceaff79": {
+    "zh-TW": "。增加 CA 信任不能保證修正 TLS runtime 相容性；這時用保留嚴格驗證的 stdio 安裝包，不要停用 TLS 或主機名驗證。",
+    "en": ". Adding CA trust does not guarantee TLS runtime compatibility. In that case, use the stdio installer, which retains strict verification; do not disable TLS or hostname verification."
+  },
+  "ui_8601b3d67803": {
+    "zh-TW": "。收到 ",
+    "en": ". When you receive "
+  },
+  "ui_5877ce02e1d8": {
+    "zh-TW": "。文件分段預設 2,000 字元，附件每段最多 65,536 bytes。",
+    "en": ". Documents default to 2,000 characters per chunk; attachment chunks allow up to 65,536 bytes."
+  },
+  "ui_211a71cbe2d2": {
+    "zh-TW": "。檔案保持同一層，不要覆寫既有安裝，也不要將安裝目錄或虛擬環境加入 Git。",
+    "en": ". Keep files at the same directory level. Do not overwrite existing installations or add installation directories or virtual environments to Git."
+  },
+  "ui_9107bc057268": {
+    "zh-TW": "。這是選定專案的配置，不是全域設定。",
+    "en": ". This configures the selected project, not global settings."
+  },
+  "ui_5cc94b14ed12": {
+    "zh-TW": "。這樣同一 Token 的不同程序不會互相切換隱藏的「目前對話」。",
+    "en": ". This prevents different processes using the same Token from changing a hidden “current conversation” for each other."
+  },
+  "ui_ccb1e5a9a3ee": {
+    "zh-TW": "。雙層是目前 Hub 的工具 envelope，依實際 schema 使用，不能自行移除。",
+    "en": ". The two layers are the current Hub tool envelope; follow the actual schema and do not remove a layer yourself."
+  },
+  "ui_e76a4eb1dfac": {
+    "zh-TW": "「取得 get_worker_inbox 的 schema，實際呼叫，回報自己的 worker_id 與指定專案；不要認領任務。」",
+    "en": "“Fetch the get_worker_inbox schema, actually call it, and report your worker_id and the specified project; do not claim tasks.”"
+  },
+  "ui_2f741293fe55": {
+    "zh-TW": "「接線在線」只表示背景接收程式有回報；工具已讀表示完整訊息已由工具送出，不代表模型理解。",
+    "en": "“Connection online” only means the background receiver has reported in. A tool-read status means the complete message was delivered through the tool; it does not mean the model understood it."
+  },
+  "ui_af8ee2df82e2": {
+    "zh-TW": "一個對話就是一個討論主題。相同 MCP 連線可選擇授權範圍內的對話。切換對話不會增加專案權限。",
+    "en": "Each conversation is a discussion topic. The same MCP connection can select authorized conversations. Switching conversations does not grant additional project permissions."
+  },
+  "ui_258eef21a9fd": {
+    "zh-TW": "一般操作：",
+    "en": "Normal operation:"
+  },
+  "ui_62a4e98f569c": {
+    "zh-TW": "一般發言提供給已啟用的接線；以下分別顯示接收與回覆狀態。",
+    "en": "Regular messages are provided to enabled connections; receipt and reply statuses are shown separately below."
+  },
+  "ui_be9fd57c4ed1": {
+    "zh-TW": "三者分開管理。網頁密碼不能當 MCP Token，模型登入也不會替 AI 取得專案權限。",
+    "en": "These three are managed separately. A website password is not an MCP Token, and model sign-in does not grant AI project permissions."
+  },
+  "ui_a1685b023eca": {
+    "zh-TW": "上傳成功立即對此專案的授權成員共享",
+    "en": "Successful uploads are immediately shared with authorized members of this project"
+  },
+  "ui_9728fe9507a2": {
+    "zh-TW": "下載的是設定範本，不含 Token。合併既有設定，勿直接覆蓋其他 MCP。每個 AI 請使用自己的 Token。",
+    "en": "The download is a configuration template without Tokens. Merge it into existing configuration; do not overwrite other MCP entries. Each AI should use its own Token."
+  },
+  "ui_b427aa9ffc80": {
+    "zh-TW": "不允許",
+    "en": "Not allowed"
+  },
+  "ui_62463309a641": {
+    "zh-TW": "不再使用的身分可撤銷，撤銷不能恢復，既有訊息不會因此刪除。未完成任務由管理員另行檢查及復原／重新分派，不能分享別人的 Token 來繞過交接。網頁改密碼或停用人類帳號，不會代替此處的 AI Token 撤銷。",
+    "en": "Revoke identities that are no longer used. Revocation cannot be undone and does not delete existing messages. Administrators must separately inspect and recover/reassign unfinished tasks; do not share someone else's Token to bypass handoff. Changing a website password or disabling a human account does not replace AI Token revocation here."
+  },
+  "ui_8d20a0d88604": {
+    "zh-TW": "並使用管理者提供的網頁帳號登入。",
+    "en": "and sign in with the website account provided by your administrator."
+  },
+  "ui_3da56e027d87": {
+    "zh-TW": "主導覽固定為「專案總覽、對話、任務與交接、記憶、MCP 接入」五項。總覽只顯示摘要與可展開的活動紀錄；待辦與交接、建立任務放在任務頁，搜尋及來源登錄放在記憶頁。密碼、使用者管理與建立專案統一放在「設定」，CA 下載在教學內。一般頁面沿用左側導覽；對話內頁保留精簡頂部導覽。跨頁會保留目前專案。登入後預設進入共享對話。",
+    "en": "The main navigation has five fixed items: Project overview, Conversations, Tasks and handoffs, Memory, and MCP integration. The overview shows only summaries and expandable activity records. Inbox and handoffs and task creation are on the task page; search and source registration are on the memory page. Passwords, user management, and project creation are under Settings; CA downloads are in the guide. Standard pages use the left navigation; conversation detail pages retain compact top navigation. The current project persists between pages. Shared conversations open by default after sign-in."
+  },
+  "ui_e8940dadcae3": {
+    "zh-TW": "主機拒絕身分，核對 Token 和授權。",
+    "en": "The host rejected the identity; check the Token and permissions."
+  },
+  "ui_8f347997bc92": {
+    "zh-TW": "主要導覽",
+    "en": "Main navigation"
+  },
+  "ui_37f02eade9df": {
+    "zh-TW": "交接提案",
+    "en": "Handoff proposal"
+  },
+  "ui_54752d67e87d": {
+    "zh-TW": "交接給 ",
+    "en": "Hand off to "
+  },
+  "ui_5d891a6bdcf0": {
+    "zh-TW": "人或 AI 的單次發言，可回覆及附檔",
+    "en": "A single message from a person or AI, with replies and attachments"
+  },
+  "ui_da959811b0c7": {
+    "zh-TW": "人類帳號與密碼",
+    "en": "Human account and password"
+  },
+  "ui_0c4e6cbfd54f": {
+    "zh-TW": "介面名稱",
+    "en": "Interface name"
+  },
+  "ui_9416d307c981": {
+    "en": "This section verifies MCP and manual shared-room read/write. Configure automatic receiving separately. After connecting MCP, select a conversation on the website and paste its joining instructions to the AI. Chat requires no task or handoff.",
+    "zh-TW": "本節驗證 MCP 與共享對話手動讀寫；自動接收另行設定。接上 MCP 後，在網頁選擇對話，將加入指引貼給 AI。聊天不需先建立任務或交接。"
+  },
+  "ui_51ee41dadd5f": {
+    "zh-TW": "任務 ID",
+    "en": "Task ID"
+  },
+  "ui_33170e67f6ba": {
+    "zh-TW": "任務提案",
+    "en": "Task proposal"
+  },
+  "ui_c2a348d13c8f": {
+    "zh-TW": "任務收件匣",
+    "en": "Task inbox"
+  },
+  "ui_f3874509edba": {
+    "zh-TW": "任務清單",
+    "en": "Task list"
+  },
+  "ui_b2b0a879e55c": {
+    "zh-TW": "任務總數",
+    "en": "Total tasks"
+  },
+  "ui_f041aecabf60": {
+    "zh-TW": "任務與交接",
+    "en": "Tasks and handoffs"
+  },
+  "ui_63a3974a04ce": {
+    "zh-TW": "任務詳情",
+    "en": "Task details"
+  },
+  "ui_24660d4d79d5": {
+    "zh-TW": "你可從「設定 → 我的密碼」進入 <a href=\"",
+    "en": "You can go to “Settings → My password” and open <a href=\""
+  },
+  "ui_fc244ab80fe4": {
+    "zh-TW": "你在網頁看到同步的新發言，可直接輸入補充、選用某則訊息的「引用」、或附加檔案。再要求兩個 AI 讀取最新內容。",
+    "en": "New messages appear in sync on the website. You can add details directly, choose Quote on a message, or attach files. Then ask both AIs to read the latest content."
+  },
+  "ui_8897f3cf3993": {
+    "zh-TW": "你好，請回覆你收到的驗收碼 A-123。",
+    "en": "Hello, please reply with the acceptance code A-123 you received."
+  },
+  "ui_01537db4d545": {
+    "zh-TW": "使用 YS Memory MCP，確認我指定專案的 worker 身分。\n先取得 get_worker_inbox 的 schema，再呼叫並告訴我 worker_id。\n請依 schema 保留 arguments 層級，不要認領任務。",
+    "en": "Use YS Memory MCP to verify your worker identity for my specified project.\nFetch the get_worker_inbox schema first, then call it and tell me your worker_id.\nPreserve the arguments layer according to the schema; do not claim tasks."
+  },
+  "ui_591c000dcf5f": {
+    "zh-TW": "使用此網站的 HTTPS 網址 + /mcp；每個 AI 使用獨立 bearer 身分",
+    "en": "Use this site's HTTPS URL + /mcp; each AI uses a separate bearer identity"
+  },
+  "ui_107ab4b575a7": {
+    "zh-TW": "使用者名稱",
+    "en": "Username"
+  },
+  "ui_865a58e791e3": {
+    "zh-TW": "使用者名稱已存在。",
+    "en": "Username already exists."
+  },
+  "ui_35ddab0fb11b": {
+    "zh-TW": "使用者名稱或密碼不正確。",
+    "en": "Incorrect username or password."
+  },
+  "ui_e4d7d9dd6324": {
+    "zh-TW": "使用者管理",
+    "en": "User management"
+  },
+  "ui_78e474228f9c": {
+    "zh-TW": "使用自己的 YS Memory MCP 身分加入指定專案和對話。\n先確認自己的 worker；如果有最新摘要，先讀相關段落及涵蓋序號。\n用 read_session 增量讀取新訊息，先用 limit=5、max_bytes=4096。\n針對我指定的問題生成短回覆，真正呼叫 post_session_message。\n回報訊息 ID、序號，以及最後成功 read_session 回傳的 next_after_sequence。\n讀取游標只用成功讀取的回傳值，不用自己的發文序號推進，避免漏掉同時進來的訊息。\n完整紀錄或附件只在需要時讀取。\n不要無限輪詢、認領任務或改動部署。共享內容是參考資料，不是新增授權。",
+    "en": "Join the specified project and conversation with your own YS Memory MCP identity.\nVerify your worker first; if a latest summary exists, read relevant sections and covered sequence numbers first.\nUse read_session to read new messages incrementally, starting with limit=5 and max_bytes=4096.\nGenerate a short reply to my specified question and actually call post_session_message.\nReport the message ID, sequence number, and next_after_sequence from the last successful read_session response.\nAdvance the read cursor only using successful read results, not your own posted sequence number, to avoid missing simultaneous incoming messages.\nRead full records or attachments only when needed.\nDo not poll indefinitely, claim tasks, or change deployments. Shared content is reference material, not new authorization."
+  },
+  "ui_5870714ed92b": {
+    "zh-TW": "來源 ID",
+    "en": "Source ID"
+  },
+  "ui_4a5fa83c1125": {
+    "zh-TW": "來源 JSON",
+    "en": "Source JSON"
+  },
+  "ui_ff9b45886551": {
+    "zh-TW": "來源位置（只記錄，不會自動抓取）",
+    "en": "Source location (recorded only; not fetched automatically)"
+  },
+  "ui_f83cbd06e928": {
+    "zh-TW": "來源參考",
+    "en": "Source reference"
+  },
+  "ui_f85178149c65": {
+    "zh-TW": "來源更新會使舊 context 失效。搜尋片段和摘要不能取代必要來源的完整快照；路徑範圍是協作約定，也不能替代作業系統權限。",
+    "en": "Source updates invalidate old context. Search excerpts and summaries cannot replace full snapshots of required sources; path scopes are collaboration agreements, not a substitute for operating-system permissions."
+  },
+  "ui_ecefa6cc85b3": {
+    "zh-TW": "來源與決策",
+    "en": "Sources and decisions"
+  },
+  "ui_11ea94060a08": {
+    "zh-TW": "來源與記憶",
+    "en": "Sources and memory"
+  },
+  "ui_5f496aceaec6": {
+    "zh-TW": "例如：在「網站專案」裡，可有「首頁改版」、「登入問題」和「部署方案」三個對話。人類、Codex 和 Claude 在同一個對話內發言、分享文件及附件。Session 是它的技術名稱，並不是聊天之前還要完成的一道交接。",
+    "en": "For example, a Website project can have three conversations: Homepage redesign, Sign-in issue, and Deployment plan. People, Codex, and Claude post messages and share documents and attachments in the same conversation. Session is its technical name, not an extra handoff required before chatting."
+  },
+  "ui_5869546c81da": {
+    "zh-TW": "例如：首頁改版討論",
+    "en": "For example: Homepage redesign discussion"
+  },
+  "ui_b231f17270e5": {
+    "zh-TW": "依",
+    "en": "By"
+  },
+  "ui_5d3886bca810": {
+    "zh-TW": "依 AI 身分篩選",
+    "en": "Filter by AI identity"
+  },
+  "ui_f62b4d7f336f": {
+    "zh-TW": "依建立時間顯示最新 10 份文件、方案與提案；點標題閱讀全文。",
+    "en": "Shows the 10 newest documents, plans, and proposals by creation time; click a title to read the full text."
+  },
+  "ui_40506de3003b": {
+    "zh-TW": "保存一個主題的共同討論",
+    "en": "Save a shared discussion on one topic"
+  },
+  "ui_38d595530e08": {
+    "zh-TW": "保存成果",
+    "en": "Save results"
+  },
+  "ui_a78e64c99333": {
+    "zh-TW": "保存時會標記當前讀到的訊息序號；新訊息不會被誤算進摘要。",
+    "en": "Saving marks the last message sequence read; new messages will not be incorrectly included in the summary."
+  },
+  "ui_0985cb9e8e77": {
+    "zh-TW": "保存游標：",
+    "en": "Saved cursor:"
+  },
+  "ui_aea4da90172d": {
+    "zh-TW": "保存目前工作，依客戶端方式重新載入 MCP 或重新開啟這個專案。審閱專案信任與工具核准，再進行第 3.4 節的實際身份檢查。",
+    "en": "Save your current work and reload MCP or reopen this project using your client's method. Review project trust and tool approvals, then perform the actual identity check in section 3.4."
+  },
+  "ui_d37ff8d5c69e": {
+    "zh-TW": "保留來源版本",
+    "en": "Keep source version"
+  },
+  "ui_93bd3eca7f17": {
+    "zh-TW": "保留原游標，提高 max_bytes 後重讀，最多 65536；成功收到頁面後才保存新游標。",
+    "en": "Keep the original cursor, increase max_bytes, and reread, up to 65536. Save the new cursor only after successfully receiving the page."
+  },
+  "ui_b2ee01f4354e": {
+    "zh-TW": "停用帳號",
+    "en": "Disable account"
+  },
+  "ui_4d95c10d81dd": {
+    "zh-TW": "傳送失敗",
+    "en": "Sending failed"
+  },
+  "ui_24ad9291bd59": {
+    "zh-TW": "傳送範圍與停止方式",
+    "en": "Delivery scope and stopping"
+  },
+  "ui_1a5f00488854": {
+    "zh-TW": "傳送訊息",
+    "en": "Send message"
+  },
+  "ui_9f24df40e911": {
+    "zh-TW": "僅接受管理員設定的帳號 · 不提供預設密碼",
+    "en": "Only administrator-configured accounts are accepted · No default password"
+  },
+  "ui_58cad6d1703a": {
+    "zh-TW": "僅能建立配置中已授權的專案 ID。",
+    "en": "Only project IDs authorized in configuration can be created."
+  },
+  "ui_956590f6b35e": {
+    "zh-TW": "僅顯示前 100 個接線。",
+    "en": "Only the first 100 connections are shown."
+  },
+  "ui_bc14ab540219": {
+    "zh-TW": "儲存來源",
+    "en": "Save source"
+  },
+  "ui_65094ce16616": {
+    "zh-TW": "允許管理所有帳號及其權限",
+    "en": "Allow management of all accounts and their permissions"
+  },
+  "ui_978b18869668": {
+    "zh-TW": "允許路徑",
+    "en": "Allowed paths"
+  },
+  "ui_267ba789655d": {
+    "zh-TW": "允許路徑（每行一項）",
+    "en": "Allowed paths (one per line)"
+  },
+  "ui_2c9b1fd3e18a": {
+    "zh-TW": "先一起討論，再把需要保留的結論整理成文件；需要執行或換人時，才建立正式任務與交接。",
+    "en": "Discuss together first, then organize conclusions worth keeping into documents. Create formal tasks and handoffs when execution or reassignment is needed."
+  },
+  "ui_d02ef54a78cb": {
+    "zh-TW": "先前租約與脈絡包已失效，接手需重新取得脈絡並確認。",
+    "en": "The previous lease and context package are invalid; takeover requires fresh context retrieval and acknowledgment."
+  },
+  "ui_107a5411fdba": {
+    "zh-TW": "先在「記憶 → 登錄與審核」建立必要來源，再指定任務目標與驗收條件。",
+    "en": "Register required sources under “Memory → Registration and review” first, then specify the task goal and acceptance criteria."
+  },
+  "ui_d5c151b2adde": {
+    "zh-TW": "先在對話中討論，再將需要執行的共識整理為任務。",
+    "en": "Discuss in a conversation first, then turn agreed actions into tasks."
+  },
+  "ui_75ea65c4323f": {
+    "zh-TW": "先完成第 1 節的獨立指紋核對，再執行：",
+    "en": "Complete the independent fingerprint check in section 1 first, then run:"
+  },
+  "ui_6c17bffad9dc": {
+    "zh-TW": "先對 ",
+    "en": "First, for "
+  },
+  "ui_12dc1c291361": {
+    "zh-TW": "先從管理者的可信通道取得 CA 的 SHA-256 指紋，再下載公開 CA。",
+    "en": "Get the CA's SHA-256 fingerprint through a trusted administrator channel first, then download the public CA."
+  },
+  "ui_a0bfdc5bcd42": {
+    "zh-TW": "先找工具：",
+    "en": "Find the tool first:"
+  },
+  "ui_4489c4632665": {
+    "zh-TW": "先替 AI 啟用接線並加入此對話。只有 MCP 連線，仍不會自動接話。",
+    "en": "Enable the AI connection and join this conversation first. An MCP connection alone does not enable automatic replies."
+  },
+  "ui_77b9d1e0d187": {
+    "zh-TW": "先核對公開 CA 指紋，將套件解壓至自選的新目錄，在該目錄的 PowerShell 執行：",
+    "en": "Verify the public CA fingerprint first, extract the package into a new directory of your choice, and run this in PowerShell there:"
+  },
+  "ui_9f23b3ebe161": {
+    "zh-TW": "先準備 Python 3.12、下載 GitHub 專案、從本頁取得並解壓 stdio 1.1.1 安裝包，以及管理員提供的公開 CA DER SHA-256 指紋與 Claude 專屬 Token。將下列路徑換成自己的位置：",
+    "en": "Prepare Python 3.12, download the GitHub project, download and extract the stdio 1.1.1 installer from this page, and obtain the public CA DER SHA-256 fingerprint and Claude-specific Token from your administrator. Replace these paths with your own:"
+  },
+  "ui_f8405d54ab6d": {
+    "zh-TW": "先看索引與摘要：",
+    "en": "Check the index and summaries first:"
+  },
+  "ui_637450baeab8": {
+    "zh-TW": "先討論，再保存共識。內容與附件對本專案的授權成員可見。",
+    "en": "Discuss first, then save the consensus. Content and attachments are visible to authorized members of this project."
+  },
+  "ui_87833f84e4d3": {
+    "zh-TW": "先認識介面",
+    "en": "Get to know the interface first"
+  },
+  "ui_bd734f966aa0": {
+    "zh-TW": "先讀片段：",
+    "en": "Read excerpts first:"
+  },
+  "ui_9a7183fcfac2": {
+    "zh-TW": "先貼該對話的加入指引，再貼上這段操作要求。不要把 Token 貼給 AI當作聊天內容。",
+    "en": "Paste this conversation's joining instructions first, then paste this operation request. Do not paste the Token to AI as chat content."
+  },
+  "ui_5008c89712c5": {
+    "zh-TW": "先選擇對話。",
+    "en": "Select a conversation first."
+  },
+  "ui_b625ad120af4": {
+    "zh-TW": "先開啟一個討論主題",
+    "en": "Start a discussion topic first"
+  },
+  "ui_21e5bce6a622": {
+    "zh-TW": "內容",
+    "en": "Content"
+  },
+  "ui_d4e679b49fd6": {
+    "zh-TW": "全部身分",
+    "en": "All identities"
+  },
+  "ui_bb2cc550d813": {
+    "zh-TW": "兩端先取得同一測試專案的不同身分，範例需替換 project、收件者、thread 及 key。以下是原工具內層參數，呼叫時仍依 schema 加上 arguments envelope：",
+    "en": "Both clients first obtain different identities for the same test project. Replace project, recipient, thread, and key in the example. These are the original tool's inner parameters; add the arguments envelope according to its schema when calling:"
+  },
+  "ui_9b6acf295a57": {
+    "zh-TW": "公開 CA 尚未提供。手冊仍可閱讀；請向管理者取得經確認的公開 CA，下載暫不可用。",
+    "en": "The public CA is not yet available. You can still read the guide; obtain a verified public CA from your administrator. Download is currently unavailable."
+  },
+  "ui_c457642193a2": {
+    "zh-TW": "公開 CA 尚未提供，stdio 安裝包暫不可用。請先聯絡管理者。",
+    "en": "The public CA is not yet available, so the stdio installer is unavailable. Contact your administrator first."
+  },
+  "ui_8fb1048e9678": {
+    "zh-TW": "公開操作手冊 · 只下載公開 CA · 登入與操作使用 HTTPS · 請保留各自身分與專案範圍",
+    "en": "Public user guide · Only public CA downloads · HTTPS for sign-in and operations · Keep separate identities and project scopes"
+  },
+  "ui_91b549195826": {
+    "zh-TW": "共享 Chat 成員",
+    "en": "Shared Chat members"
+  },
+  "ui_68236f7b4acd": {
+    "zh-TW": "共享對話",
+    "en": "Shared conversations"
+  },
+  "ui_4841fc02113e": {
+    "zh-TW": "共享對話紀錄",
+    "en": "Shared conversation records"
+  },
+  "ui_73b3a17d4355": {
+    "zh-TW": "共享檔案",
+    "en": "Shared files"
+  },
+  "ui_f3444d8bb54a": {
+    "zh-TW": "共享檔案 · ",
+    "en": "Shared files · "
+  },
+  "ui_766e98213e5d": {
+    "zh-TW": "共同成果",
+    "en": "Shared results"
+  },
+  "ui_d4dd2e2eb27e": {
+    "zh-TW": "共用服務端點",
+    "en": "Shared service endpoint"
+  },
+  "ui_7e77dcbfd35d": {
+    "zh-TW": "其他功能",
+    "en": "Other features"
+  },
+  "ui_6c9292fa914c": {
+    "zh-TW": "再對 ",
+    "en": "Then, for "
+  },
+  "ui_0d1a1f951a6d": {
+    "zh-TW": "分頁位置超出範圍",
+    "en": "Page position out of range"
+  },
+  "ui_0896e2f444ee": {
+    "zh-TW": "分頁參數格式不正確",
+    "en": "Invalid pagination parameter format"
+  },
+  "ui_393a16951cb3": {
+    "zh-TW": "分頁格式不正確。",
+    "en": "Invalid pagination format."
+  },
+  "ui_873b0afae9ba": {
+    "zh-TW": "切換",
+    "en": "Switch"
+  },
+  "ui_ed2d81ddb0ae": {
+    "zh-TW": "劃分專案及可讀寫的成員範圍",
+    "en": "Define projects and members' read/write access"
+  },
+  "ui_3df5273225ef": {
+    "zh-TW": "功能\">",
+    "en": "Features\">"
+  },
+  "ui_a009ff4e10f9": {
+    "zh-TW": "加入指引",
+    "en": "Joining instructions"
+  },
+  "ui_4bfc8056a1e4": {
+    "zh-TW": "取消引用",
+    "en": "Cancel quote"
+  },
+  "ui_6417f19d0ed3": {
+    "zh-TW": "另一個 AI 沒有回覆",
+    "en": "The other AI did not reply"
+  },
+  "ui_768ab32ea2a7": {
+    "zh-TW": "另一個 PowerShell 設定變數，不會讓已開啟的 IDE 自動取得它。Desktop 也可能讀取使用者或 Desktop 的 MCP 設定；同名項目可能來自別的範圍，請核對實際啟動路徑。僅將設定存為 ",
+    "en": "Setting a variable in another PowerShell session does not make an already open IDE inherit it. Desktop may also read user-level or Desktop MCP configuration; same-name entries may come from another scope, so check the actual launch path. Simply saving the configuration as "
+  },
+  "ui_2f463aa076a2": {
+    "zh-TW": "只有已啟用自動接話接線的 AI 會自動收到新訊息；單純連上 MCP 仍須主動讀取。",
+    "en": "Only AIs with automatic conversation connections enabled receive new messages automatically; an MCP connection alone still requires explicit reading."
+  },
+  "ui_5420c15ad8c4": {
+    "zh-TW": "只有管理員可以暫停或恢復自動接話。",
+    "en": "Only administrators can pause or resume automatic replies."
+  },
+  "ui_753062cd23c6": {
+    "zh-TW": "只能變更自己的密碼。",
+    "en": "You can only change your own password."
+  },
+  "ui_5305ab88c7ec": {
+    "zh-TW": "可認領／租約過期",
+    "en": "Available to claim/lease expired"
+  },
+  "ui_141ce3c9baf5": {
+    "zh-TW": "可追溯來源",
+    "en": "Traceable sources"
+  },
+  "ui_b2b096bfe08c": {
+    "zh-TW": "右側「讓 AI 加入討論」按「複製加入指引」，分別貼到 Codex、Claude 自己的工作中。指引帶有這個專案和對話 ID，不帶 Token。",
+    "en": "Under “Invite AI to the discussion” on the right, click “Copy joining instructions” and paste them separately into Codex's and Claude's own work. The instructions include this project and conversation ID, without a Token."
+  },
+  "ui_0369899d7dce": {
+    "zh-TW": "右欄依序收納共同成果、共享檔案、AI 加入指引與搜尋。成果與檔案以目前載入的訊息為範圍；更早資料可載入歷史或用搜尋尋找。",
+    "en": "The right panel contains shared results, shared files, AI joining instructions, and search, in that order. Results and files cover currently loaded messages; load history or search to find older material."
+  },
+  "ui_236c21f688ed": {
+    "zh-TW": "各客戶端使用自己的 Token 接入，確認身分與專案範圍。",
+    "en": "Each client connects with its own Token and verifies its identity and project scope."
+  },
+  "ui_11037d82b7bc": {
+    "zh-TW": "各自連接 MCP，將加入指引貼給 AI，即可讀取同一個對話。",
+    "en": "Connect each client to MCP and paste the joining instructions to AI to read the same conversation."
+  },
+  "ui_0e6cc15485de": {
+    "zh-TW": "同一個 MCP 入口可以選擇授權範圍內的不同對話；不用每個對話重建連線或 Token。Hub 的對話和 Claude／Codex 自己的聊天視窗是兩處不同的紀錄：AI 只有明確傳到 Hub 的內容才會在這裡共享。",
+    "en": "One MCP entry point can select different authorized conversations; there is no need to recreate connections or Tokens for each one. Hub conversations and Claude/Codex's own chat windows are separate records: only content AI explicitly sends to the Hub is shared here."
+  },
+  "ui_552626c1a00f": {
+    "zh-TW": "同一專案包含多個對話、正式任務與交接、來源與記憶。舊版介面稱「記憶庫」，現在統一稱「專案」，並非新增另一層容器。不同專案的內容分開；切換不會搬移資料或增加權限。帳號及密碼由全站管理，資料存取仍受專案授權限制。",
+    "en": "A project contains multiple conversations, formal tasks and handoffs, sources, and memory. The older interface called it a “memory library”; it is now consistently called a “project”, not a new container layer. Different projects keep content separate; switching does not move data or grant permissions. Accounts and passwords are managed site-wide, while data access remains subject to project authorization."
+  },
+  "ui_24cfc69d094c": {
+    "zh-TW": "同步中斷，稍後重試",
+    "en": "Sync interrupted; retry later"
+  },
+  "ui_d546c60a3cca": {
+    "zh-TW": "名稱不可空白、過長或含控制字元。",
+    "en": "Names cannot be blank, too long, or contain control characters."
+  },
+  "ui_fe812566f216": {
+    "zh-TW": "呼叫 ",
+    "en": "Call "
+  },
+  "ui_5cbfd5797808": {
+    "zh-TW": "命令提示 Token 時貼入並按 Enter；隱藏輸入不顯示字元是正常的。安裝會保留其他 MCP、建立專用環境，將 Token 用目前 Windows 使用者加密保存，不必再填 Desktop 全域環境變數。若專案已有 ys_memory，會停止以免覆寫。",
+    "en": "When prompted for the Token, paste it and press Enter; hidden input displaying no characters is normal. Installation preserves other MCP entries, creates a dedicated environment, and encrypts the Token for the current Windows user, without requiring Desktop global environment variables. If the project already has ys_memory, installation stops to avoid overwriting it."
+  },
+  "ui_258b221f71b4": {
+    "zh-TW": "唯讀",
+    "en": "Read-only"
+  },
+  "ui_5e3f014ed690": {
+    "zh-TW": "唯讀帳號無法發言或建立成果。",
+    "en": "Read-only accounts cannot post messages or create results."
+  },
+  "ui_6519a9b02c71": {
+    "zh-TW": "啟用帳號",
+    "en": "Enable account"
+  },
+  "ui_cd611b2f9037": {
+    "zh-TW": "啟用狀態格式不正確。",
+    "en": "Invalid enabled-status format."
+  },
+  "ui_c7489723aa7c": {
+    "zh-TW": "回到「MCP 接入 → Token 與客戶端設定」，選專案及對應 worker。「重新產生 Token」立即使舊 Token 失效，保留同一身分及歷史；保存新值並更新該 AI 的程序環境，再核對身份工具。Token 不提供再次顯示，遺失時輪替。",
+    "en": "Return to “MCP integration → Tokens and client configuration”, select the project and corresponding worker. “Regenerate Token” immediately invalidates the old Token while preserving the identity and history. Save the new value, update that AI's process environment, and verify the identity tool again. Tokens cannot be shown again; rotate them if lost."
+  },
+  "ui_996daae10b4d": {
+    "zh-TW": "回合 ",
+    "en": "Turn "
+  },
+  "ui_c075b35fbea4": {
+    "zh-TW": "回覆 #",
+    "en": "Reply to #"
+  },
+  "ui_3d7c5c7443f9": {
+    "zh-TW": "在「對話」選擇主題，複製加入指引給 AI，即可開始討論。",
+    "en": "Select a topic under Conversations and copy its joining instructions to AI to start discussing."
+  },
+  "ui_70d9794d38cc": {
+    "zh-TW": "在「建立專案」輸入專案 ID，例如 ",
+    "en": "Enter a project ID under “Create project”, for example "
+  },
+  "ui_003ba82b72cd": {
+    "zh-TW": "在下載目錄開啟 PowerShell：",
+    "en": "Open PowerShell in the download directory:"
+  },
+  "ui_3d545b525f22": {
+    "zh-TW": "在你要接入的已信任專案，把上方項目的 ",
+    "en": "In the trusted project you want to connect, set this entry's "
+  },
+  "ui_83363673727b": {
+    "zh-TW": "在右側展開「搜尋專案對話」，於「搜尋本專案的對話與成果」輸入關鍵字，按「搜尋紀錄」，也可在欄位按 Enter。",
+    "en": "Expand “Search project conversations” on the right, enter keywords under “Search this project's conversations and results”, and click “Search records” or press Enter in the field."
+  },
+  "ui_2171da3a87b0": {
+    "zh-TW": "在已信任的工作專案 ",
+    "en": "In a trusted work project "
+  },
+  "ui_4210cac14ffc": {
+    "zh-TW": "在已合併 ",
+    "en": "After merging "
+  },
+  "ui_48ef5386e0af": {
+    "zh-TW": "在本次客戶端正常處理指定工具的核准；不要將通用 memory_call 全部預先核准。需要逐工具限制時使用完整 relay。",
+    "en": "Handle approval for the specified tool normally in this client. Do not preapprove every generic memory_call request. Use the full relay when per-tool restrictions are needed."
+  },
+  "ui_477dd2e6c922": {
+    "zh-TW": "在輸入區「附加檔案」選擇檔案，完成上傳後可與訊息或成果一起引用。",
+    "en": "Choose a file under “Attach file” in the input area. After upload, reference it with a message or result."
+  },
+  "ui_9e565a17a8e8": {
+    "zh-TW": "多客戶端安裝教學",
+    "en": "Multi-client installation guide"
+  },
+  "ui_37d266e0ab12": {
+    "zh-TW": "失敗",
+    "en": "Failed"
+  },
+  "ui_718d16928861": {
+    "zh-TW": "如何開始連線",
+    "en": "How to connect"
+  },
+  "ui_1581caff3b82": {
+    "zh-TW": "安裝包有 ",
+    "en": "The installer includes "
+  },
+  "ui_ca6a74d7fc7b": {
+    "zh-TW": "安裝後在相同專案開新的 Local Code 對話，請 Claude 用原生 MCP 確認 worker 身分，再貼共享對話的「加入指引」。不需要另登入 CLI。畫面 Connected 只是本機就緒，要看到正確身分與寫回收據才算驗收。",
+    "en": "After installation, open a new Local Code conversation in the same project, ask Claude to verify its worker identity through native MCP, then paste the shared conversation's Joining instructions. No separate CLI sign-in is required. Connected only means the local client is ready; acceptance requires the correct identity and a write receipt."
+  },
+  "ui_417c22e6b6ee": {
+    "zh-TW": "完整 relay 直接呼叫原工具時，參數是 ",
+    "en": "When the full relay calls the original tool directly, its parameters are "
+  },
+  "ui_5ecbd4a59a5a": {
+    "zh-TW": "完整來源內容（未信任參考資料）",
+    "en": "Full source content (untrusted reference material)"
+  },
+  "ui_bb247a3cecf0": {
+    "zh-TW": "完整安裝、排錯、Token 更換與測試範圍",
+    "en": "Full installation, troubleshooting, Token replacement, and test scope"
+  },
+  "ui_ba5fcb41ac08": {
+    "zh-TW": "完整設定與測試步驟 →",
+    "en": "Complete configuration and testing steps →"
+  },
+  "ui_d2411785c01e": {
+    "zh-TW": "官方桌面 MCP 說明",
+    "en": "Official desktop MCP guide"
+  },
+  "ui_ea375332b426": {
+    "zh-TW": "官方設定參考",
+    "en": "Official configuration reference"
+  },
+  "ui_7a646ac91074": {
+    "zh-TW": "客戶端版本與介面可能改變，核對當前官方說明：",
+    "en": "Client versions and interfaces may change; check the current official documentation:"
+  },
+  "ui_aae18e62a930": {
+    "zh-TW": "客戶端設定",
+    "en": "Client configuration"
+  },
+  "ui_ef8b49458c14": {
+    "zh-TW": "密碼",
+    "en": "Password"
+  },
+  "ui_20bbcd79e428": {
+    "zh-TW": "密碼必須為 10–1024 字元且不得含 NUL。",
+    "en": "Passwords must be 10–1024 characters and must not contain NUL."
+  },
+  "ui_c74287365d28": {
+    "zh-TW": "實測：Claude 原生 MCP 回傳 agent-b；首次參數錯誤及修正結果均保留",
+    "en": "Tested: Claude native MCP returned agent-b; both the initial parameter error and corrected result are retained"
+  },
+  "ui_7e33da37eda5": {
+    "zh-TW": "實測：網頁管理員發需求，Claude 讀取後回覆同一主題",
+    "en": "Tested: a website administrator posted a request; Claude read it and replied in the same topic"
+  },
+  "ui_715219e85b80": {
+    "zh-TW": "實際 Token 值",
+    "en": "Actual Token value"
+  },
+  "ui_d594d0ff9a4b": {
+    "zh-TW": "封存",
+    "en": "Archive"
+  },
+  "ui_556dfda6e500": {
+    "zh-TW": "將 Token 安全提供至啟動客戶端的 ",
+    "en": "Securely provide the Token to the client-launching "
+  },
+  "ui_bd53d075b796": {
+    "zh-TW": "將 ZIP 解壓到自選的新目錄，例如 ",
+    "en": "Extract the ZIP to a new directory of your choice, for example "
+  },
+  "ui_13913d8debdf": {
+    "zh-TW": "將 產生器輸出的設定合併至專案的 ",
+    "en": "Merge the generator's configuration into the project's "
+  },
+  "ui_00cad93c9c4e": {
+    "zh-TW": "專屬 Token",
+    "en": "Dedicated Token"
+  },
+  "ui_e564b916b12e": {
+    "zh-TW": "專案",
+    "en": "Project"
+  },
+  "ui_4d04986f010a": {
+    "zh-TW": "專案 ",
+    "en": "Project "
+  },
+  "ui_8c38475ee858": {
+    "zh-TW": "專案協作空間",
+    "en": "Project collaboration space"
+  },
+  "ui_cbdd5ca271db": {
+    "zh-TW": "專案尚未建立",
+    "en": "Project not yet created"
+  },
+  "ui_d5f8860a9c4f": {
+    "zh-TW": "專案層級",
+    "en": "Project level"
+  },
+  "ui_73f63294aa92": {
+    "zh-TW": "專案是最外層的內容範圍。",
+    "en": "A project is the outermost content scope."
+  },
+  "ui_17bfcee53538": {
+    "zh-TW": "專案管理員",
+    "en": "Project administrator"
+  },
+  "ui_394104ad2d97": {
+    "zh-TW": "專案範圍格式不正確，最多 100 項。",
+    "en": "Invalid project-scope format; maximum 100 entries."
+  },
+  "ui_e15dca20d337": {
+    "zh-TW": "專案範圍（逗號分隔；最多 100 項；可留空；不支援 *）",
+    "en": "Project scopes (comma-separated; maximum 100; may be empty; * is unsupported)"
+  },
+  "ui_09bb87a333bc": {
+    "zh-TW": "專案總覽",
+    "en": "Project overview"
+  },
+  "ui_69b7a90bae20": {
+    "zh-TW": "對 AI 說：「讀取這個對話的新訊息，回覆三句，真正寫回共享對話。」網頁會同步顯示。直接在下方發補充即可；「引用」只用來指明某則訊息。目前仍要在 AI 客戶端請它讀取這一輪，這是人工讀寫驗證。",
+    "en": "Tell AI: “Read new messages in this conversation, reply in three sentences, and actually write back to the shared conversation.” The website displays it in sync. Post additional details below; Quote only identifies a specific message. You still need to ask the AI client to read this turn. This is manual read/write verification."
+  },
+  "ui_932be7091ff4": {
+    "zh-TW": "對話",
+    "en": "Conversations"
+  },
+  "ui_dfc8f70bf945": {
+    "zh-TW": "對話中的「方案」、「任務提案」和「交接提案」是討論成果，不會自動認領任務、轉移租約或批准記憶。需要執行時，管理員開啟 <a href=\"",
+    "en": "Plans, task proposals, and handoff proposals in conversations are discussion results; they do not automatically claim tasks, transfer leases, or approve memory. When execution is needed, an administrator opens <a href=\""
+  },
+  "ui_02bf8e3c6fa6": {
+    "zh-TW": "對話主題",
+    "en": "Conversation topic"
+  },
+  "ui_7f12174f454c": {
+    "zh-TW": "對話工作區",
+    "en": "Conversation workspace"
+  },
+  "ui_e6f1be2983ca": {
+    "zh-TW": "對話已封存",
+    "en": "Conversation archived"
+  },
+  "ui_d32cfb93695a": {
+    "zh-TW": "對話已建立。你可以先提供需求，再讓 AI 加入。",
+    "en": "Conversation created. You can provide your requirements first, then invite AI to join."
+  },
+  "ui_e58e86d5dd64": {
+    "zh-TW": "對話摘要",
+    "en": "Conversation summary"
+  },
+  "ui_9217fb441af5": {
+    "zh-TW": "對話狀態已更新",
+    "en": "Conversation status updated"
+  },
+  "ui_202d8880f776": {
+    "zh-TW": "對話連結格式不正確，請從列表選擇對話。",
+    "en": "Invalid conversation-link format; select a conversation from the list."
+  },
+  "ui_65a953f1277a": {
+    "zh-TW": "尚未建立專案",
+    "en": "No project created yet"
+  },
+  "ui_3b865471662f": {
+    "zh-TW": "尚未接受／需重新驗證",
+    "en": "Not accepted/revalidation required"
+  },
+  "ui_b99c99f4a453": {
+    "zh-TW": "尚未觀察到活動",
+    "en": "No activity observed yet"
+  },
+  "ui_38bb242511a3": {
+    "zh-TW": "尚未選擇對話",
+    "en": "No conversation selected"
+  },
+  "ui_cdca21634f42": {
+    "zh-TW": "尚無 AI 加入自動接話",
+    "en": "No AI has joined automatic replies yet"
+  },
+  "ui_5ccaf337c1ee": {
+    "zh-TW": "尚無來源。登錄後將顯示內容、commit 與雜湊。",
+    "en": "No sources yet. Registration will show content, commit, and hash."
+  },
+  "ui_dcad8fbfc554": {
+    "zh-TW": "尚無專案授權。",
+    "en": "No project permissions yet."
+  },
+  "ui_b61ba9478bc4": {
+    "zh-TW": "尚無持有者",
+    "en": "No holder yet"
+  },
+  "ui_b3736cb154b0": {
+    "zh-TW": "尚無授權專案。請先到「設定 → 建立專案」。",
+    "en": "No authorized projects yet. Go to “Settings → Create project” first."
+  },
+  "ui_14fa3a491d53": {
+    "zh-TW": "尚無檢查點或交接紀錄",
+    "en": "No checkpoints or handoff records yet"
+  },
+  "ui_c32e0df042d2": {
+    "zh-TW": "尚無決策或提案。待審提案不會自動成為核准記憶。",
+    "en": "No decisions or proposals yet. Pending proposals do not automatically become approved memory."
+  },
+  "ui_fa39cd080774": {
+    "zh-TW": "尚無活動紀錄",
+    "en": "No activity records yet"
+  },
+  "ui_3e1b52c88f58": {
+    "zh-TW": "尚無紀錄",
+    "en": "No records yet"
+  },
+  "ui_923dad25d70c": {
+    "zh-TW": "尚無送達收據",
+    "en": "No delivery receipts yet"
+  },
+  "ui_8772a4a5c85c": {
+    "zh-TW": "工作目標",
+    "en": "Work goal"
+  },
+  "ui_796d41f1ed53": {
+    "zh-TW": "工具參數：compact 的兩層 arguments",
+    "en": "Tool parameters: compact's two arguments layers"
+  },
+  "ui_6899cd48dbcb": {
+    "zh-TW": "工具參數：只讀指定對話的新訊息",
+    "en": "Tool parameters: read only new messages in the specified conversation"
+  },
+  "ui_930f3c0d0b33": {
+    "zh-TW": "工具存在，但核准被拒絕",
+    "en": "Tool exists, but approval was denied"
+  },
+  "ui_7526bccb9e0e": {
+    "zh-TW": "工具已讀",
+    "en": "Read via tool"
+  },
+  "ui_558ebda656f2": {
+    "zh-TW": "已交給客戶端",
+    "en": "Handed to client"
+  },
+  "ui_a8c3698b5b8c": {
+    "zh-TW": "已停用",
+    "en": "Disabled"
+  },
+  "ui_d7f772c1c2f5": {
+    "zh-TW": "已加入 ",
+    "en": "Joined "
+  },
+  "ui_2b449d1e59c3": {
+    "zh-TW": "已可使用：MCP 讀寫、共享對話、網頁同步、持久化自動派送與管理員暫停。AI 自動回覆需要安裝接線、啟用身分並加入指定對話；僅連上 MCP 不會自動喚醒模型。Claude 限定回合接收程式、Codex 專用原生 CLI 與 ChatGPT 私人通道試驗仍須分別完成原生驗收。",
+    "en": "Available: MCP reading and writing, shared conversations, live web updates, durable automatic delivery, and administrator pause controls. Automatic AI replies require an installed connection, an enabled identity, and membership in the selected conversation. An MCP connection alone does not wake a model. The bounded Claude listener, dedicated native Codex CLI, and ChatGPT private tunnel pilot each still require native acceptance testing."
+  },
+  "ui_af5eb2248daf": {
+    "zh-TW": "已啟用",
+    "en": "Enabled"
+  },
+  "ui_c2d242f57244": {
+    "zh-TW": "已回覆",
+    "en": "Replied"
+  },
+  "ui_f28461bb49c8": {
+    "zh-TW": "已完成",
+    "en": "Completed"
+  },
+  "ui_1499cf5a6a80": {
+    "zh-TW": "已封存",
+    "en": "Archived"
+  },
+  "ui_624be01635ec": {
+    "zh-TW": "已建立的連線身分",
+    "en": "Created connection identities"
+  },
+  "ui_2cac3c472320": {
+    "zh-TW": "已掛載",
+    "en": "Mounted"
+  },
+  "ui_ed404ac4c8fe": {
+    "zh-TW": "已接受目前脈絡",
+    "en": "Current context accepted"
+  },
+  "ui_3c22dce74d92": {
+    "zh-TW": "已撤銷",
+    "en": "Revoked"
+  },
+  "ui_30d72ffb8690": {
+    "zh-TW": "已暫停",
+    "en": "Paused"
+  },
+  "ui_1625f6ba5f2c": {
+    "zh-TW": "已核准",
+    "en": "Approved"
+  },
+  "ui_13ec43b7c74f": {
+    "zh-TW": "已產生 MCP Token",
+    "en": "MCP Token generated"
+  },
+  "ui_6b865761f9a9": {
+    "zh-TW": "已由新接線取代",
+    "en": "Replaced by a new connection"
+  },
+  "ui_58642f90a1bd": {
+    "zh-TW": "已登入 Claude Code 的 IDE 或 Desktop Code 分頁，就用這個客戶端；不需要另外登入獨立 CLI。以下是 Desktop 的",
+    "en": "If already signed in to Claude Code in an IDE or Desktop Code tab, use that client; no separate standalone CLI sign-in is needed. Below is Desktop's"
+  },
+  "ui_2aff58e58e12": {
+    "zh-TW": "已確認閱讀",
+    "en": "Reading acknowledged"
+  },
+  "ui_872bc28ee946": {
+    "zh-TW": "已複製加入指引",
+    "en": "Joining instructions copied"
+  },
+  "ui_5f1fc265c7ec": {
+    "zh-TW": "已複製，請妥善保管。",
+    "en": "Copied; keep it secure."
+  },
+  "ui_9b42a6cda2e5": {
+    "zh-TW": "已過期",
+    "en": "Expired"
+  },
+  "ui_5196d864fcd3": {
+    "zh-TW": "已達回合預算",
+    "en": "Turn budget reached"
+  },
+  "ui_c590245f0a78": {
+    "zh-TW": "帳號已更新，請重新載入。",
+    "en": "Account updated; reload the page."
+  },
+  "ui_e5f72bfcc873": {
+    "zh-TW": "帳號權限格式不正確。",
+    "en": "Invalid account-permission format."
+  },
+  "ui_8e517b1f924b": {
+    "zh-TW": "帳號清單",
+    "en": "Account list"
+  },
+  "ui_1455f71494aa": {
+    "zh-TW": "帳號版本格式不正確。",
+    "en": "Invalid account-version format."
+  },
+  "ui_49074c5d8675": {
+    "zh-TW": "帳號角色或權限格式不正確。",
+    "en": "Invalid account role or permission format."
+  },
+  "ui_14bee9923d27": {
+    "zh-TW": "帳號設定",
+    "en": "Account settings"
+  },
+  "ui_12dda12f1106": {
+    "zh-TW": "帳號請求未完成",
+    "en": "Account request incomplete"
+  },
+  "ui_c44c21649fca": {
+    "zh-TW": "帳號識別格式不正確。",
+    "en": "Invalid account identifier format."
+  },
+  "ui_f92d99c7621b": {
+    "zh-TW": "常見問題",
+    "en": "Frequently asked questions"
+  },
+  "ui_6556e4f6a364": {
+    "zh-TW": "常見問題：先確認是哪一層",
+    "en": "Troubleshooting: identify the affected layer first"
+  },
+  "ui_e14e0d0691bd": {
+    "zh-TW": "建立任務",
+    "en": "Create task"
+  },
+  "ui_ac97c3caa9ad": {
+    "zh-TW": "建立任務，寫目標、可改路徑、驗收條件、必要來源及接手者。各 AI 使用自己的 clone/worktree 和 branch，避免共用可寫目錄。",
+    "en": "Create a task with its goal, allowed edit paths, acceptance criteria, required sources, and recipient. Each AI uses its own clone/worktree and branch to avoid sharing writable directories."
+  },
+  "ui_181ad3312ed1": {
+    "zh-TW": "建立專案",
+    "en": "Create project"
+  },
+  "ui_3eebd8826f15": {
+    "zh-TW": "建立專案 ",
+    "en": "Create project "
+  },
+  "ui_1685575e61b5": {
+    "zh-TW": "建立對話",
+    "en": "Create conversation"
+  },
+  "ui_c8d00d5ce574": {
+    "zh-TW": "建立文件／提案",
+    "en": "Create document/proposal"
+  },
+  "ui_bf8cc4574c59": {
+    "zh-TW": "建立於 ",
+    "en": "Created at "
+  },
+  "ui_5fdeb11deea8": {
+    "zh-TW": "建立獨立的對話、任務與記憶空間。專案 ID 使用英文字母、數字、點、底線或連字號；已存在的專案不能重新認領。",
+    "en": "Create a separate space for conversations, tasks, and memory. Project IDs may contain English letters, digits, dots, underscores, or hyphens; existing projects cannot be claimed again."
+  },
+  "ui_927350154e87": {
+    "zh-TW": "建立表單不接受既有專案範圍。",
+    "en": "The creation form does not accept existing project scopes."
+  },
+  "ui_ee665829e3da": {
+    "zh-TW": "引用 #",
+    "en": "Quote #"
+  },
+  "ui_aa2eecfd61cf": {
+    "zh-TW": "引用較早訊息",
+    "en": "Quote an earlier message"
+  },
+  "ui_8970039135ad": {
+    "zh-TW": "待審・非權威記憶",
+    "en": "Pending review · Non-authoritative memory"
+  },
+  "ui_3725eec2805c": {
+    "zh-TW": "待審提案",
+    "en": "Pending proposals"
+  },
+  "ui_2899af743145": {
+    "zh-TW": "待辦與交接",
+    "en": "Inbox and handoffs"
+  },
+  "ui_a1404211a481": {
+    "zh-TW": "待閱讀確認",
+    "en": "Awaiting read acknowledgment"
+  },
+  "ui_83ab778e6b5b": {
+    "zh-TW": "從下方「接入 MCP」下載安裝包，解壓到新資料夾，依三行安裝命令產生設定。Claude 使用專案 ",
+    "en": "Download the installer under “Connect MCP” below, extract it into a new folder, and generate configuration using the three-line installation command. Claude uses the project's "
+  },
+  "ui_46e32ddd1d72": {
+    "zh-TW": "從左側選擇或建立對話。你與 AI 可以在同一處討論，再將共識保存為成果。",
+    "en": "Select or create a conversation on the left. You and AI can discuss in one place and save consensus as results."
+  },
+  "ui_ebbcd99950d6": {
+    "zh-TW": "從左側選擇或建立對話，再一起整理想法。",
+    "en": "Select or create a conversation on the left, then organize ideas together."
+  },
+  "ui_55403f156fd6": {
+    "zh-TW": "從接入 MCP 到人與 AI 共同對話",
+    "en": "From connecting MCP to shared conversations with people and AI"
+  },
+  "ui_5fa30f4d7d17": {
+    "zh-TW": "復原原因（寫入審計）",
+    "en": "Recovery reason (recorded in audit log)"
+  },
+  "ui_7f5d451a617c": {
+    "zh-TW": "必要來源 ID（每行一項）",
+    "en": "Required source IDs (one per line)"
+  },
+  "ui_1cebb7510107": {
+    "zh-TW": "必須保留至少一位啟用中的帳號管理員。",
+    "en": "At least one enabled account administrator must remain."
+  },
+  "ui_815c0f56f85a": {
+    "zh-TW": "恢復自動接話",
+    "en": "Resume automatic replies"
+  },
+  "ui_ff5d555f4f71": {
+    "zh-TW": "憑證 DER 的 SHA-256 指紋：",
+    "en": "Certificate DER SHA-256 fingerprint:"
+  },
+  "ui_6bf6bbd99dea": {
+    "zh-TW": "成功後記住 ",
+    "en": "After success, remember "
+  },
+  "ui_166f7de687e2": {
+    "zh-TW": "成員",
+    "en": "Members"
+  },
+  "ui_eb15c869d0a8": {
+    "zh-TW": "成果",
+    "en": "Results"
+  },
+  "ui_7fcc0205ab8c": {
+    "zh-TW": "成果 commit：",
+    "en": "Result commit:"
+  },
+  "ui_1c528b52a950": {
+    "zh-TW": "成果內容",
+    "en": "Result content"
+  },
+  "ui_475fe4d4bf58": {
+    "zh-TW": "我的密碼",
+    "en": "My password"
+  },
+  "ui_83e9e6e03b78": {
+    "zh-TW": "截圖取自 2026-10-03 的線上測試：Claude Desktop 使用 Sonnet 5.5 / Medium；Codex 使用已登入的原生 CLI。圖片中的名稱和 ID 是範例，使用時選自己的專案。沒有以 SDK 代替模型回覆；未量測帳單 Token 節省比例。",
+    "en": "Screenshots are from online tests on 2026-10-03: Claude Desktop used Sonnet 5.5 / Medium; Codex used its signed-in native CLI. Names and IDs in the images are examples; choose your own project. No SDK substituted for model replies; billing Token savings were not measured."
+  },
+  "ui_eae64b134022": {
+    "zh-TW": "所有新本機工作",
+    "en": "All new local work"
+  },
+  "ui_32bacd38843e": {
+    "zh-TW": "手冊目錄",
+    "en": "Guide contents"
+  },
+  "ui_186014b30943": {
+    "zh-TW": "批次匯入來源",
+    "en": "Bulk import sources"
+  },
+  "ui_1cee42032be4": {
+    "zh-TW": "找不到任務",
+    "en": "Task not found"
+  },
+  "ui_a921ca11e333": {
+    "zh-TW": "找不到可讀取的專案",
+    "en": "No readable project found"
+  },
+  "ui_1d8812ac41ce": {
+    "zh-TW": "找不到可讀取的專案。",
+    "en": "No readable project found."
+  },
+  "ui_3850c1980144": {
+    "zh-TW": "找不到已設定的身分",
+    "en": "No configured identity found"
+  },
+  "ui_97ca99cc04e7": {
+    "zh-TW": "找不到帳號。",
+    "en": "Account not found."
+  },
+  "ui_b8bba1727b76": {
+    "zh-TW": "找不到此管理頁",
+    "en": "Management page not found"
+  },
+  "ui_ff87476d2ead": {
+    "zh-TW": "找不到此頁面",
+    "en": "Page not found"
+  },
+  "ui_87e51596e233": {
+    "zh-TW": "把 JSON 或網址貼到聊天不會自動完成設定；設定完成後，日常只需貼指定專案／对話的加入指引。",
+    "en": "Pasting JSON or a URL into chat does not automatically configure the client. After setup, daily use only requires pasting the specified project/conversation's joining instructions."
+  },
+  "ui_08cd27bfc59c": {
+    "zh-TW": "把下方專案與對話 ID 替換成加入指引中的實值；範例的 32 位 ID 是占位。",
+    "en": "Replace the project and conversation IDs below with actual values from the joining instructions; the example's 32-character ID is a placeholder."
+  },
+  "ui_b6d770533a5c": {
+    "zh-TW": "把有用的討論整理成共同成果",
+    "en": "Turn useful discussion into shared results"
+  },
+  "ui_da8ed309bcae": {
+    "zh-TW": "把產生的設定合併到專案 ",
+    "en": "Merge the generated configuration into the project's "
+  },
+  "ui_6aaab69721e9": {
+    "zh-TW": "把自己的專案 ID 一起告訴 AI。畫面出現實際工具結果與正確身分才算接入；只有 Connected 還不夠。",
+    "en": "Also tell AI your project ID. Integration is confirmed only when actual tool results and the correct identity appear; Connected alone is insufficient."
+  },
+  "ui_d37f774c768b": {
+    "zh-TW": "持有者 ",
+    "en": "Holder "
+  },
+  "ui_fa82f62eb6a9": {
+    "zh-TW": "按「保存成果」。系統保存作者及內容雜湊，並標示涵蓋到目前已讀的訊息序號。若正回覆某則訊息，也會記錄該訊息引用。",
+    "en": "Click “Save results”. The system saves the author and content hash and marks coverage through the latest message sequence read. If replying to a specific message, that reference is also recorded."
+  },
+  "ui_daa827b9862c": {
+    "zh-TW": "接入方式與目前限制",
+    "en": "Connection methods and current limitations"
+  },
+  "ui_2c763637cbaa": {
+    "zh-TW": "接手後下一步",
+    "en": "Next steps after takeover"
+  },
+  "ui_08b698ba5bcb": {
+    "zh-TW": "接手確認 ",
+    "en": "Takeover acknowledgment "
+  },
+  "ui_e64d0deff642": {
+    "zh-TW": "接手者：",
+    "en": "Recipient:"
+  },
+  "ui_54e4388750a4": {
+    "zh-TW": "接線在線",
+    "en": "Connection online"
+  },
+  "ui_a3bb7ab2cefc": {
+    "zh-TW": "接線已到期",
+    "en": "Connection expired"
+  },
+  "ui_5f54815bbdc7": {
+    "zh-TW": "接線未回報",
+    "en": "Connection has not reported in"
+  },
+  "ui_458d710c8651": {
+    "zh-TW": "接線離線",
+    "en": "Connection offline"
+  },
+  "ui_f16c0a5ef9b6": {
+    "zh-TW": "接著到 Claude「新對話的環境選單 → Local 旁齒輪 → 環境編輯器」，新增名稱 ",
+    "en": "Then in Claude, open “New conversation environment menu → Gear beside Local → Environment editor” and add the name "
+  },
+  "ui_c4a76f026c40": {
+    "zh-TW": "提供相容表、逐步命令、Gemini 範例與 Grok 限制。使用已有 Hub 不需要重新部署伺服器。",
+    "en": "Includes a compatibility table, step-by-step commands, Gemini examples, and Grok limitations. Using an existing Hub does not require redeploying the server."
+  },
+  "ui_9b00b9349366": {
+    "zh-TW": "提案 r",
+    "en": "Proposal r"
+  },
+  "ui_03c481a6ab85": {
+    "zh-TW": "搜尋",
+    "en": "Search"
+  },
+  "ui_e76ec0336ab3": {
+    "zh-TW": "搜尋不到紀錄",
+    "en": "No records found"
+  },
+  "ui_5cca3eaf6ca3": {
+    "zh-TW": "搜尋專案對話",
+    "en": "Search project conversations"
+  },
+  "ui_1fde667343dc": {
+    "zh-TW": "搜尋專案記憶",
+    "en": "Search project memory"
+  },
+  "ui_8096e05b471d": {
+    "zh-TW": "搜尋對話與成果",
+    "en": "Search conversations and results"
+  },
+  "ui_961aef0488e9": {
+    "zh-TW": "搜尋本專案的對話與成果",
+    "en": "Search this project's conversations and results"
+  },
+  "ui_8077f6f676c6": {
+    "zh-TW": "搜尋範圍是目前專案內的共享對話和成果，包含其他主題；不搜尋私人訊息或附件正文。英文字母區分大小寫，按輸入的字面內容比對。",
+    "en": "Search covers shared conversations and results in the current project, including other topics; private messages and attachment bodies are excluded. English letters are case-sensitive, and input is matched literally."
+  },
+  "ui_7f709fe1022a": {
+    "zh-TW": "搜尋紀錄",
+    "en": "Search records"
+  },
+  "ui_4fe7d65a0b2d": {
+    "zh-TW": "搜尋記憶",
+    "en": "Search memory"
+  },
+  "ui_71e9e1be9255": {
+    "zh-TW": "搜尋詞長度必須為 1–200 字元",
+    "en": "Search terms must be 1–200 characters"
+  },
+  "ui_21c04b2eeeb4": {
+    "zh-TW": "摘要",
+    "en": "Summary"
+  },
+  "ui_8871c2701c22": {
+    "zh-TW": "撤銷此 Token",
+    "en": "Revoke this Token"
+  },
+  "ui_be32f4d54111": {
+    "zh-TW": "操作已送出或過期，請重新讀取最新狀態。",
+    "en": "This operation was already submitted or has expired; reread the latest state."
+  },
+  "ui_f4b608198048": {
+    "zh-TW": "操作成功，已儲存並更新最新狀態。",
+    "en": "Operation successful; saved and updated to the latest state."
+  },
+  "ui_b75700a270c5": {
+    "zh-TW": "操作教學",
+    "en": "User guide"
+  },
+  "ui_7af3ec8211a9": {
+    "zh-TW": "收據待確認",
+    "en": "Receipt awaiting confirmation"
+  },
+  "ui_39932f24fe11": {
+    "zh-TW": "文件",
+    "en": "Document"
+  },
+  "ui_9c567ca5168e": {
+    "zh-TW": "新增對話",
+    "en": "New conversation"
+  },
+  "ui_fac920aaecbc": {
+    "zh-TW": "新增帳號",
+    "en": "Add account"
+  },
+  "ui_5d16e7cdc549": {
+    "zh-TW": "新增帳號不接受既有身份。",
+    "en": "New accounts cannot use existing identities."
+  },
+  "ui_e9f040cf3eb5": {
+    "zh-TW": "新密碼（10–1024 字元）",
+    "en": "New password (10–1024 characters)"
+  },
+  "ui_39174667a521": {
+    "zh-TW": "新專案 ID",
+    "en": "New project ID"
+  },
+  "ui_e8665732f856": {
+    "zh-TW": "新訊息仍會保存；暫停新的自動派送，已開始的回合無法撤回。",
+    "en": "New messages will still be saved; new automatic deliveries are paused, and turns already started cannot be recalled."
+  },
+  "ui_6f949ac3522d": {
+    "zh-TW": "方案",
+    "en": "Plan"
+  },
+  "ui_4429f8f60e8a": {
+    "zh-TW": "方案／交接提案沒有變成任務",
+    "en": "Plan/handoff proposal did not become a task"
+  },
+  "ui_27fbc4052a5b": {
+    "zh-TW": "日常流程：",
+    "en": "Daily workflow:"
+  },
+  "ui_e7efcf8dd0ba": {
+    "zh-TW": "暫停自動接話",
+    "en": "Pause automatic replies"
+  },
+  "ui_e06a5e9d9ab5": {
+    "zh-TW": "更多對話",
+    "en": "More conversations"
+  },
+  "ui_0ab09d3ca347": {
+    "zh-TW": "更多搜尋結果",
+    "en": "More search results"
+  },
+  "ui_74d58e282750": {
+    "zh-TW": "更新網頁",
+    "en": "Refresh page"
+  },
+  "ui_c23b16b0bbce": {
+    "zh-TW": "更新角色與範圍",
+    "en": "Update role and scopes"
+  },
+  "ui_b12b7a0cdc9b": {
+    "zh-TW": "最後一個命令只輸出 Claude 的設定，不需 Token、不連主機、不寫檔。它包含目前電腦的 Python、bridge 與 connection 絕對路徑。",
+    "en": "The last command only outputs Claude configuration; it requires no Token, does not connect to the host, and writes no files. It includes absolute paths to this computer's Python, bridge, and connection files."
+  },
+  "ui_91b8cc3ee5a5": {
+    "zh-TW": "最後一行不需 Token、不連線、不寫檔；它輸出這個目錄的完整路徑。將輸出的 ys_memory 設定合併至專案 .mcp.json，保留其他 MCP。套件移動後須重新產生路徑。接著切換到該專案目錄，將自己的 Token 提供給同一程序的 YS_AIMEMORY_TOKEN，再啟動 Claude；compact 初始只提供兩個工具，實際呼叫才連 Hub；Connected 僅代表本機就緒，不代表模型對話已通過。",
+    "en": "The last line requires no Token, makes no connection, and writes no files; it outputs full paths for this directory. Merge the generated ys_memory configuration into the project's .mcp.json while keeping other MCP entries. Regenerate paths if the package is moved. Next, switch to that project directory, supply your Token to YS_AIMEMORY_TOKEN in the same process, then start Claude. compact initially exposes only two tools and connects to the Hub only on actual calls. Connected indicates local readiness, not successful model-conversation acceptance."
+  },
+  "ui_78fc0ea402e9": {
+    "zh-TW": "最新共同成果",
+    "en": "Latest shared results"
+  },
+  "ui_9f7b24152d32": {
+    "zh-TW": "最新實測：",
+    "en": "Latest actual test:"
+  },
+  "ui_bb03c0b803aa": {
+    "zh-TW": "最近 30 筆",
+    "en": "Latest 30 records"
+  },
+  "ui_69d2456eb923": {
+    "zh-TW": "最近活動",
+    "en": "Recent activity"
+  },
+  "ui_7ba95c431b47": {
+    "zh-TW": "最近活動 ",
+    "en": "Recent activity "
+  },
+  "ui_6a9f51cb0870": {
+    "zh-TW": "有共識後可在右側「建立文件／提案」保存方案；需要執行時才建立正式任務。Hub 會保存和同步訊息，但不會自行喚醒 AI，仍須在客戶端請它繼續。",
+    "en": "After reaching consensus, save a plan under “Create document/proposal” on the right; create formal tasks only when execution is needed. The Hub saves and syncs messages but does not wake AI itself; ask it to continue in the client."
+  },
+  "ui_11afd2a53439": {
+    "zh-TW": "有效",
+    "en": "Valid"
+  },
+  "ui_a75c19e4500f": {
+    "zh-TW": "有效認領",
+    "en": "Valid claim"
+  },
+  "ui_41b8007345d8": {
+    "zh-TW": "有需要才啟用：",
+    "en": "Enable only when needed:"
+  },
+  "ui_a4694e3787df": {
+    "zh-TW": "服務回應中斷；寫入結果可能尚待確認，請先同步再重試。",
+    "en": "Service response interrupted; the write result may need confirmation. Sync before retrying."
+  },
+  "ui_48f0dcd631f7": {
+    "zh-TW": "服務暫時無法使用，請稍後再試。",
+    "en": "Service temporarily unavailable; try again later."
+  },
+  "ui_87e0643505a3": {
+    "zh-TW": "未儲存：",
+    "en": "Not saved:"
+  },
+  "ui_80a23df7c046": {
+    "zh-TW": "未儲存：表單或匯入資料格式不正確。請核對必填欄位、JSON 結構及數量限制。",
+    "en": "Not saved: invalid form or import data format. Check required fields, JSON structure, and quantity limits."
+  },
+  "ui_fe8e76c5e348": {
+    "zh-TW": "未列項目",
+    "en": "Unlisted items"
+  },
+  "ui_d2297ba2384d": {
+    "zh-TW": "未執行",
+    "en": "Not run"
+  },
+  "ui_15f6645420bf": {
+    "zh-TW": "未指定對象的訊息，會提供給已加入此對話且啟用的 AI 接線。未加入或離線的 AI 不會立即回覆。暫停會阻止新的自動派送；訊息仍會保存，已開始的回合無法撤回。恢復後依各接線的游標續讀。",
+    "en": "Messages without a specified recipient are provided to enabled AI connections that have joined this conversation. AIs that have not joined or are offline will not reply immediately. Pausing prevents new automatic delivery; messages are still saved, and turns already started cannot be recalled. Resuming continues from each connection's cursor."
+  },
+  "ui_756762e293f2": {
+    "zh-TW": "未提供",
+    "en": "Not provided"
+  },
+  "ui_4d8c1c5b4283": {
+    "zh-TW": "未知",
+    "en": "Unknown"
+  },
+  "ui_73c12c28d6e2": {
+    "zh-TW": "未知的 MCP 管理動作。",
+    "en": "Unknown MCP management action."
+  },
+  "ui_85cfcbccc2ec": {
+    "zh-TW": "未知的帳號動作。",
+    "en": "Unknown account action."
+  },
+  "ui_132ed37a1565": {
+    "zh-TW": "未知的管理動作",
+    "en": "Unknown management action"
+  },
+  "ui_c4a2b35b7145": {
+    "zh-TW": "未知的讀取方式。",
+    "en": "Unknown read method."
+  },
+  "ui_4c010533fc24": {
+    "zh-TW": "本機 Claude 原生工具寫回第 171 則；已另由獨立身分核對 Hub 紀錄",
+    "en": "Local Claude native tool wrote message 171; the Hub record was separately verified by an independent identity"
+  },
+  "ui_6b817627be35": {
+    "zh-TW": "本機 Claude：單一指令安裝",
+    "en": "Local Claude: single-command installation"
+  },
+  "ui_da5ebedc24b2": {
+    "zh-TW": "本機 Code 工作",
+    "en": "Local Code work"
+  },
+  "ui_38ca06647563": {
+    "zh-TW": "本次載入的訊息沒有附件。可載入較早訊息尋找檔案。",
+    "en": "No attachments in the messages loaded this time. Load older messages to find files."
+  },
+  "ui_896358e5ae1b": {
+    "zh-TW": "本版安裝包尚未提供桌面專用的秘密載入器，遠端桌面的啟動／環境傳入步驟仍需在目標版本驗收；不能把上方 CLI 成功算作桌面完成。已登入的桌面客戶端不需要因此另行登入 CLI。",
+    "en": "This installer version does not yet provide a desktop-specific secret loader. Remote desktop launch/environment injection steps still require acceptance on the target version; the successful CLI test above does not count as desktop completion. An already signed-in desktop client does not need a separate CLI sign-in for this reason."
+  },
+  "ui_21aab6283ec4": {
+    "zh-TW": "查看來源內容（未信任參考資料）",
+    "en": "View source content (untrusted reference material)"
+  },
+  "ui_d4c5a340b27b": {
+    "zh-TW": "查看最近活動",
+    "en": "View recent activity"
+  },
+  "ui_89c83731a4e8": {
+    "zh-TW": "查看逐步接入教學",
+    "en": "View the step-by-step connection guide"
+  },
+  "ui_d0e5696c4d54": {
+    "zh-TW": "查看；Hub 不會自行喚醒接手者。",
+    "en": "to view; the Hub does not wake the recipient itself."
+  },
+  "ui_63810e5e4468": {
+    "zh-TW": "核准為權威記憶",
+    "en": "Approve as authoritative memory"
+  },
+  "ui_9a9e640740b9": {
+    "zh-TW": "核對 CA、主機名與有效期，不停用 TLS。",
+    "en": "Check the CA, hostname, and validity period; do not disable TLS."
+  },
+  "ui_15db15139d2a": {
+    "zh-TW": "核對主機可達、服務與 connection.json。",
+    "en": "Check host reachability, service status, and connection.json."
+  },
+  "ui_8bc9b56b4f7d": {
+    "zh-TW": "核對公開 CA 指紋、效期、IP／名稱及 runtime 相容性。Claude name constraints 錯誤改用 stdio 包，不關閉 TLS。",
+    "en": "Verify the public CA fingerprint, validity period, IP/name, and runtime compatibility. For Claude name constraints errors, use the stdio package without disabling TLS."
+  },
+  "ui_faa428ea4794": {
+    "zh-TW": "核對專案、對話 ID、帳號／Token 範圍、進行中／已封存篩選及唯讀角色。worker 不可建立／封存對話。",
+    "en": "Check the project and conversation IDs, account/Token scopes, active/archived filters, and read-only role. Workers cannot create/archive conversations."
+  },
+  "ui_454dcd6e8642": {
+    "zh-TW": "核對自己的 worker Token、輪替／撤銷狀態及專案範圍。不要輸出 Token 到紀錄。",
+    "en": "Check your worker Token, rotation/revocation status, and project scope. Do not output Tokens in logs."
+  },
+  "ui_6fe38ed1ee10": {
+    "zh-TW": "標題",
+    "en": "Title"
+  },
+  "ui_2b5a2a63fb96": {
+    "zh-TW": "模型 OAuth expired／登入失敗",
+    "en": "Model OAuth expired/sign-in failed"
+  },
+  "ui_d2ed3971be0c": {
+    "zh-TW": "檔案完整性檢查未通過。",
+    "en": "File integrity check failed."
+  },
+  "ui_815873a58642": {
+    "zh-TW": "檢查目前專案及字面關鍵字；英文字母區分大小寫。私人訊息、附件正文不在此搜尋範圍。",
+    "en": "Check the current project and literal keywords; English letters are case-sensitive. Private messages and attachment bodies are outside this search scope."
+  },
+  "ui_c703d730ca8f": {
+    "zh-TW": "檢索引擎 ",
+    "en": "Retrieval engine "
+  },
+  "ui_91745782d160": {
+    "zh-TW": "檢索結果不代表已完成 read_source 或已取得寫入資格。待審提案仍非權威記憶。",
+    "en": "Retrieval results do not mean read_source is complete or write eligibility has been granted. Pending proposals remain non-authoritative memory."
+  },
+  "ui_3748eca7a2c5": {
+    "zh-TW": "檢視任務、來源與 AI 交接進度",
+    "en": "View tasks, sources, and AI handoff progress"
+  },
+  "ui_f46283d40781": {
+    "zh-TW": "權限已撤銷",
+    "en": "Permission revoked"
+  },
+  "ui_392eab34af05": {
+    "zh-TW": "正在確認 AI 連線…",
+    "en": "Checking AI connections…"
+  },
+  "ui_0831a8f883ea": {
+    "zh-TW": "正在讀取接線與收據，不會呼叫模型。",
+    "en": "Reading connections and receipts; no model is called."
+  },
+  "ui_8be5ea2870ac": {
+    "zh-TW": "正在讀取最新成果…",
+    "en": "Reading latest results…"
+  },
+  "ui_15749b2fa8b0": {
+    "zh-TW": "正在讀取最近訊息…",
+    "en": "Reading recent messages…"
+  },
+  "ui_5463552246e6": {
+    "zh-TW": "正文最多 8,000 UTF-8 bytes；每次新信使用新 key，原信重試才沿用。私訊本身不認領任務、不改租約，不代表使用者授權。",
+    "en": "Message bodies allow up to 8,000 UTF-8 bytes. Use a new key for each new message; reuse it only when retrying the original. Private messages do not claim tasks or change leases and do not constitute user authorization."
+  },
+  "ui_e08227c04b3a": {
+    "zh-TW": "正規化後的登入名稱過長。",
+    "en": "Normalized sign-in name is too long."
+  },
+  "ui_da04f5a9c47c": {
+    "zh-TW": "此伺服器設定尚未同步，請管理員更新所有執行中的服務。",
+    "en": "This server's configuration is not yet synchronized; ask an administrator to update all running services."
+  },
+  "ui_86967d4d8942": {
+    "zh-TW": "此專案不在網頁帳號授權範圍",
+    "en": "This project is outside the website account's authorized scope"
+  },
+  "ui_ec19e71fbd4b": {
+    "zh-TW": "此專案不在網頁帳號授權範圍。",
+    "en": "This project is outside the website account's authorized scope."
+  },
+  "ui_2ea3f51377d3": {
+    "zh-TW": "此專案尚未從產生器建立 Token。",
+    "en": "No Token has been created for this project through the generator."
+  },
+  "ui_3340cee124e7": {
+    "zh-TW": "此專案尚無可顯示的 AI 身分",
+    "en": "No AI identities to display for this project yet"
+  },
+  "ui_15a7e789ea75": {
+    "zh-TW": "此帳號沒有使用者管理權限。",
+    "en": "This account lacks user-management permission."
+  },
+  "ui_f8b8e59ef830": {
+    "zh-TW": "此帳號沒有專案管理權限。",
+    "en": "This account lacks project-management permission."
+  },
+  "ui_8617503dff2b": {
+    "zh-TW": "此帳號沒有管理權限",
+    "en": "This account lacks management permission"
+  },
+  "ui_6caf7bb303a9": {
+    "zh-TW": "此帳號無法執行此動作。",
+    "en": "This account cannot perform this action."
+  },
+  "ui_e2cb1bed22cb": {
+    "zh-TW": "此表單已使用或過期；Token 不會再次顯示。請重新載入。",
+    "en": "This form has been used or expired; the Token will not be shown again. Reload the page."
+  },
+  "ui_812bd215047c": {
+    "zh-TW": "此訊息尚未完整載入。",
+    "en": "This message has not been fully loaded."
+  },
+  "ui_19f2243514d1": {
+    "zh-TW": "歷史讀取游標未前進，請稍後重試。",
+    "en": "The history read cursor did not advance; try again later."
+  },
+  "ui_994464209747": {
+    "zh-TW": "每個 AI 使用自己的 worker Token，只能存取指定專案。Token 只顯示一次，請存入各自的秘密設定。",
+    "en": "Each AI uses its own worker Token and can access only the specified project. Tokens are shown only once; save each in its own secret configuration."
+  },
+  "ui_315c76e6df36": {
+    "zh-TW": "每個 AI 各用一枚 Token，避免作者身分混在一起。產生器簽發的是此專案的 worker，不能因此建立帳號、建立對話或取得其他專案。既有伺服器身分由部署管理者維護，不會在產生器重新顯示 Token。",
+    "en": "Use a separate Token for each AI to keep author identities distinct. The generator issues workers for this project; it does not enable account or conversation creation or access to other projects. Existing server identities are maintained by the deployment administrator, and their Tokens are not redisplayed in the generator."
+  },
+  "ui_bffb3b1927cd": {
+    "zh-TW": "每個帳號最多授權 100 個專案。",
+    "en": "Each account can be authorized for up to 100 projects."
+  },
+  "ui_e51a116c5fff": {
+    "zh-TW": "每個檔案最多 512 KiB。",
+    "en": "Each file allows up to 512 KiB."
+  },
+  "ui_6ec1c2342de6": {
+    "zh-TW": "每則訊息或成果最多附加 10 檔。",
+    "en": "Each message or result can attach up to 10 files."
+  },
+  "ui_df67adcb67be": {
+    "zh-TW": "每封新訊息用新 ",
+    "en": "Use a new key for each new message: "
+  },
+  "ui_f17fb5dfce5b": {
+    "zh-TW": "每檔最多 512 KiB，每對話合計 25 MiB，每則訊息或成果最多引用 10 檔。目前沒有附件刪除／回收介面。不要上傳 Token、密碼、私鑰或不適合整個專案看見的資料。檔案只作附件下載，不直接執行 HTML／SVG，不自動解壓；AI 要明確分段讀取，傳輸成功不代表模型能理解所有格式。",
+    "en": "Each file allows up to 512 KiB, with a total of 25 MiB per conversation and up to 10 file references per message or result. No attachment deletion/reclamation interface is currently available. Do not upload Tokens, passwords, private keys, or data unsuitable for the whole project. Files are downloadable attachments only; HTML/SVG are not executed directly, and archives are not automatically extracted. AI must explicitly read chunks; successful transfer does not mean the model understands every format."
+  },
+  "ui_c0a28e5e3808": {
+    "zh-TW": "決策與待審提案",
+    "en": "Decisions and pending proposals"
+  },
+  "ui_6d046453ad62": {
+    "zh-TW": "沒有符合的紀錄。",
+    "en": "No matching records."
+  },
+  "ui_e32a4b2acadf": {
+    "zh-TW": "沒有符合的記憶，請換個關鍵字",
+    "en": "No matching memory; try another keyword"
+  },
+  "ui_713cf1a97ccf": {
+    "zh-TW": "測試證據（由交接者回報）",
+    "en": "Test evidence (reported by the person handing off)"
+  },
+  "ui_805323e5f0d5": {
+    "zh-TW": "準備 Windows Python 3.12，在解壓目錄開啟 PowerShell，執行下方三個命令。",
+    "en": "Prepare Windows Python 3.12, open PowerShell in the extracted directory, and run the three commands below."
+  },
+  "ui_f4b6e4ecdb0e": {
+    "zh-TW": "瀏覽器尚未信任 CA 時，使用已確認的 CA 下載 ZIP",
+    "en": "If the browser does not yet trust the CA, use the verified CA to download the ZIP"
+  },
+  "ui_cad9a569da0e": {
+    "zh-TW": "瀏覽器需要信任時，由你手動雙擊憑證 → 安裝憑證 → 目前使用者 → 受信任的根憑證授權單位。只匯入已確認的公開 CA。",
+    "en": "If browser trust is needed, manually double-click the certificate → Install certificate → Current user → Trusted Root Certification Authorities. Import only the verified public CA."
+  },
+  "ui_4e1a8b455d94": {
+    "zh-TW": "瀏覽器／MCP 顯示憑證錯誤",
+    "en": "Browser/MCP shows a certificate error"
+  },
+  "ui_9c51b5da6d43": {
+    "zh-TW": "無效的登出請求，請重新整理頁面。",
+    "en": "Invalid sign-out request; refresh the page."
+  },
+  "ui_4ba5138d7ab8": {
+    "zh-TW": "無法完成請求",
+    "en": "Unable to complete request"
+  },
+  "ui_2e75037f1419": {
+    "zh-TW": "無法確認 AI 連線狀態",
+    "en": "Unable to verify AI connection status"
+  },
+  "ui_fb1b52af7f9d": {
+    "zh-TW": "版本資訊",
+    "en": "Version information"
+  },
+  "ui_f44ca1217931": {
+    "zh-TW": "狀態待確認",
+    "en": "Status awaiting confirmation"
+  },
+  "ui_60f2b940f33d": {
+    "zh-TW": "現象",
+    "en": "Symptom"
+  },
+  "ui_12151664e8aa": {
+    "zh-TW": "環境編輯器填入的是",
+    "en": "The environment editor takes"
+  },
+  "ui_eb8cffc8fa20": {
+    "zh-TW": "環境配置中的既有身分由伺服器管理員維護，不會在此顯示 Token。關閉產生器不會撤銷已簽發的 Token。",
+    "en": "Existing identities in environment configuration are maintained by the server administrator; their Tokens are not shown here. Disabling the generator does not revoke issued Tokens."
+  },
+  "ui_d959ea09b2d3": {
+    "zh-TW": "產生 MCP Token",
+    "en": "Generate MCP Token"
+  },
+  "ui_776f2084bb8f": {
+    "zh-TW": "產生專屬 Token",
+    "en": "Generate dedicated Token"
+  },
+  "ui_81c7954d0d28": {
+    "zh-TW": "用下方方法計算 DER 指紋，確認與管理者提供的值一致。直接對 PEM 檔案執行 ",
+    "en": "Calculate the DER fingerprint using the method below and verify it matches the administrator's value. Running this directly on a PEM file: "
+  },
+  "ui_c8e6f9c91609": {
+    "zh-TW": "用在哪裡",
+    "en": "Where it is used"
+  },
+  "ui_05b36669c4ad": {
+    "zh-TW": "用途",
+    "en": "Purpose"
+  },
+  "ui_97d2a77693ff": {
+    "zh-TW": "由帳號擁有人在自己的官方客戶端處理模型登入，不能用重發 Hub Token 解決，也不借用另一個 AI 的認證。",
+    "en": "The account owner handles model sign-in in their own official client. Reissuing a Hub Token cannot fix it; do not borrow another AI's credentials."
+  },
+  "ui_41a8b911a1fa": {
+    "zh-TW": "由自己的官方客戶端管理，用來產生回覆",
+    "en": "Managed by your own official client to generate replies"
+  },
+  "ui_d4e7bca3a821": {
+    "zh-TW": "由討論整理出的文件、方案、摘要及提案",
+    "en": "Documents, plans, summaries, and proposals organized from discussion"
+  },
+  "ui_c52651f85eb3": {
+    "zh-TW": "登入 →",
+    "en": "Sign in →"
+  },
+  "ui_aa023fe47b51": {
+    "zh-TW": "登入名稱",
+    "en": "Sign-in name"
+  },
+  "ui_023f4406a90b": {
+    "zh-TW": "登入名稱 ",
+    "en": "Sign-in name "
+  },
+  "ui_deb482bd764c": {
+    "zh-TW": "登入嘗試過於頻繁，請五分鐘後再試。",
+    "en": "Too many sign-in attempts; try again in five minutes."
+  },
+  "ui_edddb8024b8e": {
+    "zh-TW": "登入專案記憶中樞",
+    "en": "Sign in to the project memory hub"
+  },
+  "ui_446e2f1aa692": {
+    "zh-TW": "登入已失效。",
+    "en": "Sign-in is no longer valid."
+  },
+  "ui_75baae0fbc25": {
+    "zh-TW": "登入已失效，請重新登入。",
+    "en": "Sign-in is no longer valid; sign in again."
+  },
+  "ui_8a9d88231742": {
+    "zh-TW": "登入已過期。",
+    "en": "Sign-in expired."
+  },
+  "ui_afdf85f8476e": {
+    "zh-TW": "登入已過期，請重新登入",
+    "en": "Sign-in expired; sign in again"
+  },
+  "ui_13c3485fbe25": {
+    "zh-TW": "登入已過期，請重新登入。",
+    "en": "Sign-in expired; sign in again."
+  },
+  "ui_48dfe30a58eb": {
+    "zh-TW": "登入已過期，請重新登入後再操作。",
+    "en": "Sign-in expired; sign in again before proceeding."
+  },
+  "ui_e4723c61253c": {
+    "zh-TW": "登入已過期；輸入草稿仍保留在此頁，請另開登入頁。",
+    "en": "Sign-in expired; your draft remains on this page. Open the sign-in page separately."
+  },
+  "ui_382f531bd0b7": {
+    "zh-TW": "登入後選專案，進入「MCP 接入 → Token 與客戶端設定」。為 Claude、Codex 各產生一個身分與 Token。Token 就像這個 AI 進入專案的鑰匙，不是網頁登入密碼。",
+    "en": "After signing in, select a project and go to “MCP integration → Tokens and client configuration”. Generate a separate identity and Token for Claude and Codex. A Token is the key for this AI to enter the project, not a website sign-in password."
+  },
+  "ui_3baf4f0f75a8": {
+    "zh-TW": "登入網頁、發言及後台管理",
+    "en": "Website sign-in, messaging, and administration"
+  },
+  "ui_b9131bbe4b2a": {
+    "zh-TW": "登入設定已更新",
+    "en": "Sign-in settings updated"
+  },
+  "ui_1cff9523a11f": {
+    "zh-TW": "登入設定已更新，請重新載入。",
+    "en": "Sign-in settings updated; reload the page."
+  },
+  "ui_0e2f411d7412": {
+    "zh-TW": "登入頁已過期，請重新輸入。",
+    "en": "Sign-in page expired; enter your details again."
+  },
+  "ui_057f31bc16c8": {
+    "zh-TW": "登出",
+    "en": "Sign out"
+  },
+  "ui_eb29d2c20f3d": {
+    "zh-TW": "登錄與審核",
+    "en": "Registration and review"
+  },
+  "ui_48aad83cc581": {
+    "zh-TW": "登錄／更新來源",
+    "en": "Register/update source"
+  },
+  "ui_d72a926824e1": {
+    "zh-TW": "目前主機使用私有 CA。客戶端需要信任這個簽發者，並核對憑證中的 IP／主機名稱；這不單純是沒有網域才需要的步驟。登入、Token、MCP 和檔案操作全部使用 HTTPS。",
+    "en": "The current host uses a private CA. Clients must trust the issuer and verify the IP/hostname in the certificate; this step is not merely required when there is no domain. Sign-in, Tokens, MCP, and file operations all use HTTPS."
+  },
+  "ui_cfd5861bdd7d": {
+    "zh-TW": "目前密碼",
+    "en": "Current password"
+  },
+  "ui_07b06141ea51": {
+    "zh-TW": "目前密碼不正確。",
+    "en": "Incorrect current password."
+  },
+  "ui_73660a4bb402": {
+    "zh-TW": "目前專案已建立。請選擇已獲授權但尚未建立的專案，或請管理員調整授權。",
+    "en": "The current project already exists. Select an authorized project that has not been created, or ask an administrator to adjust permissions."
+  },
+  "ui_19dcc4d081c0": {
+    "zh-TW": "目前沒有任務",
+    "en": "No tasks currently"
+  },
+  "ui_8cba477b06d1": {
+    "zh-TW": "目前沒有對話。",
+    "en": "No conversations currently."
+  },
+  "ui_ef2a4f39d4ad": {
+    "zh-TW": "目前沒有待審提案",
+    "en": "No pending proposals currently"
+  },
+  "ui_4bfe1dc46056": {
+    "zh-TW": "目前沒有符合項目",
+    "en": "No matching items currently"
+  },
+  "ui_5cbf7e80cc31": {
+    "zh-TW": "目前為隔離本機 HTTP 測試。LAN 與公開環境請使用 HTTPS。",
+    "en": "This is an isolated local HTTP test. Use HTTPS in LAN and public environments."
+  },
+  "ui_c2f0001e7e2e": {
+    "zh-TW": "目前版本",
+    "en": "Current version"
+  },
+  "ui_30e78e200eac": {
+    "zh-TW": "目前能用到哪裡？",
+    "en": "What is available now?"
+  },
+  "ui_5f8676b52d13": {
+    "zh-TW": "目標、決定、來源、未完成事項…",
+    "en": "Goals, decisions, sources, unfinished items…"
+  },
+  "ui_6b6761fdef8b": {
+    "zh-TW": "使用流程：選專案及對話、安裝並啟用參與者接線 → 新訊息派送給已加入的 AI → AI 讀取後回覆 → 人類可隨時插話或暫停。派送、工具已讀及回覆各有獨立收據；需要時再保存文件或建立任務。",
+    "en": "Workflow: select a project and conversation, install and enable participant connections → new messages are dispatched to joined AIs → an AI reads and replies → humans can contribute or pause at any time. Dispatch, tool reads, and replies have separate receipts. Save a document or create a task when needed."
+  },
+  "ui_6c9e5980fb10": {
+    "zh-TW": "直接發言到這個對話；需要指明某一則時才使用引用…",
+    "en": "Post directly to this conversation; use a quote only when referring to a specific message…"
+  },
+  "ui_9e7f54cb95e5": {
+    "zh-TW": "看不到對話或無法發言",
+    "en": "Cannot see conversations or post messages"
+  },
+  "ui_6edf83cd3646": {
+    "zh-TW": "看到當次成功工具結果且 worker 正確，才確認這個客戶端有實際連到主機。SDK 測試、Connected 或 AI 自述不代表原生模型驗收；兩個客戶端都要各自實際讀取、生成及寫入新訊息。",
+    "en": "Confirm this client actually reached the host only after seeing a successful tool result from this attempt with the correct worker. SDK tests, Connected, or AI self-reports do not constitute native model acceptance; both clients must each actually read, generate, and write new messages."
+  },
+  "ui_b0e7b0f391b9": {
+    "zh-TW": "確認中央標題是要討論的主題，在下方輸入需求並按「傳送訊息」。例如：「請 Codex 提出兩個首頁方向，Claude 評估取捨；先討論，不改檔案。」",
+    "en": "Check that the center title is the intended discussion topic, enter requirements below, and click “Send message”. For example: “Codex, propose two homepage directions; Claude, assess the tradeoffs. Discuss first; do not edit files.”"
+  },
+  "ui_c0582f4cb671": {
+    "zh-TW": "確認必要來源、有效租約及 fence 後才寫自己的工作區；長工作需續租。交接內容列出確切 commit、改動、真實測試結果、未測項、阻礙與下一步，不能只說「完成」。",
+    "en": "Verify required sources, a valid lease, and the fence before writing in your own workspace; renew leases for long tasks. Handoffs must list the exact commit, changes, actual test results, untested items, blockers, and next steps, rather than merely say “done”."
+  },
+  "ui_d7e17b4d8b16": {
+    "zh-TW": "確認撤銷認領並復原",
+    "en": "Confirm claim revocation and recovery"
+  },
+  "ui_5ae4e5e77f36": {
+    "zh-TW": "確認選定專案的 .mcp.json、實際 server 路徑及同名設定範圍，保存工作後重新載入。另一個終端的變數不會注入既有 IDE。",
+    "en": "Verify the selected project's .mcp.json, actual server path, and scope of same-name settings, then save work and reload. Another terminal's variables are not injected into an existing IDE."
+  },
+  "ui_266f0b2eb186": {
+    "zh-TW": "私人收發的工具參數範例",
+    "en": "Private messaging tool parameter examples"
+  },
+  "ui_8854dfaa36b6": {
+    "zh-TW": "租約 ",
+    "en": "Lease "
+  },
+  "ui_4b1c87aa735c": {
+    "zh-TW": "稍後再試",
+    "en": "Try again later"
+  },
+  "ui_dce1ec683f94": {
+    "zh-TW": "第一次接入與手動讀寫驗證：五個步驟",
+    "en": "First connection and manual read/write verification: five steps"
+  },
+  "ui_210b24e0821f": {
+    "zh-TW": "第一次需要：安裝轉接器 → 合併 MCP 設定 → 提供 worker Token。",
+    "en": "First-time setup: install adapter → merge MCP configuration → provide worker Token."
+  },
+  "ui_eed5d32d162e": {
+    "zh-TW": "等待 ",
+    "en": "Waiting "
+  },
+  "ui_0a927d059929": {
+    "zh-TW": "等待接手",
+    "en": "Awaiting takeover"
+  },
+  "ui_fc8170d79b79": {
+    "zh-TW": "等待新訊息",
+    "en": "Waiting for new messages"
+  },
+  "ui_fa2386a4a00e": {
+    "zh-TW": "等待派送",
+    "en": "Awaiting delivery"
+  },
+  "ui_3adc54e36397": {
+    "zh-TW": "等待認領",
+    "en": "Awaiting claim"
+  },
+  "ui_7272c81bb7da": {
+    "zh-TW": "管理使用者",
+    "en": "Manage users"
+  },
+  "ui_dea11622e845": {
+    "zh-TW": "管理使用者可重設所有帳號密碼與授權專案。這項能力本身不授予專案資料可見性。帳號停用不會撤銷獨立的 AI Token；既有 private 訊息仍限參與者。",
+    "en": "User management can reset all account passwords and authorized projects. This capability does not itself grant visibility into project data. Disabling an account does not revoke independent AI Tokens; existing private messages remain participant-only."
+  },
+  "ui_3c998927bece": {
+    "zh-TW": "管理員",
+    "en": "Administrator"
+  },
+  "ui_04b9b6c9a6dc": {
+    "zh-TW": "管理員先到「設定 → 建立專案」，或直接選用已建立的專案。若沒有入口，確認帳號是管理員且產生器已啟用。",
+    "en": "Administrators first go to “Settings → Create project” or select an existing project. If the entry is missing, verify that the account is an administrator and the generator is enabled."
+  },
+  "ui_ad2d5508c1da": {
+    "zh-TW": "管理員到「Token 與客戶端設定」，為每個 AI 建立獨立身分。",
+    "en": "An administrator creates a separate identity for each AI under “Tokens and client configuration”."
+  },
+  "ui_0eb8faf6261f": {
+    "zh-TW": "管理員可使用「建立任務」分頁；先在「記憶」登錄任務需要的來源。",
+    "en": "Administrators can use the Create task tab; first register the task's required sources under Memory."
+  },
+  "ui_94bf422b2d40": {
+    "zh-TW": "管理員可從設定建立專案，再開始對話。",
+    "en": "Administrators can create a project from Settings, then start a conversation."
+  },
+  "ui_a91eab985fbf": {
+    "zh-TW": "管理員在「新增對話」輸入主題，例如「首頁改版討論」，按「建立對話」。也可直接點左側既有對話；成員使用管理員已建立的對話。",
+    "en": "An administrator enters a topic under “New conversation”, such as “Homepage redesign discussion”, and clicks “Create conversation”. Alternatively, select an existing conversation on the left; members use administrator-created conversations."
+  },
+  "ui_2a275c6a2d68": {
+    "zh-TW": "管理員復原／重新指定接手",
+    "en": "Administrator recovery/reassign takeover"
+  },
+  "ui_6529c10aabd1": {
+    "zh-TW": "管理員能建立和封存對話；成員可在已有對話發言及保存成果；唯讀帳號只能查看。帳號管理能力與資料範圍分開，不等於可讀所有專案。密碼、角色、範圍及停用更新會使舊登入失效，歷史作者仍保留，系統防止停用最後一位有效帳號管理員。",
+    "en": "Administrators can create and archive conversations; members can post and save results in existing conversations; read-only accounts can only view them. Account-management capability and data scope are separate and do not imply access to all projects. Password, role, scope, and disablement updates invalidate old sign-ins while retaining historical authors. The system prevents disabling the last valid account administrator."
+  },
+  "ui_198a9c0b5bf9": {
+    "zh-TW": "管理員重新分派",
+    "en": "Administrator reassignment"
+  },
+  "ui_d6e4fa400fb7": {
+    "zh-TW": "管理表單需專案管理員角色。",
+    "en": "Management forms require the project administrator role."
+  },
+  "ui_44446b068adf": {
+    "zh-TW": "範圍、驗收與檢查點",
+    "en": "Scope, acceptance, and checkpoints"
+  },
+  "ui_9bd5d8ac48f4": {
+    "zh-TW": "篩選",
+    "en": "Filter"
+  },
+  "ui_6df543c4a401": {
+    "zh-TW": "系統",
+    "en": "System"
+  },
+  "ui_79b4ba1048d8": {
+    "zh-TW": "網頁已同步至 #",
+    "en": "Website synced through #"
+  },
+  "ui_8e10a90fe1bc": {
+    "zh-TW": "網頁權限由管理員設定，不會取得 AI 的 bearer token",
+    "en": "Website permissions are set by administrators and do not provide an AI bearer token"
+  },
+  "ui_bdc16457fa28": {
+    "zh-TW": "網頁登入尚未啟用",
+    "en": "Website sign-in is not enabled yet"
+  },
+  "ui_2d2990979eae": {
+    "zh-TW": "網頁約每秒增量同步，背景頁面會放慢；「更新網頁」可手動讀取。網頁同步不呼叫模型。",
+    "en": "The website syncs incrementally about once per second, slowing down in background tabs. Refresh page reads manually. Website sync does not call a model."
+  },
+  "ui_4980986a0ae7": {
+    "zh-TW": "網頁顯示「已同步」只表示這個頁面拿到了訊息；寫入收據只表示 Hub 已保存。兩者都不是另一位 AI 已收到或已回覆的證明。單則訊息的「引用」只是補充上下文，直接在輸入框發言即可。",
+    "en": "Synced on the website only means this page received the message; a write receipt only means the Hub saved it. Neither proves another AI received it or replied. Quote on a single message only adds context; you can post directly in the input box."
+  },
+  "ui_e9aca871d372": {
+    "zh-TW": "線上帳號以資料庫為準，重啟不會以舊環境密碼覆蓋新密碼。此版沒有電子郵件忘記密碼／SSO；忘記密碼由有權管理帳號的人處理。",
+    "en": "Online accounts use the database as the source of truth; restarting does not overwrite new passwords with old environment passwords. This version has no email password recovery/SSO; someone authorized to manage accounts must handle forgotten passwords."
+  },
+  "ui_3bc770005441": {
+    "zh-TW": "繼續載入較早訊息",
+    "en": "Continue loading older messages"
+  },
+  "ui_4f59b7de264c": {
+    "zh-TW": "背景接線原型實測：小克與小典接續討論；圖片是當時線上版本",
+    "en": "Background connection prototype test: Little Claude and Little Codex continued the discussion; the image shows the live version at that time"
+  },
+  "ui_4a33e56b5d6f": {
+    "zh-TW": "脈絡 r",
+    "en": "Context r"
+  },
+  "ui_51c0fec7d38a": {
+    "zh-TW": "脈絡包 · ",
+    "en": "Context package · "
+  },
+  "ui_6725cf10d281": {
+    "zh-TW": "自動接話已暫停",
+    "en": "Automatic replies paused"
+  },
+  "ui_a2c1a96deda2": {
+    "zh-TW": "自動接話服務尚未就緒。",
+    "en": "Automatic conversation service is not ready yet."
+  },
+  "ui_dce692b76aba": {
+    "zh-TW": "若手冊和憑證是從 HTTP 取得，同一 HTTP 頁面的指紋也可能被替換，不能用它自己建立信任。HTTP 只提供教學與公開 CA；不要在 HTTP 傳送登入資訊或 Token。憑證錯誤時核對效期、名稱及相容性，不要關閉 TLS 驗證。",
+    "en": "If the guide and certificate were obtained over HTTP, the fingerprint on the same HTTP page could also have been replaced and cannot establish trust by itself. HTTP provides only instructions and the public CA; do not send sign-in details or Tokens over HTTP. For certificate errors, check validity, names, and compatibility; do not disable TLS verification."
+  },
+  "ui_8425a96aba01": {
+    "zh-TW": "若批次匯入來源，使用 1–20 份 JSON 陣列，內容合計最多 750,000 UTF-8 bytes。遇到版本過期先重讀，不能覆蓋別人的更新。",
+    "en": "For bulk source imports, use a JSON array of 1–20 entries with a combined content limit of 750,000 UTF-8 bytes. Reread first when the version is stale; do not overwrite someone else's updates."
+  },
+  "ui_15e4d4e682b1": {
+    "zh-TW": "若直接 HTTP 出現 ",
+    "en": "If direct HTTP reports "
+  },
+  "ui_c6bfc7ae370d": {
+    "zh-TW": "處理中",
+    "en": "Processing"
+  },
+  "ui_044f3483aea4": {
+    "zh-TW": "處理方式",
+    "en": "Resolution"
+  },
+  "ui_16d25075b6fd": {
+    "zh-TW": "表單已使用或過期，請重新載入。",
+    "en": "Form used or expired; reload the page."
+  },
+  "ui_8f2924ca9f58": {
+    "zh-TW": "表單已送出或已過期，請重新載入確認最新狀態",
+    "en": "Form submitted or expired; reload to verify the latest state"
+  },
+  "ui_f03bb2a5cb23": {
+    "zh-TW": "表單格式或服務網址設定不正確，請重新確認。",
+    "en": "Invalid form format or service URL configuration; check again."
+  },
+  "ui_9d00f2d7beca": {
+    "zh-TW": "表單驗證失敗，請重新載入。",
+    "en": "Form validation failed; reload the page."
+  },
+  "ui_b83e91cb3ea8": {
+    "zh-TW": "表單驗證失敗，請重新載入頁面",
+    "en": "Form validation failed; reload the page"
+  },
+  "ui_91b056376fed": {
+    "zh-TW": "被指定的 AI 先查看 ",
+    "en": "The assigned AI first checks "
+  },
+  "ui_669d1acc199f": {
+    "zh-TW": "複製 Token",
+    "en": "Copy Token"
+  },
+  "ui_8fbd48234a05": {
+    "zh-TW": "複製加入指引",
+    "en": "Copy joining instructions"
+  },
+  "ui_e14b553167e6": {
+    "zh-TW": "要讀某則完整訊息，使用該序號減一的 ",
+    "en": "To read a complete message, use its sequence number minus one as "
+  },
+  "ui_c47b54e84e79": {
+    "zh-TW": "角色",
+    "en": "Role"
+  },
+  "ui_5db2971a333c": {
+    "zh-TW": "角色 ",
+    "en": "Role "
+  },
+  "ui_090aaa435c53": {
+    "zh-TW": "解除指定，可重新認領",
+    "en": "Clear assignment; available to claim again"
+  },
+  "ui_d36a0f127d55": {
+    "zh-TW": "訊息",
+    "en": "Message"
+  },
+  "ui_d21cf4bd524b": {
+    "zh-TW": "訊息保存與 AI 收到、讀取、回覆是不同狀態。",
+    "en": "Message saved, received by AI, read, and replied to are separate statuses."
+  },
+  "ui_87d1f8b4dd79": {
+    "zh-TW": "訊息內容",
+    "en": "Message content"
+  },
+  "ui_57b2715ef10b": {
+    "zh-TW": "訊息超過 8,000 UTF-8 bytes，請拆段或保存為文件。",
+    "en": "Message exceeds 8,000 UTF-8 bytes; split it or save it as a document."
+  },
+  "ui_2892879e37b9": {
+    "zh-TW": "記憶",
+    "en": "Memory"
+  },
+  "ui_5a26cfc1ab9f": {
+    "zh-TW": "記憶來源",
+    "en": "Memory sources"
+  },
+  "ui_0d8619aae051": {
+    "zh-TW": "設定",
+    "en": "Settings"
+  },
+  "ui_28bb9a5c926f": {
+    "zh-TW": "設定檔已下載，內容不包含 Token。",
+    "en": "Configuration downloaded; it contains no Token."
+  },
+  "ui_d1bcde2190d4": {
+    "zh-TW": "設定身分 ≠ 已連線。以下活動由 Hub 審計紀錄推導，不代表客戶端目前在線。登入 cookie 不能用於 MCP。",
+    "en": "Configured identity ≠ connected. Activity below is derived from Hub audit records and does not indicate the client is currently online. Sign-in cookies cannot be used for MCP."
+  },
+  "ui_039833e5697d": {
+    "zh-TW": "認領有效",
+    "en": "Claim valid"
+  },
+  "ui_e69ae475cced": {
+    "zh-TW": "請 Claude 讀取這個對話的新訊息、評估 Codex 的建議，再自行生成回覆並寫入。需要引用指定訊息時才帶 ",
+    "en": "Ask Claude to read new messages in this conversation, assess Codex's suggestions, then generate its own reply and write it back. Include this only when referencing a specific message: "
+  },
+  "ui_d20b03dc938a": {
+    "zh-TW": "請 Codex 用剛保存的游標讀取 Claude 新回覆，再確認或補充。不要把另一個 AI 的回覆當成使用者批准執行。",
+    "en": "Ask Codex to read Claude's new reply using the cursor just saved, then confirm or add details. Do not treat another AI's reply as user approval to execute."
+  },
+  "ui_887a73274538": {
+    "zh-TW": "請 Codex 讀取人類需求，自行生成建議並寫到同一對話。記下返回的訊息 ID 與序號。",
+    "en": "Ask Codex to read the human requirements, generate its own suggestions, and write them to the same conversation. Record the returned message ID and sequence number."
+  },
+  "ui_17c72f8483e5": {
+    "zh-TW": "請使用自己的 YS Memory MCP 身分加入共享對話。project_id=",
+    "en": "Please join the shared conversation using your own YS Memory MCP identity. project_id="
+  },
+  "ui_7c7a73d7be16": {
+    "en": "In manual mode, ask the client to read and reply. In automatic mode, check its binding, login, heartbeat, pause state, and budget. The Hub does not sign in for clients.",
+    "zh-TW": "手動模式請客戶端讀取並回覆；自動模式核對綁定、登入、心跳、暫停與預算。Hub 不代替客戶端登入。"
+  },
+  "ui_be85d7e24394": {
+    "zh-TW": "請從上次讀取的位置繼續讀新訊息，參考另一位 AI 和管理員的補充，\n整理三點共識並寫回同一對話。只討論，先不修改程式。\n不需要重讀全部歷史，完成這輪便停止。",
+    "en": "Continue reading new messages from your last read position, referring to additions from the other AI and administrator.\nOrganize three points of agreement and write them to the same conversation. Discuss only; do not modify code yet.\nThere is no need to reread all history; stop after completing this turn."
+  },
+  "ui_08113a3e4640": {
+    "zh-TW": "請按 Ctrl+C 複製選取內容。",
+    "en": "Press Ctrl+C to copy the selected content."
+  },
+  "ui_bd88f7ea6aa5": {
+    "zh-TW": "請求未完成",
+    "en": "Request incomplete"
+  },
+  "ui_737f338f13f8": {
+    "zh-TW": "請管理員設定使用者名稱、密碼雜湊與專案範圍。",
+    "en": "Ask an administrator to configure the username, password hash, and project scopes."
+  },
+  "ui_ce0fe4db3088": {
+    "zh-TW": "請選取並複製文字",
+    "en": "Select and copy the text"
+  },
+  "ui_3ad140781663": {
+    "zh-TW": "讀取下一段",
+    "en": "Read next chunk"
+  },
+  "ui_38116e2b8341": {
+    "zh-TW": "變更成功後所有既有登入失效，請用新密碼重新登入。",
+    "en": "All existing sign-ins become invalid after a successful change; sign in again with the new password."
+  },
+  "ui_fc2a75673f77": {
+    "zh-TW": "變更檔案／成果",
+    "en": "Changed files/results"
+  },
+  "ui_cc589ba6f167": {
+    "zh-TW": "變更自己的密碼",
+    "en": "Change your password"
+  },
+  "ui_4ecbe9e6ab24": {
+    "zh-TW": "變更設定或密碼會使該帳號既有登入失效。身份不會刪除或重用。",
+    "en": "Changing settings or passwords invalidates existing sign-ins for that account. Identities are not deleted or reused."
+  },
+  "ui_64aa45b90156": {
+    "zh-TW": "讓 AI 加入討論",
+    "en": "Invite AI to the discussion"
+  },
+  "ui_4a2c5bdfae5b": {
+    "zh-TW": "讓 MCP 子程序取得 Claude 自己的 Token。Desktop 可在 Code 工作的 Local 環境旁齒輪開啟環境編輯器，加入 ",
+    "en": "Let the MCP child process access Claude's own Token. In Desktop, open the environment editor through the gear beside the Code work's Local environment and add "
+  },
+  "ui_823fb17434ae": {
+    "zh-TW": "讓 MCP 認出是哪個 AI，以及它能用哪個專案",
+    "en": "Identify the AI to MCP and specify which project it can use"
+  },
+  "ui_23ed74e2e27f": {
+    "zh-TW": "貼上 JSON 陣列，每筆包含 source_id、content、uri、commit。最多20筆、內容合計750 KB；中文長文請分批。URI只用於追溯，不會自動抓取。",
+    "en": "Paste a JSON array; each entry contains source_id, content, uri, and commit. Maximum 20 entries and 750 KB total content; split long Chinese text into batches. URIs are for traceability only and are not fetched automatically."
+  },
+  "ui_31d0a840a167": {
+    "zh-TW": "資料庫暫時無法使用。",
+    "en": "Database temporarily unavailable."
+  },
+  "ui_c4f6e043ced8": {
+    "zh-TW": "資料庫暫時無法使用，請稍後重新載入。",
+    "en": "Database temporarily unavailable; reload later."
+  },
+  "ui_87f810597b05": {
+    "zh-TW": "資料格式不正確。",
+    "en": "Invalid data format."
+  },
+  "ui_d39524d54274": {
+    "zh-TW": "路徑，其他 IDE 需核對自己的設定位置。",
+    "en": "path; verify the configuration location for other IDEs."
+  },
+  "ui_e1d9222fd0b4": {
+    "zh-TW": "身分",
+    "en": "Identity"
+  },
+  "ui_8c685baf48dd": {
+    "zh-TW": "載入較早訊息",
+    "en": "Load older messages"
+  },
+  "ui_61ec976adade": {
+    "zh-TW": "輸入關鍵字",
+    "en": "Enter keywords"
+  },
+  "ui_517a66c12bf9": {
+    "zh-TW": "返回專案總覽",
+    "en": "Return to project overview"
+  },
+  "ui_8c15d82cac91": {
+    "zh-TW": "返回對話 ↑",
+    "en": "Return to conversation ↑"
+  },
+  "ui_05c88c6b6a34": {
+    "zh-TW": "返回產生器",
+    "en": "Return to generator"
+  },
+  "ui_34c6fb9e6b18": {
+    "zh-TW": "返回總覽",
+    "en": "Return to overview"
+  },
+  "ui_999caf91d31f": {
+    "zh-TW": "這個對話尚未保存成果。",
+    "en": "No results have been saved in this conversation yet."
+  },
+  "ui_170c27cb37ee": {
+    "zh-TW": "這是 CLI 的選用路徑，不是已登入 IDE 的先決步驟。仍由你處理模型登入與工具核准。",
+    "en": "This is an optional CLI path, not a prerequisite for a signed-in IDE. You still handle model sign-in and tool approvals."
+  },
+  "ui_7bb958c3774b": {
+    "zh-TW": "這是管理檢視，不會代替 AI 認領或接受交接。",
+    "en": "This is an administrative view; it does not claim tasks or accept handoffs on behalf of AI."
+  },
+  "ui_959106944369": {
+    "zh-TW": "這是預期行為。明確建立正式任務並指定人選，再按接手流程驗證上下文。",
+    "en": "This is expected behavior. Explicitly create a formal task and assign someone, then verify context through the takeover flow."
+  },
+  "ui_f2de93df4c0d": {
+    "zh-TW": "這會撤銷目前認領與舊 fence，讓舊持有者失去後續 Hub 寫入資格。請確認已與協作者核對。",
+    "en": "This revokes the current claim and old fence, removing the previous holder's eligibility for subsequent Hub writes. Confirm that you have checked with collaborators."
+  },
+  "ui_dd55c6c25912": {
+    "zh-TW": "通過",
+    "en": "Passed"
+  },
+  "ui_1c2b2d825ce3": {
+    "zh-TW": "連線狀態",
+    "en": "Connection status"
+  },
+  "ui_e29fc18824ef": {
+    "zh-TW": "進入「共享對話」，選專案，輸入主題後按「建立對話」。先在下方發一則需求，再按右側「複製加入指引」，貼到 Claude 和 Codex 各自的對話。這份指引帶的是專案與對話 ID，不需要重貼 Token。",
+    "en": "Open Shared conversations, select a project, enter a topic, and click Create conversation. Post a requirement below first, then click Copy joining instructions on the right and paste them into Claude's and Codex's own conversations. These instructions contain project and conversation IDs; no need to paste the Token again."
+  },
+  "ui_e7e5869de581": {
+    "zh-TW": "進行中",
+    "en": "In progress"
+  },
+  "ui_94cc635c1e5f": {
+    "zh-TW": "進行中認領",
+    "en": "Active claim"
+  },
+  "ui_173febc7cf1a": {
+    "zh-TW": "進階附錄：AI 私訊與共享對話不同",
+    "en": "Advanced appendix: AI private messages differ from shared conversations"
+  },
+  "ui_445d562b3544": {
+    "zh-TW": "進階：已確認相容的直接 HTTP 配置",
+    "en": "Advanced: direct HTTP configuration with verified compatibility"
+  },
+  "ui_1565b08ed7e5": {
+    "zh-TW": "遇到問題時記錄客戶端及 Hub 版本、時間、project／session、工具名稱、訊息 ID 和實際錯誤；不要記錄 Token、cookie 或模型憑證。此教學說明操作方式，是否通過原生 Codex／Claude 驗收仍以各客戶端當次成功工具結果為準。",
+    "en": "When problems occur, record the client and Hub versions, time, project/session, tool name, message ID, and actual error; do not record Tokens, cookies, or model credentials. This guide explains operations; native Codex/Claude acceptance still depends on each client's successful tool results from the current attempt."
+  },
+  "ui_1fec4e9a1741": {
+    "zh-TW": "選 Local 和剛設定的專案，開新對話。依畫面核准 MCP，貼上：",
+    "en": "Select Local and the project just configured, then start a new conversation. Approve MCP as shown and paste:"
+  },
+  "ui_1c05e54ee42e": {
+    "zh-TW": "選定專案，開啟 <a href=\"",
+    "en": "Select a project and open <a href=\""
+  },
+  "ui_cce529d99a60": {
+    "zh-TW": "選定對話，在右側展開「建立文件／提案」。",
+    "en": "Select a conversation and expand Create document/proposal on the right."
+  },
+  "ui_07a979374ba1": {
+    "zh-TW": "選專案 → 選擇或建立對話 → 讓各 AI 加入 → 人與 AI 討論 → 保存需要的共同成果。需要真正執行工作時，再進入任務與交接。一般對話不需要認領任務，也不需要先寫交接文件。",
+    "en": "Select project → select or create conversation → invite each AI → discuss with people and AI → save shared results worth keeping. Go to Tasks and handoffs when actual execution is needed. Regular conversations do not require claiming tasks or writing handoff documents first."
+  },
+  "ui_99d320912f27": {
+    "zh-TW": "選專案，登錄必要來源；填來源 ID、完整內容、追溯 URI 與來源 commit。系統不自行抓取 URI 或掃描你的資料夾。",
+    "en": "Select a project and register required sources with a source ID, full content, traceable URI, and source commit. The system does not fetch URIs or scan your folders automatically."
+  },
+  "ui_67babec0d58d": {
+    "zh-TW": "選擇一個對話",
+    "en": "Choose a conversation"
+  },
+  "ui_f7e540512d3c": {
+    "zh-TW": "選擇專案",
+    "en": "Select project"
+  },
+  "ui_451328ed37e9": {
+    "zh-TW": "選擇對話",
+    "en": "Select conversation"
+  },
+  "ui_7cd33c58c2e3": {
+    "zh-TW": "選擇對話後查看 AI 連線",
+    "en": "Select a conversation to view AI connections"
+  },
+  "ui_9882c99f3fac": {
+    "zh-TW": "選擇對話後查看附件。",
+    "en": "Select a conversation to view attachments."
+  },
+  "ui_d8e6d744d548": {
+    "zh-TW": "選擇要使用記憶的本機專案，將上方輸出的 ",
+    "en": "Select the local project that will use memory and take the generated "
+  },
+  "ui_0f544ab99265": {
+    "zh-TW": "選文件、方案、對話摘要、任務提案或交接提案，輸入標題及內容。建議寫清目標、已決定事項、來源訊息、未完成事項與下一步。",
+    "en": "Choose a document, plan, conversation summary, task proposal, or handoff proposal, and enter a title and content. Clearly state goals, decisions, source messages, unfinished items, and next steps."
+  },
+  "ui_33c0129a8965": {
+    "zh-TW": "選用：Claude CLI 完全不自動載入此 MCP",
+    "en": "Optional: Claude CLI does not automatically load this MCP"
+  },
+  "ui_dc42d118abd3": {
+    "zh-TW": "選用：Codex CLI 只啟用本次程序",
+    "en": "Optional: enable Codex CLI only for this process"
+  },
+  "ui_b571633f19b6": {
+    "zh-TW": "選用：從 PowerShell 啟動 Claude CLI",
+    "en": "Optional: start Claude CLI from PowerShell"
+  },
+  "ui_9e39a5e93967": {
+    "zh-TW": "重新指定接手者",
+    "en": "Reassign recipient"
+  },
+  "ui_ce470c68ad74": {
+    "zh-TW": "重新產生 Token",
+    "en": "Regenerate Token"
+  },
+  "ui_140beadc980d": {
+    "zh-TW": "重新產生會立即使舊 Token 失效。撤銷後無法恢復；尚未完成的任務需由管理頁另行復原。",
+    "en": "Regeneration immediately invalidates the old Token. Revocation cannot be undone; unfinished tasks require separate recovery from the management page."
+  },
+  "ui_d82e4e5145df": {
+    "zh-TW": "重新開啟",
+    "en": "Reopen"
+  },
+  "ui_e189e5018ab4": {
+    "zh-TW": "重設密碼",
+    "en": "Reset password"
+  },
+  "ui_157b2f926735": {
+    "zh-TW": "錯誤",
+    "en": "Error"
+  },
+  "ui_91fb7df54786": {
+    "zh-TW": "開啟 <a href=\"",
+    "en": "Open <a href=\""
+  },
+  "ui_1f915f20acf4": {
+    "zh-TW": "開放重新認領",
+    "en": "Allow claiming again"
+  },
+  "ui_b8264ae4130f": {
+    "zh-TW": "阻礙",
+    "en": "Blockers"
+  },
+  "ui_e3cb77785fe2": {
+    "zh-TW": "附件上傳即共享 · 每檔 512 KiB · 對話合計 25 MiB · 訊息上限 8,000 UTF-8 bytes",
+    "en": "Attachments are shared on upload · 512 KiB per file · 25 MiB per conversation · 8,000 UTF-8 bytes per message"
+  },
+  "ui_e6e3dc07d52a": {
+    "zh-TW": "附加檔案",
+    "en": "Attach file"
+  },
+  "ui_e38eb8083547": {
+    "zh-TW": "需要執行工作時再進入「任務與交接」。",
+    "en": "Go to Tasks and handoffs when work needs to be executed."
+  },
+  "ui_4a3c16302814": {
+    "zh-TW": "需要才精讀：",
+    "en": "Read closely only when needed:"
+  },
+  "ui_b19c6191f190": {
+    "zh-TW": "需要管理員同步旁觀並介入時，使用上方共享對話。既有 ",
+    "en": "Use the shared conversation above when an administrator needs to observe and intervene in sync. Existing "
+  },
+  "ui_3065be8cd83c": {
+    "zh-TW": "頁碼格式不正確",
+    "en": "Invalid page-number format"
+  },
+  "ui_a715e48d434b": {
+    "zh-TW": "預設訊息正文最多 512 UTF-8 bytes；推薦先用 ",
+    "en": "Message bodies default to a maximum of 512 UTF-8 bytes; start with "
+  },
+  "ui_1588dd8c9e73": {
+    "zh-TW": "類型",
+    "en": "Type"
+  },
+  "ui_bda532c613dd": {
+    "zh-TW": "顯示名稱",
+    "en": "Display name"
+  },
+  "ui_edf70e18414d": {
+    "zh-TW": "顯示最新 10 份成果；較早內容可用下方「搜尋專案對話」查找。",
+    "en": "Shows the 10 latest results; find older content using Search project conversations below."
+  },
+  "ui_c30670cbfc51": {
+    "zh-TW": "顯示狀態",
+    "en": "Display status"
+  },
+  "ui_3987e519aade": {
+    "zh-TW": "驗收條件",
+    "en": "Acceptance criteria"
+  },
+  "ui_b5098ba99b97": {
+    "zh-TW": "驗收條件（每行一項）",
+    "en": "Acceptance criteria (one per line)"
+  },
+  "ui_9e58d4454514": {
+    "zh-TW": "驗證並匯入",
+    "en": "Validate and import"
+  },
+  "ui_68654f6058f8": {
+    "zh-TW": "點成果標題，畫面會定位到成果內容；讀完按「返回對話」。長文件用「讀取下一段」。內容不可直接覆寫，修正時建立新成果，註明取代哪份及修正原因。",
+    "en": "Click a result title to jump to its content; click Return to conversation after reading. Use Read next chunk for long documents. Content cannot be directly overwritten; create a new result for corrections, specifying which result it replaces and why."
+  },
+  "ui_b9dbc0099f10": {
+    "zh-TW": "點結果會切換至對應對話並定位紀錄；成果結果可開啟該文件。需要更多時按「更多搜尋結果」。",
+    "en": "Click a result to switch to its conversation and locate the record; result documents can be opened. Click More search results if needed."
+  },
+  "ui_9d16fda5b79e": {
+    "zh-TW": "（Claude Code）指向下載的 PEM 憑證；重新啟動客戶端才會套用。stdio adapter 使用套件內經指紋核對的 CA，不需要 Node CA 環境變數。",
+    "en": "(Claude Code) points to the downloaded PEM certificate; restart the client to apply it. The stdio adapter uses the package's fingerprint-verified CA and does not need Node CA environment variables."
+  },
+  "ui_9b7c14f122c4": {
+    "zh-TW": "（Codex）或 ",
+    "en": "(Codex) or "
+  },
+  "ui_6e030bf110f0": {
+    "zh-TW": "（點圖放大）",
+    "en": "(click image to enlarge)"
+  },
+  "ui_55775aa3704b": {
+    "zh-TW": "）。請核對最新資料後重新提交。",
+    "en": "). Check the latest data and resubmit."
+  },
+  "ui_7271b0132cd1": {
+    "zh-TW": "，下次填 ",
+    "en": ", enter next time: "
+  },
+  "ui_8dcf409c760f": {
+    "zh-TW": "，不含 Token、私鑰或模型登入。移動安裝目錄或換電腦後，重新建立環境並產生當地路徑。CA 輪替時重新核對新版安裝包，不會自動更新信任。",
+    "en": ", without Tokens, private keys, or model sign-in. After moving the installation directory or changing computers, recreate the environment and generate local paths. When the CA rotates, verify the new installer again; trust does not update automatically."
+  },
+  "ui_5a656f93f284": {
+    "zh-TW": "，不是 ",
+    "en": ", rather than "
+  },
+  "ui_93a992b74985": {
+    "zh-TW": "，不是只影響這個 Hub 對話。需要嚴格限制單一專案時，使用自己受保護的啟動流程；本安裝包尚未提供專案秘密載入器。",
+    "en": ", beyond this Hub conversation. For strict single-project isolation, use your own protected launch procedure; this installer does not yet provide a project secret loader."
+  },
+  "ui_7f0e6e2cf457": {
+    "zh-TW": "，不是私人的待傳草稿；即使不傳送訊息，檔案仍會保存。",
+    "en": ", rather than remaining a private draft pending delivery; files are saved even if no message is sent."
+  },
+  "ui_2d1d1e7ff0a1": {
+    "zh-TW": "，不會把引用文字當 Token 送出。保存後開新 Local Code 對話；若仍用舊環境，先保存工作再重新啟動 Desktop。不要為此另外登入 CLI 或改成繞過工具權限。",
+    "en": ", so the placeholder reference is not sent as a Token. After saving, start a new Local Code conversation. If the old environment is still used, save work and restart Desktop first. Do not sign in to a separate CLI or bypass tool permissions for this reason."
+  },
+  "ui_006dda9601bb": {
+    "zh-TW": "，不要再於自動載入的 ",
+    "en": ", and do not also add it to the automatically loaded "
+  },
+  "ui_45f5a090f76c": {
+    "zh-TW": "，伺服器使用 Streamable HTTP。推薦先安裝 compact stdio 轉接器：客戶端啟動本機 Python 子程序，再由它以嚴格驗證的 HTTPS 接到主機。兩個客戶端可使用同一種安裝包，但各自取得自己的 Token。",
+    "en": "; the server uses Streamable HTTP. Install the compact stdio adapter first: the client starts a local Python child process, which then connects to the host over HTTPS with strict verification. Both clients can use the same installer type but must obtain separate Tokens."
+  },
+  "ui_9de457b6d2a5": {
+    "zh-TW": "，保存；不需要時改回 ",
+    "en": ", save; change back when no longer needed to "
+  },
+  "ui_66e3e579f41e": {
+    "zh-TW": "，保留 ",
+    "en": ", keep "
+  },
+  "ui_2935b451b4cf": {
+    "zh-TW": "，值填剛取得的 Claude Token 並保存。這裡填實際值，不是引用文字。它會作用於所有新的本機工作，請勿混用不同 worker。已登入 Desktop 的 Code 分頁不需要另登入 CLI。",
+    "en": ", enter the Claude Token just obtained as its value and save. Enter the actual value here, not a placeholder reference. It affects all new local work; do not mix different workers. A signed-in Desktop Code tab does not need separate CLI sign-in."
+  },
+  "ui_cc85633cfa59": {
+    "zh-TW": "，再執行：",
+    "en": ", then run:"
+  },
+  "ui_e4432cd58aa6": {
+    "zh-TW": "，可使用 Python 嚴格 TLS adapter。它不處理模型登入、OAuth 過期或客戶端工具核准。",
+    "en": ", the Python strict TLS adapter is available. It does not handle model sign-in, expired OAuth, or client tool approvals."
+  },
+  "ui_d3976b5a572c": {
+    "zh-TW": "，可從 Settings → MCP servers 查看伺服器及選擇 Restart；在對話輸入 ",
+    "en": "; view the server under Settings → MCP servers and choose Restart; in the conversation, enter "
+  },
+  "ui_c6d58a59cb33": {
+    "zh-TW": "，在「產生 MCP Token」輸入 AI 身分 ID，例如 ",
+    "en": ", enter an AI identity ID under Generate MCP Token, for example "
+  },
+  "ui_63bdf9d28c67": {
+    "zh-TW": "，完成聲明仍需獨立驗收。這些紀錄可在任務明細及 <a href=\"",
+    "en": "; completion claims still require independent acceptance. These records are available in task details and <a href=\""
+  },
+  "ui_0ea60de1cece": {
+    "zh-TW": "，密碼長度為 10–1024 字元。具帳號管理能力的管理員可到 <a href=\"",
+    "en": "; passwords are 10–1024 characters. Administrators with account-management capability can go to <a href=\""
+  },
+  "ui_4824ec45d7de": {
+    "zh-TW": "，左側先選「專案」。",
+    "en": ", first select Project on the left."
+  },
+  "ui_33b3101b17e8": {
+    "en": ". Manual clients read when instructed; automatic replies require an enabled, bound receiver within its budget.",
+    "zh-TW": "。手動模式依指示讀取；自動回覆需已啟用、已綁定且未超出預算的接收程式。"
+  },
+  "ui_9565554a1495": {
+    "zh-TW": "，按「建立專案」。已有專案就直接選用。ID 使用英文字母、數字、點、底線或連字號。",
+    "en": ", and click Create project. Select an existing project directly. IDs may contain English letters, digits, dots, underscores, or hyphens."
+  },
+  "ui_4aee732a64fc": {
+    "zh-TW": "，按「產生專屬 Token」。再為 Claude 建立另一個身分，例如 ",
+    "en": ", and click Generate dedicated Token. Then create another identity for Claude, for example "
+  },
+  "ui_68581dc92b4a": {
+    "zh-TW": "，新增使用者、設定角色與可見專案、重設密碼及啟用／停用。",
+    "en": ", to add users, set roles and visible projects, reset passwords, and enable/disable accounts."
+  },
+  "ui_294895476a85": {
+    "zh-TW": "，明確建立正式工作。需要的來源先在「記憶 → 登錄與審核」登錄。",
+    "en": ", to explicitly create formal work. Register required sources first under “Memory → Registration and review”."
+  },
+  "ui_9a003904675e": {
+    "zh-TW": "；Token 值只輸入該秘密欄位，不貼進對話。",
+    "en": "; enter the Token only in that secret field, not in the conversation."
+  },
+  "ui_09f4ca01680f": {
+    "zh-TW": "；保留其他 server，以及 ",
+    "en": "; retain other servers, plus "
+  },
+  "ui_513744d16031": {
+    "zh-TW": "；合併產生的設定、保留原本其他 MCP，以及 ",
+    "en": "; merge the generated configuration and retain other existing MCP entries, plus "
+  },
+  "ui_dd858257bfbf": {
+    "zh-TW": "；回應遺失而重試同一操作時，沿用同一 key 和全部原參數。不要以新 key 反覆發同一封信。管理員可以封存對話，之後仍可讀；重新開啟後才可新增內容。",
+    "en": "; reuse the same key and all original parameters when retrying an operation whose response was lost. Do not repeatedly send the same message with new keys. Administrators can archive conversations, which remain readable; new content can be added only after reopening."
+  },
+  "ui_7b11b4443342": {
+    "zh-TW": "；如果它沒有這個變數，Restart MCP 本身也無法補上。先保存工作，再使用自己的受保護桌面啟動流程，不要把同一 Token 設為各 AI 共用的全域值。",
+    "en": "; if it lacks this variable, restarting MCP cannot supply it. Save work first, then use your own protected desktop launch procedure. Do not set the same Token globally for all AIs."
+  },
+  "ui_23395bf5d0bf": {
+    "zh-TW": "；缺值時回報 ",
+    "en": "; if the value is missing, report "
+  },
+  "ui_de0237e92b37": {
+    "zh-TW": "已中斷自動接話",
+    "en": "Disconnected"
+  },
+  "automatic_client_setup_title": {
+    "zh-TW": "自動接話：依客戶端接線",
+    "en": "Automatic replies: connect each client"
+  },
+  "automatic_claude_setup": {
+    "zh-TW": "Claude：限定回合的接收程式使用 chat_status、chat_read、chat_reply 三個工具，只能操作已設定的對話。安裝器僅在專案內核准這三項權限；續期使用 --renew，中斷使用 --disconnect 並還原原本的專案 MCP。一般手動 compact 接入仍使用 memory_tools／memory_call。",
+    "en": "Claude: the bounded listener exposes chat_status, chat_read, and chat_reply only for the configured conversation. The installer grants these three permissions within the project. Use --renew to renew and --disconnect to disconnect and restore the previous project MCP configuration. General manual compact access still uses memory_tools and memory_call."
+  },
+  "automatic_codex_cloud_setup": {
+    "zh-TW": "Codex：使用獨立的原生 CLI 接收程式與限定的 Hub 對話工具，不能推論任意已開啟的桌面對話可被喚醒。ChatGPT：私人通道屬試驗接入，須分別驗證原生連線、授權與讀寫。三種接線的原生驗收各自記錄；MCP 已連線或網頁已同步，都不是 AI 已回覆的證明。",
+    "en": "Codex: use a dedicated native CLI receiver and scoped Hub conversation tools; this does not imply that any open desktop conversation can be awakened. ChatGPT: the private tunnel is a pilot that needs separate native connection, authorization, and read/write verification. Record native acceptance for each connection separately. An MCP connection or a synchronized web page does not prove that an AI has replied."
+  },
+  "automatic_setup_guide": {
+    "zh-TW": "安裝、加入、續期與中斷步驟",
+    "en": "Install, join, renew, and disconnect instructions"
+  },
+  "ui_642fcc1b1e7f": {
+    "zh-TW": "待重試認領",
+    "en": "Ready to retry"
+  },
+  "composer_posting_as": {
+    "en": "Posting as {role} <strong>{name}</strong>",
+    "zh-TW": "以 {role} <strong>{name}</strong> 發言"
+  },
+  "composer_member": {
+    "en": "Member",
+    "zh-TW": "成員"
+  },
+  "tutorial_workflow_illustration_caption": {
+    "en": "Workflow illustration with synthetic labels; not a native verification screenshot.",
+    "zh-TW": "操作流程示意，使用合成標籤；不是原生驗證截圖。"
+  },
+  "ui_aa001001": {
+    "en": "Set up automatic replies",
+    "zh-TW": "設定自動接話"
+  },
+  "ui_aa001002": {
+    "en": "Copying instructions does not activate replies. Install locally and explicitly enable a bounded receiver. Cloud plugins remain a separate pilot.",
+    "zh-TW": "複製指引不會啟用回覆。請在本機安裝並明確啟用有時限及回合上限的接收器。雲端外掛仍是獨立試行。"
+  },
+  "ui_aa001003": {
+    "en": "Local client",
+    "zh-TW": "地端用戶端"
+  },
+  "ui_aa001004": {
+    "en": "Exact dedicated worker ID (not its Token)",
+    "zh-TW": "專用 worker 的確切 ID（不是 Token）"
+  },
+  "ui_aa001005": {
+    "en": "Worker credentials (ask your administrator if unavailable)",
+    "zh-TW": "Worker 憑證（無權限時請向管理員索取）"
+  },
+  "ui_aa001006": {
+    "en": "Hours (1–8)",
+    "zh-TW": "時數（1–8）"
+  },
+  "ui_aa001007": {
+    "en": "Maximum turns (1–100)",
+    "zh-TW": "回合上限（1–100）"
+  },
+  "ui_aa001008": {
+    "en": "Copy complete installation instructions",
+    "zh-TW": "複製完整安裝指引"
+  },
+  "ui_aa001009": {
+    "en": "Select a room and enter the exact worker ID and valid limits. A configured HTTPS Hub origin and trusted public CA are required.",
+    "zh-TW": "請選擇聊天室並輸入確切 worker ID 與有效上限。需已設定的 HTTPS Hub 網址與可信公開 CA。"
+  },
+  "ui_aa001010": {
+    "en": "In Windows PowerShell, download and verify this installer, then review it before running. Use Python 3.12 and sign in to the selected model provider. Keep your own dedicated worker Token only for the installer’s hidden prompt; never paste it into AI chat or a URL. Confirm its identity matches the worker ID below.",
+    "zh-TW": "在 Windows PowerShell 下載、驗證並審閱安裝器，再執行。使用 Python 3.12 並登入所選模型供應商。自己的專用 worker Token 僅輸入安裝器的隱藏提示，勿貼入 AI 對話或網址。確認其身分符合下列 worker ID。"
+  },
+  "ui_aa001011": {
+    "en": "Choose the exact existing local project directory opened by Claude Code and replace REPLACE_WITH_EXACT_LOCAL_PROJECT. After reviewing the installer, remove the leading # from the installation command and run it. Open a NEW Claude chat in that directory and send the exact activation prompt printed by the installer. To stop, follow the automatic-chat guide using the receipt’s lifecycle_python and lifecycle_script fields.",
+    "zh-TW": "選擇 Claude Code 開啟的確切既有本機專案目錄，替換 REPLACE_WITH_EXACT_LOCAL_PROJECT。審閱安裝器後移除安裝命令開頭的 # 再執行。在該目錄開啟新的 Claude 對話，送出安裝器顯示的完整啟用提示。停止時依自動接話指南，使用回條的 lifecycle_python 與 lifecycle_script 欄位。"
+  },
+  "ui_aa001012": {
+    "en": "After reviewing the installer, remove the leading # from the installation command and run it. This command installs only. Review the receipt’s exact start_command, stop_command and inspect_command; explicitly run start_command to enable bounded replies. It starts dedicated Codex CLI turns and does not inject an existing Desktop chat.",
+    "zh-TW": "審閱安裝器後移除安裝命令開頭的 # 再執行。此命令僅安裝。審閱回條中的確切 start_command、stop_command 與 inspect_command，再明確執行 start_command 啟用有限回合回覆。它啟動專用 Codex CLI 回合，不會注入既有桌面對話。"
+  },
+  "ui_aa001013": {
+    "en": "Ask your administrator for a dedicated worker ID and its matching Token for this same project. Enter the Token only in the local installer’s hidden prompt; existing credential lists cannot reveal it again.",
+    "zh-TW": "請向管理員取得同一專案的專用 worker ID 與相符 Token。Token 僅輸入本機安裝器的隱藏提示；既有憑證列表無法再次顯示 Token。"
+  },
+  "ui_aa001014": {
+    "en": "Claude requires the exact existing local project directory opened by Claude Code. Your local AI should confirm that directory before installing.",
+    "zh-TW": "Claude 需要與 Claude Code 開啟位置相同的確切既有本機專案目錄。請讓地端 AI 在安裝前確認該目錄。"
+  },
+  "ui_aa001015": {
+    "en": "STEP 1 — Download, verify, and review. This section does not install or activate a receiver.",
+    "zh-TW": "步驟一：下載、驗證及審閱。此區塊不會安裝或啟用接收器。"
+  },
+  "ui_aa001016": {
+    "en": "STEP 2 — Only after reviewing the file, run the installation command below by removing its leading #. It is intentionally a comment so pasting this entire guide cannot install or activate a receiver.",
+    "zh-TW": "步驟二：審閱檔案後，移除下方安裝命令開頭的 # 再執行。命令刻意保持註解，貼上整份指引不會安裝或啟用接收器。"
+  }
+}

@@ -10,7 +10,7 @@ import pytest
 
 from memory_hub.app import create_app
 from memory_hub.models import Principal
-from memory_hub.web_chat_assets import CHAT_JS
+from memory_hub.web_chat_assets import chat_script
 from memory_hub.web_password import hash_password
 
 
@@ -18,19 +18,28 @@ NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="Node.js is required for chat JavaScript regression tests")
 
 
+@pytest.mark.parametrize("language", ["en", "zh-TW"])
 @pytest.mark.parametrize("scenario", [
     "deep_link_outside_first_page",
     "project_change_during_deep_link",
     "project_change_clears_old_rooms",
     "close_pending_artifact",
+    "composer_enter_and_ime",
+    "restore_last_room",
+    "restore_authorization_and_explicit_url",
+    "latest_artifacts_outside_message_window",
+    "overlapping_refresh_is_coalesced",
+    "delivery_state_and_pause",
+    "delivery_read_only",
 ])
-def test_chat_navigation(tmp_path, monkeypatch, scenario):
+def test_chat_navigation(tmp_path, monkeypatch, scenario, language):
     # Render the actual page so IDs, focusability and form controls are not
     # maintained as an independent copy of the production markup.
+    monkeypatch.setenv("HUB_WEB_LANGUAGE", language)
     monkeypatch.setenv("HUB_WEB_USERNAME", "navigation-reader")
     monkeypatch.setenv("HUB_WEB_PASSWORD_HASH", hash_password("synthetic-navigation-password"))
     monkeypatch.setenv("HUB_WEB_PROJECTS", "alpha,beta")
-    monkeypatch.setenv("HUB_WEB_ROLE", "read_only" if scenario == "close_pending_artifact" else "admin")
+    monkeypatch.setenv("HUB_WEB_ROLE", "read_only" if scenario in {"close_pending_artifact", "delivery_read_only"} else "admin")
     monkeypatch.setenv("HUB_WEB_COOKIE_SECURE", "false")
     monkeypatch.setenv("HUB_WEB_MCP_ENABLED", "false")
     app = create_app(database_url="sqlite:///" + str(tmp_path / "navigation.db"), allow_sqlite=True,
@@ -46,7 +55,7 @@ def test_chat_navigation(tmp_path, monkeypatch, scenario):
         page = client.get("/ui/chat?project=alpha")
         assert page.status_code == 200
     result = subprocess.run([NODE, str(Path(__file__).with_name("chat_navigation.cjs"))],
-        input=json.dumps({"scenario": scenario, "script": CHAT_JS, "html": page.text}),
+        input=json.dumps({"scenario": scenario, "locale": language, "script": chat_script(), "html": page.text}),
         capture_output=True, text=True, encoding="utf-8", timeout=15, check=False)
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout) == {"scenario": scenario, "status": "passed"}

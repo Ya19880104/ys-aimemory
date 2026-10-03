@@ -3,6 +3,7 @@
 Opaque sessions, login throttles, human accounts and one-use forms are persisted
 in the database. Account edits and runtime security-policy changes revoke sessions.
 """
+from .i18n import tr, locale, language_switch
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from html import escape
@@ -84,7 +85,7 @@ def e(value):
 
 
 def stamp(value):
-    return datetime.fromtimestamp(value, timezone.utc).strftime('%m/%d %H:%M UTC') if value else '尚無紀錄'
+    return datetime.fromtimestamp(value, timezone.utc).strftime('%m/%d %H:%M UTC') if value else (tr('ui_3e1b52c88f58'))
 
 CSS = '''
 .manual nav{display:flex;flex-wrap:wrap;gap:6px 14px;margin:24px 0}.manual section.panel{margin:20px 0;scroll-margin-top:20px}.manual pre{white-space:pre-wrap;overflow-wrap:anywhere}.manual header>.button{flex-shrink:0;display:inline-block}.manual li+li{margin-top:8px}
@@ -99,12 +100,14 @@ CSS = '''
 '''
 
 
+LANGUAGE_CSS = '.language-switch{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 16px;font-size:12px}.language-switch label{margin:0}.language-switch select{width:auto;padding:3px 6px}.language-switch button{padding:4px 9px;font-size:12px}.chat-app{height:calc(100dvh - 49px)}'
+
 def page(body, status=200, script='', *, css='', connect=False):
     nonce = secrets.token_urlsafe(18)
     extra = '<script nonce="'+nonce+'">'+script+'</script>' if script else ''
     script_policy = f"; script-src 'nonce-{nonce}'" if script else ''
     connect_policy = "; connect-src 'self'" if connect else ''
-    return HTMLResponse('<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ys · 專案記憶中樞</title><style nonce="'+nonce+'">'+CSS+css+'</style></head><body>'+body+extra+'</body></html>', status_code=status, headers={'Cache-Control':'no-store', 'Pragma':'no-cache', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY', 'Referrer-Policy':'no-referrer', 'Content-Security-Policy':f"default-src 'none'; style-src 'nonce-{nonce}'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"+script_policy+connect_policy})
+    return HTMLResponse(('<!doctype html><html lang="'+locale()+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + tr('ui_7e79db7926ba') + '</title><style nonce="')+nonce+'">'+CSS+LANGUAGE_CSS+css+'</style></head><body>'+language_switch()+body+extra+'</body></html>', status_code=status, headers={'Cache-Control':'no-store', 'Pragma':'no-cache', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY', 'Referrer-Policy':'no-referrer', 'Content-Security-Policy':f"default-src 'none'; style-src 'nonce-{nonce}'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"+script_policy+connect_policy})
 
 
 def badge(text, kind=''):
@@ -117,32 +120,33 @@ def empty(title, detail):
 
 def render_handoff(record):
     """Render preserved handoff evidence without treating it as trusted HTML."""
-    result = '<div class="panel"><h3>交接給 '+e(record.get('to_worker', '—'))+'</h3>'
+    result = ('<div class="panel"><h3>' + tr('ui_54752d67e87d'))+e(record.get('to_worker', '—'))+'</h3>'
     result += '<p class="body-text">'+e(record.get('summary', ''))+'</p>'
-    result += '<div class="path">成果 commit：'+e(record.get('result_commit', '未提供'))+'</div>'
-    for title, key in [('變更檔案／成果', 'changed_artifacts'), ('阻礙', 'blockers'), ('接手後下一步', 'next_steps')]:
+    result += ('<div class="path">' + tr('ui_7fcc0205ab8c'))+e(record.get('result_commit', (tr('ui_756762e293f2'))))+'</div>'
+    for title, key in [((tr('ui_fc2a75673f77')), 'changed_artifacts'), ((tr('ui_b8264ae4130f')), 'blockers'), ((tr('ui_2c763637cbaa')), 'next_steps')]:
         values = record.get(key, [])
         result += '<h4>'+title+'</h4>'
-        result += '<ul>'+''.join('<li class="body-text">'+e(item)+'</li>' for item in values)+'</ul>' if values else '<p class="muted">未列項目</p>'
-    result += '<h4>測試證據（由交接者回報）</h4>'
+        result += '<ul>'+''.join('<li class="body-text">'+e(item)+'</li>' for item in values)+'</ul>' if values else ('<p class="muted">' + tr('ui_fe8e76c5e348') + '</p>')
+    result += ('<h4>' + tr('ui_713cf1a97ccf') + '</h4>')
     for test in record.get('test_results', []):
         status = test.get('status', 'not_run')
-        label = {'passed':'通過', 'failed':'失敗', 'not_run':'未執行'}.get(status, '未知')
+        label = {'passed':(tr('ui_dd55c6c25912')), 'failed':(tr('ui_37d266e0ab12')), 'not_run':(tr('ui_d2297ba2384d'))}.get(status, (tr('ui_4d8c1c5b4283')))
         result += '<div class="row">'+badge(label, 'good' if status == 'passed' else 'warn')+'<div class="path">'+e(test.get('command', ''))+'</div><div class="body-text">'+e(test.get('details', ''))+'</div></div>'
-    result += '<p class="muted">Hub 保存交接者提供的證據；接手者仍需自行驗證。</p></div>'
+    result += ('<p class="muted">' + tr('ui_b48f2019ad05') + '</p></div>')
     return result
 
 
 def render_recovery(record):
-    target = record.get('to_worker') or '解除指定，可重新認領'
-    return ('<div class="row"><h4>管理員重新分派</h4><div class="meta">'
+    target = record.get('to_worker') or (tr('ui_090aaa435c53'))
+    return (('<div class="row"><h4>' + tr('ui_198a9c0b5bf9') + '</h4><div class="meta">')
             +e(record.get('recovered_by', ''))+' · '+e(stamp(record.get('at')))
             +' · Fence '+e(record.get('fence', ''))+'</div><div class="body-text">'
-            +e(record.get('reason', ''))+'</div><div class="meta">接手者：'
-            +e(target)+'</div><p class="muted">先前租約與脈絡包已失效，接手需重新取得脈絡並確認。</p></div>')
+            +e(record.get('reason', ''))+('</div><div class="meta">' + tr('ui_e64d0deff642'))
+            +e(target)+('</div><p class="muted">' + tr('ui_d02ef54a78cb') + '</p></div>'))
 
 
-SECTION_NAMES = {'overview':'專案總覽', 'chat':'對話', 'tasks':'任務與交接', 'memory':'記憶', 'connections':'MCP 接入', 'settings':'設定'}
+def section_name(section):
+    return {'overview':(tr('ui_09bb87a333bc')), 'chat':(tr('ui_932be7091ff4')), 'tasks':(tr('ui_f041aecabf60')), 'memory':(tr('ui_2892879e37b9')), 'connections':(tr('ui_e6d6f89902cb')), 'settings':(tr('ui_0d8619aae051'))}[section]
 
 
 def workspace_url(section, project):
@@ -154,8 +158,8 @@ def workspace_url(section, project):
 
 def project_navigation(config, selected, identity=None, active='overview'):
     def item(section):
-        return '<a href="'+e(workspace_url(section,selected))+'"'+(' aria-current="page"' if section==active else '')+'>'+SECTION_NAMES[section]+'</a>'
-    return '<nav class="workspace-nav" aria-label="主要導覽">'+''.join(item(k) for k in ('overview','chat','tasks','memory','connections'))+'</nav><nav class="workspace-utilities" aria-label="其他功能">'+item('settings')+'<a href="/help">操作教學</a></nav>'
+        return '<a href="'+e(workspace_url(section,selected))+'"'+(' aria-current="page"' if section==active else '')+'>'+section_name(section)+'</a>'
+    return ('<nav class="workspace-nav" aria-label="' + tr('ui_8f347997bc92') + '">')+''.join(item(k) for k in ('overview','chat','tasks','memory','connections'))+('</nav><nav class="workspace-utilities" aria-label="' + tr('ui_7e77dcbfd35d') + '">')+item('settings')+('<a href="/help">' + tr('ui_b75700a270c5') + '</a></nav>')
 
 
 def section_tabs(section, active, project, config, identity):
@@ -163,21 +167,21 @@ def section_tabs(section, active, project, config, identity):
     admin = (identity.role if identity else config.role) == 'admin'
     rows = []
     if section == 'tasks':
-        rows = [('list','任務清單',workspace_url('tasks',project)),('inbox','待辦與交接',url('/ui/inbox'))]
-        if admin: rows.append(('edit','建立任務',url('/ui/manage',area='tasks')))
+        rows = [('list',(tr('ui_f3874509edba')),workspace_url('tasks',project)),('inbox',(tr('ui_2899af743145')),url('/ui/inbox'))]
+        if admin: rows.append(('edit',(tr('ui_e14e0d0691bd')),url('/ui/manage',area='tasks')))
     elif section == 'memory':
-        rows = [('list','來源與決策',workspace_url('memory',project)),('search','搜尋',url('/ui/search'))]
-        if admin: rows.append(('edit','登錄與審核',url('/ui/manage',area='memory')))
+        rows = [('list',(tr('ui_ecefa6cc85b3')),workspace_url('memory',project)),('search',(tr('ui_03c481a6ab85')),url('/ui/search'))]
+        if admin: rows.append(('edit',(tr('ui_eb29d2c20f3d')),url('/ui/manage',area='memory')))
     elif section == 'connections':
-        rows = [('list','連線狀態',workspace_url('connections',project))]
-        if admin and config.mcp_enabled: rows.append(('edit','Token 與客戶端設定',url('/ui/mcp')))
+        rows = [('list',(tr('ui_1c2b2d825ce3')),workspace_url('connections',project))]
+        if admin and config.mcp_enabled: rows.append(('edit',(tr('ui_f3c3f05c32de')),url('/ui/mcp')))
     elif section == 'settings':
-        rows = [('password','我的密碼',url('/ui/account/password'))]
-        if identity and identity.can_manage_users: rows.append(('users','使用者管理',url('/ui/users')))
+        rows = [('password',(tr('ui_475fe4d4bf58')),url('/ui/account/password'))]
+        if identity and identity.can_manage_users: rows.append(('users',(tr('ui_e4d7d9dd6324')),url('/ui/users')))
         if admin:
-            rows.append(('project','建立專案',url('/ui/mcp',setup='project') if config.mcp_enabled else url('/ui/manage',area='project')))
+            rows.append(('project',(tr('ui_181ad3312ed1')),url('/ui/mcp',setup='project') if config.mcp_enabled else url('/ui/manage',area='project')))
     if not rows: return ''
-    return '<nav class="section-tabs" aria-label="'+SECTION_NAMES[section]+'功能">'+''.join('<a href="'+e(href)+'"'+(' aria-current="page"' if key==active else '')+'>'+label+'</a>' for key,label,href in rows)+'</nav>'
+    return '<nav class="section-tabs" aria-label="'+section_name(section)+(tr('ui_3df5273225ef'))+''.join('<a href="'+e(href)+'"'+(' aria-current="page"' if key==active else '')+'>'+label+'</a>' for key,label,href in rows)+'</nav>'
 
 
 def workspace_shell(title, body, project, config, identity, csrf, section='overview', tab='list', choices=None):
@@ -186,13 +190,13 @@ def workspace_shell(title, body, project, config, identity, csrf, section='overv
     switch = ''
     if options:
         target = workspace_url(section, project).split('?')[0]
-        switch = '<form class="workspace-project" action="'+target+'" method="get"><label for="workspace-project">專案</label><div><select id="workspace-project" name="project" aria-label="選擇專案">'+options+'</select><button>切換</button></div>'
+        switch = '<form class="workspace-project" action="'+target+('" method="get"><label for="workspace-project">' + tr('ui_e564b916b12e') + '</label><div><select id="workspace-project" name="project" aria-label="' + tr('ui_f7e540512d3c') + '">')+options+('</select><button>' + tr('ui_873b0afae9ba') + '</button></div>')
         if section not in ('overview','chat','settings'): switch += '<input type="hidden" name="view" value="'+e(section)+'">'
         switch += '</form>'
     who = identity.display_name if identity else config.username
-    header = '<div class="workspace-heading"><div><p class="workspace-context">'+e(project or '帳號設定')+'</p><h1>'+e(title)+'</h1></div><form class="logout" action="/logout" method="post"><input type="hidden" name="csrf" value="'+e(csrf)+'"><button>登出</button></form></div>'
-    alert = '' if config.secure else '<div class="alert">目前為隔離本機 HTTP 測試。LAN 與公開環境請使用 HTTPS。</div>'
-    return '<div class="shell workspace-shell"><aside><div class="brand">ys-aimemory<small>專案協作空間</small></div>'+switch+project_navigation(config,project,identity,section)+'<p class="workspace-user">'+e(who)+'</p></aside><main>'+header+section_tabs(section,tab,project,config,identity)+alert+body+'</main></div>'
+    header = '<div class="workspace-heading"><div><p class="workspace-context">'+e(project or (tr('ui_14bee9923d27')))+'</p><h1>'+e(title)+'</h1></div><form class="logout" action="/logout" method="post"><input type="hidden" name="csrf" value="'+e(csrf)+('"><button>' + tr('ui_057f31bc16c8') + '</button></form></div>')
+    alert = '' if config.secure else ('<div class="alert">' + tr('ui_5cbf7e80cc31') + '</div>')
+    return ('<div class="shell workspace-shell"><aside><div class="brand">ys-aimemory<small>' + tr('ui_8c38475ee858') + '</small></div>')+switch+project_navigation(config,project,identity,section)+'<p class="workspace-user">'+e(who)+'</p></aside><main>'+header+section_tabs(section,tab,project,config,identity)+alert+body+'</main></div>'
 
 
 def render_dashboard(config, selected, states, audit, principals, csrf, now, *, identity=None, view='overview', task_after=''):
@@ -202,70 +206,72 @@ def render_dashboard(config, selected, states, audit, principals, csrf, now, *, 
     decisions = state.get('decisions', {})
     active = sum(bool(t.get('owner') and t.get('lease_until', 0) > now) for t in tasks.values())
     pending = sum(bool(t.get('pending_recipient')) for t in tasks.values())
-    overview = '<p class="muted">先在對話中討論，再將需要執行的共識整理為任務。</p>'
-    overview += '<div class="stats">'+''.join('<div class="stat"><span>'+label+'</span><strong>'+e(value)+'</strong></div>' for label,value in [('任務總數',len(tasks)),('進行中認領',active),('等待接手',pending),('記憶來源',len(sources))])+'</div>'
-    if not states: overview += empty('尚未建立專案', '管理員可從設定建立專案，再開始對話。')
-    body = '<section id="tasks"><div class="section-head"><h2>任務清單</h2>'+badge(str(len(tasks))+' 個任務')+'</div>'
+    overview = ('<p class="muted">' + tr('ui_d5c151b2adde') + '</p>')
+    overview += '<div class="stats">'+''.join('<div class="stat"><span>'+label+'</span><strong>'+e(value)+'</strong></div>' for label,value in [((tr('ui_b2b0a879e55c')),len(tasks)),((tr('ui_94cc635c1e5f')),active),((tr('ui_0a927d059929')),pending),((tr('ui_5a26cfc1ab9f')),len(sources))])+'</div>'
+    if not states: overview += empty((tr('ui_65a953f1277a')), (tr('ui_94bf422b2d40')))
+    body = ('<section id="tasks"><div class="section-head"><h2>' + tr('ui_f3874509edba') + '</h2>')+badge(str(len(tasks))+(tr('ui_3538219b48aa')))+'</div>'
     task_ids = sorted(tid for tid in tasks if not task_after or tid > task_after)
     for task_id in task_ids[:20]:
         t = tasks[task_id]
         live = bool(t.get('owner') and t.get('lease_until',0) > now)
         accepted_packet = state.get('packets', {}).get((t.get('accepted') or {}).get('packet_id'), {})
         accepted_current = bool(live and accepted_packet and accepted_packet.get('context_revision') == state.get('revision') and accepted_packet.get('task_generation') == t.get('generation') and (t.get('accepted') or {}).get('fence') == t.get('fence'))
-        status = '已完成' if t['status'] == 'completed' else ('等待 '+str(t['pending_recipient'])+' 接手' if t.get('pending_recipient') else ('認領有效' if live else '等待認領'))
-        body += '<article class="panel task"><div class="task-head"><h3><a href="'+e('/ui/task?'+urlencode({'project':selected,'task':task_id}))+'">'+e(task_id)+'</a></h3>'+badge(status, 'good' if live or t['status']=='completed' else 'warn')+'</div><p>'+e(t['goal'])+'</p><div class="meta"><span>持有者 '+e(t.get('owner') or '—')+'</span><span>Fence '+e(t.get('fence',0))+'</span><span>租約 '+e(stamp(t.get('lease_until')))+'</span><span>接手確認 '+('已接受目前脈絡' if accepted_current else '尚未接受／需重新驗證')+'</span></div><details><summary>範圍、驗收與檢查點</summary><p class="path">'+e(' · '.join(t.get('allowed_paths',[])))+'</p><ul>'+''.join('<li>'+e(x)+'</li>' for x in t.get('acceptance_criteria',[]))+'</ul>'
+        status = (tr('ui_f28461bb49c8')) if t['status'] == 'completed' else ((tr('ui_eed5d32d162e'))+str(t['pending_recipient'])+(tr('ui_818afede9783')) if t.get('pending_recipient') else ((tr('ui_039833e5697d')) if live else (tr('ui_3adc54e36397'))))
+        body += '<article class="panel task"><div class="task-head"><h3><a href="'+e('/ui/task?'+urlencode({'project':selected,'task':task_id}))+'">'+e(task_id)+'</a></h3>'+badge(status, 'good' if live or t['status']=='completed' else 'warn')+'</div><p>'+e(t['goal'])+('</p><div class="meta"><span>' + tr('ui_d37f774c768b'))+e(t.get('owner') or '—')+'</span><span>Fence '+e(t.get('fence',0))+('</span><span>' + tr('ui_8854dfaa36b6'))+e(stamp(t.get('lease_until')))+('</span><span>' + tr('ui_08b698ba5bcb'))+((tr('ui_ed404ac4c8fe')) if accepted_current else (tr('ui_3b865471662f')))+('</span></div><details><summary>' + tr('ui_44446b068adf') + '</summary><p class="path">')+e(' · '.join(t.get('allowed_paths',[])))+'</p><ul>'+''.join('<li>'+e(x)+'</li>' for x in t.get('acceptance_criteria',[]))+'</ul>'
         packets = [v for v in state.get('packets', {}).values() if v.get('task_id') == task_id]
         for packet in sorted(packets, key=lambda x:x.get('prepared_at',0), reverse=True)[:8]:
             fresh = packet.get('context_revision') == state.get('revision') and packet.get('task_generation') == t.get('generation')
-            body += '<div class="row"><div class="meta">脈絡包 · '+e(packet['worker_id'])+' · r'+e(packet['context_revision'])+' · '+('目前版本' if fresh else '已過期')+' · '+('已確認閱讀' if packet.get('acknowledged') else '待閱讀確認')+'</div><div class="path">'+e(packet['workspace'])+'<br>'+e(packet['branch'])+' @ '+e(packet['commit'])+'</div></div>'
+            body += ('<div class="row"><div class="meta">' + tr('ui_51c0fec7d38a'))+e(packet['worker_id'])+' · r'+e(packet['context_revision'])+' · '+((tr('ui_c2f0001e7e2e')) if fresh else (tr('ui_9b42a6cda2e5')))+' · '+((tr('ui_2aff58e58e12')) if packet.get('acknowledged') else (tr('ui_a1404211a481')))+'</div><div class="path">'+e(packet['workspace'])+'<br>'+e(packet['branch'])+' @ '+e(packet['commit'])+'</div></div>'
         for cp in t.get('checkpoints',[]):
             body += '<div class="row"><div class="meta">'+e(cp['binding']['worker_id'])+' · '+e(cp['kind'])+' · '+e(stamp(cp['at']))+'</div><div class="body-text">'+e(cp['summary'])+'</div><div class="path">'+e(cp['binding']['branch'])+' @ '+e(cp['binding']['commit'])+'</div></div>'
         if not t.get('checkpoints'):
-            body += '<p class="muted">尚無檢查點或交接紀錄</p>'
+            body += ('<p class="muted">' + tr('ui_14fa3a491d53') + '</p>')
         for handoff in t.get('handoffs', []):
             body += render_handoff(handoff)
         for recovery in t.get('recoveries', []):
             body += render_recovery(recovery)
         body += '</details></article>'
     if not tasks:
-        body += empty('目前沒有任務', '管理員可使用「建立任務」分頁；先在「記憶」登錄任務需要的來源。')
+        body += empty((tr('ui_19dcc4d081c0')), (tr('ui_0eb8faf6261f')))
     if task_after or len(task_ids)>20:
         body += '<p class="pagination">'
-        if task_after: body += '<a href="'+e(workspace_url('tasks',selected))+'">← 第一頁</a> '
-        if len(task_ids)>20: body += '<a href="'+e(workspace_url('tasks',selected)+'&'+urlencode({'after':task_ids[19]}))+'">下一頁任務 →</a>'
+        if task_after: body += '<a href="'+e(workspace_url('tasks',selected))+(tr('ui_57ed178a33c7') + '</a> ')
+        if len(task_ids)>20: body += '<a href="'+e(workspace_url('tasks',selected)+'&'+urlencode({'after':task_ids[19]}))+(tr('ui_774069bf8efc') + '</a>')
         body += '</p>'
     tasks_html = body+'</section>'
-    body = '<section id="memory"><div class="section-head"><h2>來源與記憶</h2>'+badge('保留來源版本')+'</div><div class="grid"><div class="panel"><h3>可追溯來源</h3>'
+    body = ('<section id="memory"><div class="section-head"><h2>' + tr('ui_11ea94060a08') + '</h2>')+badge((tr('ui_d37ff8d5c69e')))+('</div><div class="grid"><div class="panel"><h3>' + tr('ui_141ce3c9baf5') + '</h3>')
     for sid,source in sources.items():
         current = source['current']
-        body += '<div class="row"><div class="row-title"><strong>'+e(sid)+'</strong>'+badge(str(len(source['versions']))+' 版')+'</div><div class="path">'+e(current['uri'])+'<br>commit '+e(current['commit'])+'<br>SHA-256 '+e(current['sha256'])+'</div><details><summary>查看來源內容（未信任參考資料）</summary><div class="body-text">'+e(current['content'])+'</div></details></div>'
-    if not sources: body += '<p class="muted">尚無來源。登錄後將顯示內容、commit 與雜湊。</p>'
-    body += '</div><div class="panel"><h3>決策與待審提案</h3>'
+        body += '<div class="row"><div class="row-title"><strong>'+e(sid)+'</strong>'+badge(str(len(source['versions']))+(tr('ui_f594f171672d')))+'</div><div class="path">'+e(current['uri'])+'<br>commit '+e(current['commit'])+'<br>SHA-256 '+e(current['sha256'])+('</div><details><summary>' + tr('ui_21aab6283ec4') + '</summary><div class="body-text">')+e(current['content'])+'</div></details></div>'
+    if not sources: body += ('<p class="muted">' + tr('ui_5ccaf337c1ee') + '</p>')
+    body += ('</div><div class="panel"><h3>' + tr('ui_c0a28e5e3808') + '</h3>')
     for did,d in decisions.items():
-        body += '<div class="row">'+badge('已核准' if d['status']=='approved' else '待審・非權威記憶','good' if d['status']=='approved' else 'warn')+'<p class="body-text">'+e(d['text'])+'</p><div class="meta">'+e(d['binding']['worker_id'])+' · r'+e(d['binding']['context_revision'])+'</div><div class="path">'+e(did)+'</div></div>'
-    if not decisions: body += '<p class="muted">尚無決策或提案。待審提案不會自動成為核准記憶。</p>'
+        body += '<div class="row">'+badge((tr('ui_1625f6ba5f2c')) if d['status']=='approved' else (tr('ui_8970039135ad')),'good' if d['status']=='approved' else 'warn')+'<p class="body-text">'+e(d['text'])+'</p><div class="meta">'+e(d['binding']['worker_id'])+' · r'+e(d['binding']['context_revision'])+'</div><div class="path">'+e(did)+'</div></div>'
+    if not decisions: body += ('<p class="muted">' + tr('ui_c32e0df042d2') + '</p>')
     memory_html = body+'</div></div></section>'
-    body = '<section id="connections"><div class="section-head"><h2>MCP 連線</h2>'+badge('Streamable HTTP')+'</div><div class="panel"><div class="connection"><div><h3>共用服務端點</h3><code>/mcp</code><div class="muted">使用此網站的 HTTPS 網址 + /mcp；每個 AI 使用獨立 bearer 身分</div></div>'+badge('已掛載','good')+'</div><div class="alert">設定身分 ≠ 已連線。以下活動由 Hub 審計紀錄推導，不代表客戶端目前在線。登入 cookie 不能用於 MCP。</div>'
+    body = ('<section id="connections"><div class="section-head"><h2>' + tr('ui_2f7028ef99b4') + '</h2>')+badge('Streamable HTTP')+('</div><div class="panel"><div class="connection"><div><h3>' + tr('ui_d4dd2e2eb27e') + '</h3><code>/mcp</code><div class="muted">' + tr('ui_591c000dcf5f') + '</div></div>')+badge((tr('ui_2cac3c472320')),'good')+('</div><div class="alert">' + tr('ui_d1bcde2190d4') + '</div>')
     seen = {row['worker_id']: row['at'] for row in audit}
     displayed = set()
     for principal in principals:
         if selected not in principal.projects or principal.worker_id in displayed: continue
         displayed.add(principal.worker_id)
-        body += '<div class="row connection"><div><span class="dot"></span><strong>'+e(principal.worker_id)+'</strong><div class="meta">角色 '+e(principal.role)+' · 已設定目前專案權限</div></div><div class="meta">'+('最近活動 '+e(stamp(seen[principal.worker_id])) if principal.worker_id in seen else '尚未觀察到活動')+'</div></div>'
-    if not displayed: body += '<p class="muted">此專案尚無可顯示的 AI 身分</p>'
-    body += '<details><summary>如何開始連線</summary><ol><li>管理員到「Token 與客戶端設定」，為每個 AI 建立獨立身分。</li><li>各客戶端使用自己的 Token 接入，確認身分與專案範圍。</li><li>在「對話」選擇主題，複製加入指引給 AI，即可開始討論。</li><li>需要執行工作時再進入「任務與交接」。</li></ol><p><a href="/help#clients">查看逐步接入教學</a></p></details></div></section>'
+        body += '<div class="row connection"><div><span class="dot"></span><strong>'+e(principal.worker_id)+('</strong><div class="meta">' + tr('ui_5db2971a333c'))+e(principal.role)+(tr('ui_09b8215cdaf3') + '</div></div><div class="meta">')+((tr('ui_7ba95c431b47'))+e(stamp(seen[principal.worker_id])) if principal.worker_id in seen else (tr('ui_b99c99f4a453')))+'</div></div>'
+    if not displayed: body += ('<p class="muted">' + tr('ui_3340cee124e7') + '</p>')
+    body += ('<details><summary>' + tr('ui_718d16928861') + '</summary><ol><li>' + tr('ui_ad2d5508c1da') + '</li><li>' + tr('ui_236c21f688ed') + '</li><li>' + tr('ui_3d7c5c7443f9') + '</li><li>' + tr('ui_e38eb8083547') + '</li></ol><p><a href="/help#clients">' + tr('ui_89c83731a4e8') + '</a></p></details></div></section>')
     connections_html = body
-    body = '<section id="audit"><div class="section-head"><h2>最近活動</h2>'+badge('最近 30 筆')+'</div><div class="panel">'
+    body = ('<section id="audit"><div class="section-head"><h2>' + tr('ui_69d2456eb923') + '</h2>')+badge((tr('ui_bb03c0b803aa')))+'</div><div class="panel">'
     for row in reversed(audit[-30:]):
-        body += '<div class="row"><div class="row-title"><strong>'+e(row['operation'])+'</strong><small>'+e(stamp(row['at']))+'</small></div><div class="meta">#'+e(row['sequence'])+' · '+e(row['worker_id'])+' · '+e(row.get('task_id') or '專案層級')+' · r'+e(row['context_revision'])+'</div></div>'
-    if not audit: body += '<p class="muted">尚無活動紀錄</p>'
+        body += '<div class="row"><div class="row-title"><strong>'+e(row['operation'])+'</strong><small>'+e(stamp(row['at']))+'</small></div><div class="meta">#'+e(row['sequence'])+' · '+e(row['worker_id'])+' · '+e(row.get('task_id') or (tr('ui_d5f8860a9c4f')))+' · r'+e(row['context_revision'])+'</div></div>'
+    if not audit: body += ('<p class="muted">' + tr('ui_fa39cd080774') + '</p>')
     audit_html = body+'</div></section>'
-    content = {'overview':overview+'<details class="overview-activity"><summary>查看最近活動</summary>'+audit_html+'</details>', 'tasks':tasks_html, 'memory':memory_html, 'connections':connections_html}[view]
-    return workspace_shell(SECTION_NAMES[view],content,selected,config,identity,csrf,view,choices=states)
+    content = {'overview':overview+('<details class="overview-activity"><summary>' + tr('ui_d4c5a340b27b') + '</summary>')+audit_html+'</details>', 'tasks':tasks_html, 'memory':memory_html, 'connections':connections_html}[view]
+    return workspace_shell(section_name(view),content,selected,config,identity,csrf,view,choices=states)
 
 
 
 def install_web(app, hub, config=None, clock=time.time):
+    from .i18n import install_language
+    install_language(app)
     config = config or WebConfig.from_env() or WebConfig.policy_from_env()
     from .web_auth import WebAuthStore
     auth=WebAuthStore(hub.store, config, clock)
@@ -278,8 +284,8 @@ def install_web(app, hub, config=None, clock=time.time):
     def login_form(message='', status=200):
         token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
         if not auth.start_login(token,csrf):
-            return page('<main><h1>登入設定已更新</h1><p>此伺服器設定尚未同步，請管理員更新所有執行中的服務。</p></main>',503)
-        response = page('<div class="login"><div class="brand">ys-aimemory<small>PROJECT MEMORY / MCP</small></div><div class="panel"><span class="eyebrow">WELCOME BACK</span><h1>登入專案記憶中樞</h1><p class="muted">檢視任務、來源與 AI 交接進度</p>'+('<div class="alert" role="alert">'+e(message)+'</div>' if message else '')+'<form method="post" action="/login"><input type="hidden" name="csrf" value="'+e(csrf)+'"><label for="username">使用者名稱</label><input id="username" name="username" autocomplete="username" maxlength="128" required><label for="password">密碼</label><input id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" required><button type="submit">登入 →</button></form></div><p class="foot">僅接受管理員設定的帳號 · 不提供預設密碼<br>網頁權限由管理員設定，不會取得 AI 的 bearer token</p></div>',status)
+            return page(('<main><h1>' + tr('ui_b9131bbe4b2a') + '</h1><p>' + tr('ui_da04f5a9c47c') + '</p></main>'),503)
+        response = page(('<div class="login"><div class="brand">ys-aimemory<small>PROJECT MEMORY / MCP</small></div><div class="panel"><span class="eyebrow">WELCOME BACK</span><h1>' + tr('ui_edddb8024b8e') + '</h1><p class="muted">' + tr('ui_3748eca7a2c5') + '</p>')+('<div class="alert" role="alert">'+e(message)+'</div>' if message else '')+'<form method="post" action="/login"><input type="hidden" name="csrf" value="'+e(csrf)+('"><label for="username">' + tr('ui_107ab4b575a7') + '</label><input id="username" name="username" autocomplete="username" maxlength="128" required><label for="password">' + tr('ui_ef8b49458c14') + '</label><input id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" required><button type="submit">' + tr('ui_c52651f85eb3') + '</button></form></div><p class="foot">' + tr('ui_9f24df40e911') + '<br>' + tr('ui_8e10a90fe1bc') + '</p></div>'),status)
         response.set_cookie(LOGIN_COOKIE,token,httponly=True,secure=config.secure,samesite='strict',max_age=600,path='/')
         return response
     async def form(request, max_bytes=8192, max_fields=5):
@@ -298,27 +304,27 @@ def install_web(app, hub, config=None, clock=time.time):
 
     @app.get('/login')
     def login_get(request: Request):
-        if not auth.enabled: return page('<main><h1>網頁登入尚未啟用</h1><p>請管理員設定使用者名稱、密碼雜湊與專案範圍。</p></main>',503)
+        if not auth.enabled: return page(('<main><h1>' + tr('ui_bdc16457fa28') + '</h1><p>' + tr('ui_737f338f13f8') + '</p></main>'),503)
         if session(request): return redirect('/ui/chat')
         return login_form()
 
     @app.post('/login')
     async def login_post(request: Request):
-        if not auth.enabled: return page('<main>網頁登入尚未啟用</main>',503)
+        if not auth.enabled: return page(('<main>' + tr('ui_bdc16457fa28') + '</main>'),503)
         values=await form(request,max_bytes=16384)
         pre=auth.consume_login(request.cookies.get(LOGIN_COOKIE,''))
         if not pre or not hmac.compare_digest(values.get('csrf','').encode(),pre['csrf'].encode()):
-            return login_form('登入頁已過期，請重新輸入。',403)
+            return login_form((tr('ui_0e2f411d7412')),403)
         ip=request.client.host if request.client else 'unknown'
         if not auth.allow_attempt(ip):
-            response=login_form('登入嘗試過於頻繁，請五分鐘後再試。',429)
+            response=login_form((tr('ui_deb482bd764c')),429)
             response.headers['Retry-After']='300'
             return response
         identity = await run_in_threadpool(auth.users.authenticate, values.get('username',''), values.get('password',''))
-        if identity is None: return login_form('使用者名稱或密碼不正確。',401)
+        if identity is None: return login_form((tr('ui_35ddab0fb11b')),401)
         token,csrf=secrets.token_urlsafe(32),secrets.token_urlsafe(32)
         if not auth.start_session(token,csrf,request.cookies.get(COOKIE,''),identity):
-            return page('<main>登入設定已更新，請重新載入。</main>',503)
+            return page(('<main>' + tr('ui_1cff9523a11f') + '</main>'),503)
         response=redirect('/ui/chat')
         response.set_cookie(COOKIE,token,httponly=True,secure=config.secure,samesite='strict',max_age=config.ttl,path='/')
         response.delete_cookie(LOGIN_COOKIE,path='/',secure=config.secure,httponly=True,samesite='strict')
@@ -328,7 +334,7 @@ def install_web(app, hub, config=None, clock=time.time):
     async def logout(request: Request):
         current=session(request)
         values=await form(request)
-        if not current or not hmac.compare_digest(values.get('csrf','').encode(),current['csrf'].encode()): return page('<main>無效的登出請求，請重新整理頁面。</main>',403)
+        if not current or not hmac.compare_digest(values.get('csrf','').encode(),current['csrf'].encode()): return page(('<main>' + tr('ui_9c51b5da6d43') + '</main>'),403)
         auth.logout(request.cookies.get(COOKIE,''))
         response=redirect('/login')
         response.delete_cookie(COOKIE,path='/',secure=config.secure,httponly=True,samesite='strict')
@@ -342,15 +348,15 @@ def install_web(app, hub, config=None, clock=time.time):
         if identity is None: return redirect('/login')
         scope=identity.projects
         view=request.query_params.get('view','overview')
-        if view not in ('overview','tasks','memory','connections'): return page('<main>找不到此頁面</main>',404)
+        if view not in ('overview','tasks','memory','connections'): return page(('<main>' + tr('ui_ff87476d2ead') + '</main>'),404)
         with hub.store.engine.connect() as conn:
             states={row.id:row.state for row in conn.execute(select(projects).where(projects.c.id.in_(scope))).all()}
             selected=request.query_params.get('project') or next(iter(sorted(states)), '')
-            if selected and selected not in states: return page('<main><h1>找不到可讀取的專案</h1><a href="/ui">返回總覽</a></main>',404)
+            if selected and selected not in states: return page(('<main><h1>' + tr('ui_a921ca11e333') + '</h1><a href="/ui">' + tr('ui_34c6fb9e6b18') + '</a></main>'),404)
             records=conn.execute(select(events.c.sequence,events.c.event).where(events.c.project_id==selected).order_by(events.c.sequence.desc()).limit(200)).all()
             audit=[{'sequence':row.sequence,**row.event} for row in reversed(records)]
         task_after=request.query_params.get('after','')
-        if len(task_after)>128: return page('<main>分頁參數格式不正確</main>',400)
+        if len(task_after)>128: return page(('<main>' + tr('ui_0896e2f444ee') + '</main>'),400)
         output=render_dashboard(config,selected,states,audit,hub.principals,current['csrf'],clock(),identity=identity,view=view,task_after=task_after)
         return page(output)
 

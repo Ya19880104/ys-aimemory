@@ -1,58 +1,76 @@
-# 自動對話：實測結果與尚未完成的介面
+# 有時間與回合上限的自動接話
 
-2026-10-03 已完成有限回合的接線驗證：管理員只在共享網頁留言，遠端 Claude Desktop 自動醒來並用原生 MCP 回覆；原生 Codex CLI 的事件接線程式也自動生成回覆，兩方再接續討論。**這是接線原型通過，不代表一般安裝已具備自動對話。**
+[English](AUTOMATIC_CHAT.md) | [繁體中文](AUTOMATIC_CHAT.zh-TW.md)
 
-## 為什麼原本不會自動回？
+Hub 保存房間訊息，已啟用的接收程式接收事件，綁定的原生客戶端啟動模型回合，以自己的 MCP 身分讀取及回覆。瀏覽器更新與 MCP 初始化不會呼叫模型或喚醒其他客戶端。歷史接線實驗只對当時版本有效；整合版原生喚醒、復原與雲端驗收仍是獨立關卡。
 
-原本只有訊息保存、網頁更新，以及 AI 主動呼叫的讀寫工具。MCP Token 是存取憑證，不會自己啟動模型回合。單則訊息的「引用」僅提供上下文，不是收件人設定，也不是發言必要步驟。
+## Windows：不需要 clone，讓 Claude 接入指定聊天室
 
-目標是「選專案 → 選對話 → 加入參與者並啟用 → 直接聊天 → 有需要才保存方案或交接」。加入一次後，人類不用一直把「再去讀訊息」貼給兩個 AI。
+這個方式會安裝專案內的 MCP，並準備接入一個指定聊天室自動回覆。需有既有的本機 Claude Code 專案與 Python 3.12。先在 Hub 選好專案、聊天室，取得 **Claude 專屬 worker Token**，並複製專案 ID、聊天室／Session ID、HTTPS Hub 網址及可信的 **CA DER SHA-256 指紋**。聊天室 ID 與 Claude 原生對話 ID 不同。Token 留待隱藏提示輸入，不要放進網址或下方指令。
 
-```mermaid
-flowchart LR
-    H[人類在網頁發言] --> R[專案內的共享對話]
-    R --> E[背景接收新事件]
-    E --> A[已綁定的 Claude / Codex 對話]
-    A -->|原生 MCP 讀取與回覆| R
-    R --> W[管理員同步看到討論]
+在 PowerShell 下載固定版本安裝器，核對雜湊並檢視內容：
+
+```powershell
+$Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/d62f1ccaf80a4ed0e56c71b9181e9e333d272ab8/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '85337175B42B566797F7523F510086FE2D70AC653132B734A7846EBB35BD9876') { throw 'Installer hash mismatch' }
+notepad $Installer
 ```
 
-## 這次真正跑了什麼
+檢視後將參數換成自己的資料再執行。專案資料夾必須已存在，而且要與本機 Claude 開啟的目錄相同：
 
-| 項目 | 結果 | 界線 |
-| --- | --- | --- |
-| Claude 已結束回合後，由背景事件喚醒 | passed | 遠端 Desktop，Sonnet 5.5 / Medium；沒有再貼提示 |
-| 網頁留言 → Claude 原生 MCP 回覆 | passed | 三次自動回覆，序號 164、166、168 |
-| 網頁插話 → 原生 Codex CLI 自動回覆 | passed | 獨立接線程序，兩次原生模型回合；各有 3 個成功 MCP 工具結果，序號 167、169 |
-| AI 彼此接續討論 | passed | Claude 讀 Codex 後回第 168 則，Codex 再回第 169 則 |
-| 一般使用者安裝後直接啟用 | not_run | 尚未整合安裝、客戶端綁定及控制介面 |
-| 喚醒任意已開啟的 Codex Desktop 對話 | not_run | CLI 測試不能代替 Desktop 驗收 |
-| 長時間運作、斷線重連、重啟去重 | not_run | 測試接線程序有時間與回合上限，驗證後已停用 |
-| 實際帳單 Token 節省比例 | not_run | 未量測，不宣稱節省百分比 |
+```powershell
+& $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -Project 'C:\work\my-project' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_ROOM_ID' -Language zh-TW -Hours 8 -MaxTurns 20
+```
 
-測試沒有 SDK 代填模型內容。背景程式僅接收事件；Claude 與 Codex 各用自己的 worker 身分，以原生 MCP 讀取及寫回。管理員在第 165 則插話後，雙方轉向該話題，沒有继续先前首頁提案。
+找不到 Python 時可加上 `-PythonPath 'C:\Python312\python.exe'`。`Language` 支援 `en`／`zh-TW`，`Hours` 為 1–8 小時，`MaxTurns` 為 1–100 次啟動；預設為英文、8 小時、20 次。聊天室必須已存在；安裝器不會建立帳號或聊天室。
 
-![共享對話中的實際接續回覆](../memory_hub/help_images/hub-automatic-conversation-20261003.jpg)
+1. 首次安裝在終端機隱藏提示輸入 Claude 的 worker Token，畫面不會顯示輸入的字元。安裝器用 Windows 目前使用者的 DPAPI 保存，專案設定與收據不含 Token。已有驗證通過的安裝時，沿用加密憑證，設定過程不再詢問也不解密 Token。
+2. 收據會顯示 `configured_waiting_for_native_hook`、到期時間、回合上限、停止檔位置與 **`activation_prompt`**。在相同專案開啟新的本機 Claude 對話，或透過客戶端重新載入該專案的 MCP 與 Hooks。將收據的完整 `activation_prompt` 貼到要接話的 Claude 對話。必須由 Claude 原樣回覆產生的 `YS_MEMORY_JOIN_...` 字串；不要自行替換原生對話 ID，也不要只把該字串當成人類留言貼上。
+3. 回覆後到 Hub 聊天室核對參與者／接收程式狀態，新增一則人類訊息，讓 Claude 維持閒置。驗收必須看到真正的原生 `chat_read`、`chat_reply`，派送／讀取／回覆收據對應，且回覆出現在聊天室。安裝成功或接收程式在線上，都**不等於原生驗收通過**。新加入從最新訊息開始，所以測試留言要在啟用後才發送。
 
-![Claude Desktop 自動接話的收據](../memory_hub/help_images/claude-automatic-reply-20261003.jpg)
+啟動腳本從固定來源版本 `38f9be5ec796be52cf0f8814ea2eb8fdb81d08d0` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply` 三條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
 
-圖中是當時線上版本，所以單則操作仍顯示「回覆」；新版原始碼改稱「引用」。測試回合結束不代表此房間持續自動回覆。
+已有 `ys_memory` 時，必須同時符合完整設定雜湊、原安裝收據、launcher、Hub／CA 與經驗證安裝包才能沿用。未知、被修改或已啟用聊天室的設定會原樣保留並拒絕覆寫，請勿刪除設定繞過檢查；應先檢視設定或使用原收據的解除流程。如果 MCP 已安裝完成、聊天室步驟才失敗，保留該 MCP 安裝供檢查；安裝器不會自行啟動模型回合。
 
-## 可行接線與限制
+收據也保存在顯示的 `bootstrap_sources` 目錄內，檔名為 `chat-bootstrap-receipt.json`，請保留該目錄。不需要 clone 即可停止／續期，使用收據中的實際 `lifecycle_python` 與 `lifecycle_script` 路徑：
 
-Claude 本次實測使用專案範圍的 `Stop` command Hook，同時設 `async: true` 與 `asyncRewake: true`。事件到達後程式以 exit code 2 通知，Claude 能在閒置時自行接續。最早的 `SessionStart` 探針阻塞初始回合，沒有當作成功。依 [Claude Hooks 官方文件](https://code.claude.com/docs/en/hooks)，一般 async 結果會等下一回合，`asyncRewake` 才有喚醒語意；本次結果只代表所測 Desktop 環境。
+```powershell
+$Receipt = Get-Content -LiteralPath 'PASTE_BOOTSTRAP_SOURCES\chat-bootstrap-receipt.json' -Raw | ConvertFrom-Json
+& $Receipt.lifecycle_python $Receipt.lifecycle_script --project 'C:\work\my-project' --disconnect
+# 解除後重新接入，執行同一份安裝好的腳本，再貼上這次產生的新啟用提示：
+& $Receipt.lifecycle_python $Receipt.lifecycle_script --project 'C:\work\my-project' --project-id 'YOUR_PROJECT_ID' --session-id 'YOUR_ROOM_ID' --hours 8 --max-turns 20 --language zh-TW
+```
 
-[Claude Channels](https://code.claude.com/docs/en/channels) 是另一條正式事件介面，需明確的 session opt-in，單純放入 `.mcp.json` 不夠；本次沒有測 Channels，也沒有為此登入遠端 CLI。
+綁定仍存在而想一次完成解除再續期時，可在最後一條指令加上 `--renew`。解除需要安裝環境中已驗證的相依套件，所以使用收據的 Python 路徑。這個啟動腳本適用本機 Claude，不會安裝 Codex 接收程式或 ChatGPT 雲端 plugin。
 
-Codex 本次用已登入的原生 CLI，由常駐接線程式在有事件時啟動有限回合。未注入其他既有桌面工作。後續可評估 [Codex App Server](https://developers.openai.com/codex/app-server) 的 `thread/start`、`turn/start` 與 `turn/steer`，以維持專用的對話上下文；該文件不是任意桌面注入的保證。
+## 從 checkout 綁定 Claude 專案
 
-## 下一個產品版本必須補齊
+先完成[Windows 安裝](CLAUDE_WINDOWS_SETUP.zh-TW.md)與原生手動讀寫。於 repository 執行：
 
-- **一次加入：** 安裝及綁定目前客戶端對話，不能要求一般使用者自己找 native session ID 或改測試腳本。Hub 的 `session_id` 與客戶端的對話 ID 分開保存。
-- **清楚狀態：** 顯示每位參與者待命、處理中、離線或已暫停；過去有發言不等於在線。「Hub 已保存」「通知已交給客戶端」「AI 已讀」「AI 已回覆」分開，不能靠網頁游標推斷。
-- **持續對話：** 人類可直接發言；引用為選用。人類插話優先於舊討論，附件及原文按需取得；需要時才建立文件、任務或交接。
-- **停止與成本：** 明確開啟／暫停、時間及回合預算，達上限停止自動回覆。背景程式等待不請模型查空信箱；有事件才傳新訊息索引，模型增量讀取。不承諾待命不會有供應商平台本身的成本。
-- **可恢復傳送：** 持久化通知、已读、已回覆游標及訊息去重鍵；崩潰時不能把「已通知」當作「已處理」。失敗先核對寫入結果，不盲目再生成或重發。
-- **精確範圍：** 綁定 worker、project、Hub 對話與 native 對話；切換、到期、撤銷及封存立即停送。共享內容不能擴大工具或檔案操作權限。
+```powershell
+py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PROJECT_ID' --session-id 'SESSION_ID' --hours 8 --max-turns 20 --language zh-TW
+```
 
-上述整合尚未完成，不能把這份接線實驗當成可直接複製安裝的正式版本。一般 MCP 安裝仍依[客戶端教學](CLIENT_SETUP.zh-TW.md)；目前原生接入與手動讀寫流程見[操作手冊](OPERATION_MANUAL.zh-TW.md)。
+語言支援 en／zh-TW。核對收據的到期、回合上限及停止檔路徑，重新載入專案 Hooks，將收據提供的完整啟用提示貼到指定 Claude 對話。隨機啟用回覆綁定該原生對話，不需自己找或借用 native ID；Hub session_id 是另一個識別碼。未指定游標的新加入從最新訊息開始。
+
+自動模式只替換這個專案的 ys_memory 設定，提供 chat_status、chat_read、chat_reply 三個限定工具。bridge 注入房間、lease/fence、讀取游標與回覆去重資料，只允許這三條精確專案工具規則，不授予一般 memory_call。普通 compact MCP 為另一模式。請以安裝版本 --help 核對選項；設定成功不是原生驗收通過。已有綁定時先停止並核對。
+
+## 停止、解除與續期
+
+管理員房間暫停阻止新派送，無法撤回已啟動回合。收據的本機停止檔可停接收程式。支援生命週期控制的版本使用：
+
+```powershell
+py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --disconnect
+py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PROJECT_ID' --session-id 'SESSION_ID' --renew --language zh-TW
+```
+
+解除會使 Hub 綁定失效，僅還原本安裝原有 MCP、Hook 與三條精確 permission，保留其他設定。續期先解除再綁定，保留伺服器游標，要求新的明確啟用。到期、預算、封存、撤銷與範圍變更需停止或重新核對派送。
+
+## 其他客戶端與驗收
+
+專用 Codex CLI 接收程式請依照 [Codex 聊天安裝指南](CODEX_CHAT_SETUP.zh-TW.md)。它的專屬安裝器會準備獨立 worker 憑證、經驗證的 Hub 安裝包與私有執行環境，並輸出實際的啟動／停止指令。預設 `--print` 執行安裝及 REST 身分／聊天室檢查；明確使用 `--run` 才啟動有限額的接收程式。不會注入已開啟的 Codex Desktop 對話，也不會借用 Claude 憑證。Gemini／Grok 接收程式不宣稱通過；[ChatGPT 私人 tunnel](CHATGPT_PRIVATE_TUNNEL.zh-TW.md)是分開的試行。
+
+等待時不要反覆叫模型查空信箱；增量讀取新事件。不保證供應商零成本或固定節省比例。
+
+验收需觀察閒置綁定客戶端收到網頁新留言且不用再貼提示；身分與房間正確；派送／已讀／回覆收據對應；預算、暫停、停止、撤銷、封存生效；崩潰重啟不重發、不漏人類訊息；AI 接續深度有界。記錄確切 commit、原生版本與 passed／failed／skipped／not_run。[派送 API](DELIVERY_API.zh-TW.md)定義持久契約；原始碼與測試不替代原生驗收。

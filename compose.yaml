@@ -32,10 +32,12 @@ services:
       HUB_WEB_PROJECTS: ${HUB_WEB_PROJECTS:-}
       HUB_WEB_SESSION_TTL: ${HUB_WEB_SESSION_TTL:-3600}
       HUB_WEB_ROLE: ${HUB_WEB_ROLE:-read_only}
+      HUB_WEB_LANGUAGE: ${HUB_WEB_LANGUAGE:-en}
       HUB_WEB_COOKIE_SECURE: "true"
       HUB_WEB_MCP_ENABLED: ${HUB_WEB_MCP_ENABLED:-false}
       HUB_WEB_OWNER_ID: ${HUB_WEB_OWNER_ID:-}
       HUB_PUBLIC_BASE_URL: ${HUB_PUBLIC_BASE_URL:-}
+      HUB_WORKER_DISPLAY_NAMES: ${HUB_WORKER_DISPLAY_NAMES:-}
       HUB_PUBLIC_CA_FILE: /app/public/ys-ai-memory-ca.crt
     volumes:
       - ./nginx/public:/app/public:ro

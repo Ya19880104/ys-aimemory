@@ -192,7 +192,7 @@ def test_additive_migration_and_concurrent_start_preserves_v01(_migration_db):
     with store.engine.connect() as conn:
         preserved=conn.execute(select(projects.c.state).where(projects.c.id=="p")).scalar_one()
         assert preserved==state
-        assert conn.execute(select(func.count()).select_from(store.index.migrations)).scalar_one()==5
+        assert conn.execute(select(func.count()).select_from(store.index.migrations)).scalar_one()==6
 
 
 def test_additive_v3_migration_preserves_v2_web_sessions(_migration_db):
@@ -210,7 +210,7 @@ def test_additive_v3_migration_preserves_v2_web_sessions(_migration_db):
                                                         fingerprint='b'*64,payload={'csrf':'synthetic-v2-csrf'}))
     upgraded=Store(url,allow_sqlite=allow_sqlite)
     with upgraded.engine.connect() as conn:
-        assert conn.execute(select(upgraded.index.migrations.c.version).order_by(upgraded.index.migrations.c.version)).scalars().all()==[1,2,3,4,5]
+        assert conn.execute(select(upgraded.index.migrations.c.version).order_by(upgraded.index.migrations.c.version)).scalars().all()==[1,2,3,4,5,6]
         row=conn.execute(select(WEB_TABLES['entries']).where(WEB_TABLES['entries'].c.token_hash==session_key)).mappings().one()
         assert row['payload']=={'csrf':'synthetic-v2-csrf'} and row['expires']==123456
         assert conn.execute(text('SELECT count(*) FROM mcp_credentials')).scalar_one()==0
@@ -233,7 +233,7 @@ def test_additive_v4_migration_preserves_v3_credentials_and_project(_migration_d
     assert upgraded.credentials.owned_projects('559765bf-e98a-43c8-8b6b-0880c69d92c6')==('managed',)
     with upgraded.store.engine.connect() as conn:
         assert conn.execute(select(projects.c.state).where(projects.c.id=='managed')).scalar_one()==previous
-        assert conn.execute(select(upgraded.store.index.migrations.c.version).order_by(upgraded.store.index.migrations.c.version)).scalars().all()==[1,2,3,4,5]
+        assert conn.execute(select(upgraded.store.index.migrations.c.version).order_by(upgraded.store.index.migrations.c.version)).scalars().all()==[1,2,3,4,5,6]
         assert conn.execute(text('SELECT count(*) FROM project_messages')).scalar_one()==0
 
 
@@ -272,11 +272,11 @@ def test_future_schema_version_refuses_startup_without_reset(_migration_db):
         conn.execute(text('DROP TABLE IF EXISTS mcp_credentials'))
         conn.execute(text('DROP TABLE IF EXISTS mcp_managed_projects'))
         conn.execute(text('DROP TABLE IF EXISTS mcp_worker_identities'))
-        conn.execute(store.index.migrations.insert().values(version=6,applied_at=1.0))
+        conn.execute(store.index.migrations.insert().values(version=7,applied_at=1.0))
     with pytest.raises(RuntimeError,match="newer"):
         Store(url,allow_sqlite=allow_sqlite)
     with engine.connect() as conn:
-        assert conn.execute(text("SELECT MAX(version) FROM schema_migrations")).scalar_one()==6
+        assert conn.execute(text("SELECT MAX(version) FROM schema_migrations")).scalar_one()==7
         assert not inspect(conn).has_table('project_messages')
         assert not inspect(conn).has_table('mcp_credentials')
         assert not inspect(conn).has_table('mcp_managed_projects')

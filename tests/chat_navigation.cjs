@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+const label = (english, chinese) => input.locale === 'zh-TW' ? chinese : english;
 
 function documentFrom(html) {
   const ids = new Map();
@@ -15,6 +16,7 @@ function documentFrom(html) {
       this.attributes = {}; this.value = ''; this.hidden = false; this.disabled = false;
       this._text = ''; this.scrollTop = 0; this.scrollHeight = 300; this.clientHeight = 300;
       this.scrollCalls = 0;
+      this.listeners = {}; this.submitCalls = 0;
     }
     set textContent(value) { this._text = String(value); this.children = []; }
     get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
@@ -39,6 +41,8 @@ function documentFrom(html) {
           || Object.hasOwn(this.attributes, 'tabindex'))) document.activeElement = this;
     }
     scrollIntoView() { this.scrollCalls++; }
+    addEventListener(name, listener) { this.listeners[name] = listener; }
+    requestSubmit() { this.submitCalls++; }
   }
   const root = new Element('root'), stack = [root];
   // Skip executable/style text; build the hierarchy from the real response.
@@ -69,25 +73,33 @@ const reading = (room, items = []) => ({session: room, items, next_after_sequenc
 function deferred() { let resolve; const promise = new Promise(done => { resolve = done; }); return {promise, resolve}; }
 async function settle() { for (let i = 0; i < 6; i++) await new Promise(setImmediate); }
 
-function boot(handler, session = roomB.session_id) {
-  const document = documentFrom(input.html), requests = [], navigation = [];
-  const location = {search: '?project=alpha&session=' + session};
+function boot(handler, session = roomB.session_id, options = {}) {
+  const document = documentFrom(input.html), requests = [], navigation = [], writes=[];
+  const location = {search: options.search ?? ('?project=alpha&session=' + session)};
+  const storage = new Map(Object.entries(options.storage || {}));
+  const userKey = 'ys-memory:last-chat:' + document.getElementById('room-config').dataset.user;
+  if(options.saved)storage.set(userKey,JSON.stringify(options.saved));
   const context = {
     document, location, URLSearchParams, TextEncoder,
+    crypto:{randomUUID:()=> 'synthetic-ui-request-id'},
+    localStorage: {getItem: key=>storage.get(key)||null, setItem: (key,value)=>storage.set(key,value), removeItem:key=>storage.delete(key)},
     history: {replaceState(_state, _title, url) { navigation.push(url); location.search = new URL(url, 'http://example.test').search; }},
     setTimeout() { /* Polling is not part of these deterministic interactions. */ },
-    fetch: async (path, options) => {
-      assert.equal(options.credentials, 'same-origin');
-      assert.equal(options.cache, 'no-store');
-      assert.ok(!options.method || options.method === 'GET', 'Navigation must not write');
+    fetch: async (path, fetchOptions) => {
+      assert.equal(fetchOptions.credentials, 'same-origin');
+      assert.equal(fetchOptions.cache, 'no-store');
+      if(fetchOptions.method==='POST'&&options.writeHandler){const body=JSON.parse(fetchOptions.body);writes.push(body);assert.equal(fetchOptions.headers['X-CSRF-Token'],document.getElementById('room-config').dataset.csrf);return {ok:true,status:200,json:async()=>options.writeHandler(body)};}
+      assert.ok(!fetchOptions.method || fetchOptions.method === 'GET', 'Navigation must not write');
       const q = Object.fromEntries(new URL(path, 'http://example.test').searchParams);
       requests.push(q);
+      if(q.op==='delivery'&&!options.deliveryHandler)return {ok:true,status:200,json:async()=>({control:{paused:false,version:1},participants:[],has_more:false})};
+      if(q.op==='artifacts'&&!options.artifactsHandler)return {ok:true,status:200,json:async()=>listing([])};
       const data = await handler(q);
       return {ok: true, status: 200, json: async () => data};
     },
   };
   vm.runInNewContext(input.script, context, {filename: 'CHAT_JS', timeout: 1000});
-  return {document, requests, navigation, location, get: id => document.getElementById(id)};
+  return {document, requests, navigation, location, storage, userKey, writes, get: id => document.getElementById(id)};
 }
 
 async function deepLinkOutsideFirstPage() {
@@ -129,7 +141,7 @@ async function projectChangeDuringDeepLink() {
     assert.equal(target.pathname, path); assert.equal(target.searchParams.get('project'), 'beta');
     assert.equal(target.searchParams.get('view'), view);
   }
-  assert.equal(ui.get('active-room').textContent, '選擇一個對話');
+  assert.equal(ui.get('active-room').textContent, label('Choose a conversation', '選擇一個對話'));
   assert.ok(ui.get('room-list').textContent.includes(roomC.title));
   assert.ok(!ui.get('room-list').textContent.includes(roomB.title), 'Late response must not select the old project room');
   assert.equal(ui.get('send-message').disabled, true);
@@ -190,11 +202,107 @@ async function projectChangeClearsOldRooms() {
   assert.ok(!ui.get('room-list').textContent.includes(roomA.title));
 }
 
+async function composerEnterAndIme() {
+  const ui=boot(q=>q.op==='list'?listing([roomB]):reading(roomB));
+  await settle();
+  const body=ui.get('message-body'),form=ui.get('message-form');body.value='一則訊息';
+  const key=extras=>{let prevented=false;body.listeners.keydown({key:'Enter',preventDefault(){prevented=true;},...extras});return prevented;};
+  assert.equal(key({shiftKey:true}),false);assert.equal(form.submitCalls,0);
+  assert.equal(key({isComposing:true}),false);assert.equal(key({keyCode:229}),false);
+  body.listeners.compositionstart();assert.equal(key({}),false);body.listeners.compositionend();
+  assert.equal(form.submitCalls,0,'IME confirmation must never send');
+  assert.equal(key({}),true);assert.equal(form.submitCalls,1);
+  key({repeat:true});assert.equal(form.submitCalls,1,'Holding Enter must not duplicate');
+  ui.get('send-message').disabled=true;key({});assert.equal(form.submitCalls,1);
+  ui.get('send-message').disabled=false;body.value=' \n ';key({});assert.equal(form.submitCalls,1);
+}
+
+async function restoreLastRoom() {
+  const ui=boot(q=>{assert.equal(q.project,'beta');return q.op==='list'?listing([roomC]):reading(roomC);},'',
+    {search:'',saved:{project:'beta',session:roomC.session_id}});
+  await settle();assert.equal(ui.get('active-room').textContent,roomC.title);
+  assert.equal(ui.get('chat-project').value,'beta');
+  assert.deepEqual(JSON.parse(ui.storage.get(ui.userKey)),{project:'beta',session:roomC.session_id});
+  assert.equal(ui.get('chat-error').hidden,true);
+}
+
+async function restoreAuthorizationAndExplicitUrl() {
+  const forbidden=boot(q=>{assert.equal(q.op,'list');assert.equal(q.project,'alpha');return listing([roomA]);},'',
+    {search:'',saved:{project:'unauthorized',session:roomC.session_id}});
+  await settle();assert.ok(!forbidden.requests.some(q=>q.op==='read'));
+  const explicit=boot(q=>{assert.equal(q.project,'alpha');return q.op==='list'?listing([roomA]):reading(roomA);},roomA.session_id,
+    {saved:{project:'beta',session:roomC.session_id}});
+  await settle();assert.equal(explicit.get('active-room').textContent,roomA.title);
+  const otherUser=boot(q=>{assert.equal(q.op,'list');return listing([roomA]);},'',
+    {search:'',storage:{'ys-memory:last-chat:another-user':JSON.stringify({project:'alpha',session:roomB.session_id})}});
+  await settle();assert.ok(!otherUser.requests.some(q=>q.op==='read'));
+}
+
+async function latestArtifactsOutsideMessageWindow() {
+  const recent={artifact_id:'1'.repeat(32),kind:'plan',title:'Recent reviewed plan',sequence:75,covered_through_sequence:74,created_at:2,actor:{display_name:'Codex'}};
+  const older={...recent,artifact_id:'2'.repeat(32),title:'Previous plan',sequence:12};
+  const room={...roomB,latest_sequence:150};
+  const ui=boot(q=>{if(q.op==='list')return listing([room]);if(q.op==='artifacts')return {items:[recent,older],has_more:false};assert.equal(q.op,'read');return reading(room);},room.session_id,{artifactsHandler:true});
+  await settle();
+  assert.equal(ui.get('artifact-list').querySelectorAll('button').length,2);
+  assert.ok(ui.get('artifact-list').textContent.includes(recent.title));
+  assert.ok(ui.get('artifact-list').textContent.includes(older.title));
+  assert.equal(ui.requests.filter(q=>q.op==='artifacts').length,1);
+  await ui.get('sync-now').onclick();
+  assert.equal(ui.requests.filter(q=>q.op==='artifacts').length,1,'Idle sync must not reload the same index');
+  assert.ok(!ui.requests.some(q=>q.op==='artifact'),'Index must not download document bodies');
+}
+
+async function overlappingRefreshIsCoalesced() {
+  const pending=deferred();let reads=0;
+  const ui=boot(q=>{if(q.op==='list')return listing([roomB]);assert.equal(q.op,'read');return ++reads>2?pending.promise:reading(roomB);});
+  await settle();assert.equal(reads,2);
+  const first=ui.get('sync-now').onclick(),second=ui.get('sync-now').onclick();
+  await settle();assert.equal(reads,3,'Timer, visibility and manual sync must share an active room read');
+  pending.resolve(reading(roomB));await Promise.all([first,second]);
+}
+
+async function deliveryStateAndPause() {
+  let paused=false,version=1;
+  const participants=[{worker_id:'worker-a',display_name:'Codex',status:'processing',relay_online:true,turns_used:2,max_turns:20,latest_delivery:{status:'dispatched',through_sequence:9}},
+    {worker_id:'worker-b',display_name:'Claude',status:'offline',relay_online:false,turns_used:1,max_turns:10,latest_delivery:{status:'replied',through_sequence:8,reply_sequence:10}},
+    {worker_id:'worker-c',display_name:'Disconnected client',status:'disconnected',relay_online:false,latest_delivery:{status:'retry_ready',through_sequence:11}}];
+  const ui=boot(q=>{if(q.op==='list')return listing([roomB]);if(q.op==='read')return reading(roomB);if(q.op==='nonce'){assert.equal(q.action,'set_session_delivery_paused');return {nonce:'single-use-browser-nonce'};}assert.equal(q.op,'delivery');return {control:{paused,version},participants,has_more:false};},roomB.session_id,
+    {deliveryHandler:true,writeHandler:body=>{assert.equal(body.action,'set_session_delivery_paused');assert.equal(body.nonce,'single-use-browser-nonce');assert.equal(body.arguments.expected_version,version);assert.equal(body.arguments.project_id,'alpha');assert.equal(body.arguments.session_id,roomB.session_id);assert.ok(body.arguments.idempotency_key);paused=body.arguments.paused;version++;return {paused,version,running_turns_cancelled:false};}});
+  await settle();assert.equal(ui.get('pause-delivery').hidden,false);assert.equal(ui.get('pause-delivery').disabled,false);
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Handed to client', '已交給客戶端')));
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Disconnected', '已中斷自動接話')));
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Ready to retry', '待重試認領')));
+  assert.ok(!ui.get('delivery-participants').textContent.includes(label('AI received', 'AI 已收到')),'Transport receipt must not imply model read');
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Reply to #10', '回覆 #10')));
+  assert.ok(ui.get('delivery-participants').textContent.includes(label('Connection offline', '接線離線')));
+  await ui.get('pause-delivery').onclick();
+  assert.equal(ui.writes.length,1);assert.equal(ui.get('delivery-title').textContent,label('Automatic replies paused', '自動接話已暫停'));
+  assert.ok(ui.get('delivery-explanation').textContent.includes(label('turns already started cannot be recalled', '已開始的回合無法撤回')));
+  assert.equal(ui.get('send-message').disabled,false,'Pause does not delete or block human messages');
+  assert.equal(ui.get('pause-delivery').textContent,label('Resume automatic replies', '恢復自動接話'));
+  await ui.get('pause-delivery').onclick();assert.equal(ui.writes.length,2);assert.equal(paused,false);
+}
+
+async function deliveryReadOnly(){
+  const ui=boot(q=>q.op==='list'?listing([roomB]):reading(roomB));
+  await settle();assert.equal(ui.get('pause-delivery').hidden,true);
+  assert.equal(ui.get('delivery-title').textContent,label('No AI has joined automatic replies yet', '尚無 AI 加入自動接話'));
+  await ui.get('pause-delivery').onclick();assert.equal(ui.writes.length,0);
+}
+
 const scenarios = {
   deep_link_outside_first_page: deepLinkOutsideFirstPage,
   project_change_during_deep_link: projectChangeDuringDeepLink,
   project_change_clears_old_rooms: projectChangeClearsOldRooms,
   close_pending_artifact: closePendingArtifact,
+  composer_enter_and_ime: composerEnterAndIme,
+  restore_last_room: restoreLastRoom,
+  restore_authorization_and_explicit_url: restoreAuthorizationAndExplicitUrl,
+  latest_artifacts_outside_message_window: latestArtifactsOutsideMessageWindow,
+  overlapping_refresh_is_coalesced: overlappingRefreshIsCoalesced,
+  delivery_state_and_pause: deliveryStateAndPause,
+  delivery_read_only: deliveryReadOnly,
 };
 (async () => {
   assert.ok(Object.hasOwn(scenarios, input.scenario), 'Unknown test scenario');

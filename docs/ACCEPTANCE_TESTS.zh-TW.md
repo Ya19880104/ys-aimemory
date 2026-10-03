@@ -1,5 +1,7 @@
 # 驗收與失敗情境
 
+[English](ACCEPTANCE_TESTS.md) | [繁體中文](ACCEPTANCE_TESTS.zh-TW.md)
+
 本清單是驗收設計，不代表每個環境都已實測。實際結果請記錄 commit、日期、命令、退出碼、環境與日誌；`pytest`、Docker、PostgreSQL、Windows 與正式客戶端要分別標示通過／失敗／未執行。
 
 ## 自動化與服務門檻

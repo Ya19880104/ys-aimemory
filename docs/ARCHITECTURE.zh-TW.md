@@ -1,5 +1,7 @@
 # 中央記憶與四 AI 協作架構
 
+[English](ARCHITECTURE.md) | [繁體中文](ARCHITECTURE.zh-TW.md)
+
 ## 目標與邊界
 
 這是獨立的 `ys-aimemory` 專案，集中保存經核准的專案知識、任務上下文、訊息、交接與稽核紀錄。它不是 PHP ERP，也不修改既有 ERP 或另建 AIOps 平台。四個訂閱帳號透過各自官方客戶端工作；Hub 不代理模型推論、不提取登入 cookie，也不把訂閱帳號轉成通用推論 API。

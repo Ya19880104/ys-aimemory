@@ -1,5 +1,7 @@
 # 知識索引、版本與檢索
 
+[English](KNOWLEDGE_INDEX.md) | [繁體中文](KNOWLEDGE_INDEX.zh-TW.md)
+
 ## 0.2 搜尋路徑
 
 `search_knowledge` 會使用 PostgreSQL 全文索引（simple tokenizer、plainto_tsquery 與 GIN），或測試模式的 SQLite FTS5。中文等 CJK 查詢走明確標示的字面子字串回退，並非向量或語意搜尋。其他無法交給全文 tokenizer 的查詢亦可能使用字面回退；以回應的 `search` 欄位為準。

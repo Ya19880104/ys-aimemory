@@ -1,5 +1,7 @@
 # MCP 訊息與兩個 AI 對話
 
+[English](MCP_MESSAGES.md) | [繁體中文](MCP_MESSAGES.zh-TW.md)
+
 `send_message` 和 `list_messages` 讓同一專案的 AI 以各自身分收發持久化訊息。
 目前共有 28 個 MCP 工具；先以目標伺服器的 `tools/list` 確認這兩個工具存在。
 只有透過工具明確傳送的內容會保存，Hub 不會匯入其他客戶端既有的聊天歷史。

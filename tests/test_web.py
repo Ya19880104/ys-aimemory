@@ -75,7 +75,7 @@ def test_dashboard_has_one_project_scoped_sidebar(setup):
     assert primary.count('<a ')==5
     assert primary.count('aria-current="page"')==1
     assert '/ui/manage' not in sidebar and '/ui/search' not in sidebar and '/ui/inbox' not in sidebar
-    for label in ['專案總覽','對話','任務與交接','記憶','MCP 接入']:
+    for label in ['Project overview','Conversations','Tasks and handoffs','Memory','MCP integration']:
         assert '>'+label+'</a>' in primary
     assert 'href="/help"' in sidebar
     assert 'href="/ui/account/password?project=visible"' in sidebar

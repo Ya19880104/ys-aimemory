@@ -1,9 +1,15 @@
 import importlib.util
 import json
 import os
+import hashlib
 from pathlib import Path
+from io import BytesIO
+import ssl
 import subprocess
+import re
+import shutil
 from types import SimpleNamespace
+from zipfile import ZipFile, ZipInfo
 import pytest
 
 spec = importlib.util.spec_from_file_location('claude_setup', Path(__file__).parents[1] / 'scripts/setup-claude.py')
@@ -33,6 +39,180 @@ def test_setup_rejects_malformed_shared_configuration():
     for raw in (b'[]', b'{"mcpServers": []}', b'{invalid'):
         with pytest.raises((ValueError, TypeError)):
             setup.merged_config(raw, {'command':'new'})
+
+
+@pytest.fixture
+def public_ca():
+    from datetime import datetime, timedelta, timezone
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID
+    key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'URL installer fixture CA')])
+    now = datetime.now(timezone.utc)
+    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+            .public_key(key.public_key()).serial_number(x509.random_serial_number())
+            .not_valid_before(now - timedelta(minutes=1)).not_valid_after(now + timedelta(days=1))
+            .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
+            .sign(key, hashes.SHA256()))
+    return cert.public_bytes(serialization.Encoding.PEM), cert.fingerprint(hashes.SHA256()).hex()
+
+
+@pytest.mark.parametrize('url', [
+    'http://host', 'https://user:secret@host', 'https://host?token=secret',
+    'https://host/#secret', 'https://host/path', 'https://host:bad',
+    'https://host:0', 'https://host:65536', 'https://host\\evil', 'https://host\n',
+    'https://host%2eexample', 'https://[::1]@evil',
+])
+def test_url_setup_rejects_unsafe_urls_without_network(url, tmp_path, monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail('Unsafe URL reached network')
+    monkeypatch.setattr(setup, 'download', forbidden)
+    with pytest.raises(setup.SetupError):
+        setup.download_bundle(url, '1' * 64, tmp_path / 'bundle')
+
+
+@pytest.mark.parametrize(('url', 'origin'), [
+    ('https://memory.example.test/', 'https://memory.example.test'),
+    ('https://MEMORY.example.test:8443', 'https://memory.example.test:8443'),
+    ('https://192.168.100.54', 'https://192.168.100.54'),
+    ('https://[::1]:8443/', 'https://[::1]:8443'),
+])
+def test_canonical_hub_urls(url, origin):
+    assert setup.hub_origin(url) == origin
+
+
+def make_public_bundle(ca, pin, *, endpoint='https://memory.example.test/mcp', extra=None, symlink=False):
+    assets = {name: b'fixture' for name in setup.ASSETS}
+    assets['connection.json'] = json.dumps({'version': 1, 'endpoint': endpoint,
+        'ca_file': 'ys-ai-memory-ca.crt', 'ca_sha256': pin}).encode()
+    assets['ys-ai-memory-ca.crt'] = ca
+    output = BytesIO()
+    with ZipFile(output, 'w') as archive:
+        for name, body in assets.items():
+            info = ZipInfo(name)
+            info.external_attr = (0o120777 if symlink else 0o100644) << 16
+            archive.writestr(info, body)
+        if extra is not None:
+            if extra in assets:
+                with pytest.warns(UserWarning, match='Duplicate name'):
+                    archive.writestr(extra, b'not allowed')
+            else:
+                archive.writestr(extra, b'not allowed')
+    return output.getvalue()
+
+
+def test_url_bundle_verifies_independent_pin_before_https_and_no_keylog(public_ca, tmp_path, monkeypatch):
+    ca, pin = public_ca
+    bundle = make_public_bundle(ca, pin)
+    requests = []
+    monkeypatch.setenv('SSLKEYLOGFILE', str(tmp_path / 'never-keylog'))
+    def fetch(url, *, context=None, maximum):
+        requests.append(url)
+        if context is None:
+            assert url == 'http://memory.example.test' + setup.CA_ROUTE
+            return ca
+        assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
+        assert context.verify_flags & ssl.VERIFY_X509_STRICT
+        assert context.keylog_filename is None and len(context.get_ca_certs()) == 1
+        return bundle
+    monkeypatch.setattr(setup, 'download', fetch)
+    result = setup.download_bundle('https://memory.example.test/', pin.upper(), tmp_path / 'bundle')
+    assert {f.name for f in result.iterdir()} == setup.ASSETS
+    assert requests == ['http://memory.example.test' + setup.CA_ROUTE,
+                        'https://memory.example.test' + setup.BUNDLE_ROUTE]
+    assert not (tmp_path / 'never-keylog').exists()
+    requests.clear()
+    with pytest.raises(setup.SetupError, match='fingerprint'):
+        setup.download_bundle('https://memory.example.test', '0' * 64, tmp_path / 'wrong')
+    assert len(requests) == 1 and not (tmp_path / 'wrong').exists()
+
+
+@pytest.mark.parametrize('scenario', ['traversal', 'duplicate', 'symlink', 'foreign_endpoint', 'changed_ca', 'invalid_zip'])
+def test_url_bundle_rejects_unsafe_or_misdirected_archive(public_ca, tmp_path, monkeypatch, scenario):
+    ca, pin = public_ca
+    payload = make_public_bundle(ca if scenario != 'changed_ca' else b'bad CA', pin,
+        endpoint='https://unrelated.example.test/mcp' if scenario == 'foreign_endpoint' else 'https://memory.example.test/mcp',
+        extra='../outside.py' if scenario == 'traversal' else ('bridge.py' if scenario == 'duplicate' else None),
+        symlink=scenario == 'symlink') if scenario != 'invalid_zip' else b'invalid zip'
+    monkeypatch.setattr(setup, 'download', lambda url, **kwargs: ca if url.startswith('http:') else payload)
+    with pytest.raises(setup.SetupError):
+        setup.download_bundle('https://memory.example.test', pin, tmp_path / 'bundle')
+    assert not (tmp_path / 'bundle').exists()
+    assert not (tmp_path / 'outside.py').exists()
+
+
+@pytest.mark.parametrize(('status', 'headers', 'body'), [
+    (302, {'Location': 'https://elsewhere.test'}, b''),
+    (200, {'Content-Length': '20'}, b'too long'),
+    (200, {'Content-Length': '4'}, b'bad'),
+    (200, {'Content-Length': 'invalid'}, b''),
+    (200, {'Content-Encoding': 'gzip'}, b'abc'),
+    (200, {}, b'123456'),
+])
+def test_download_bounds_redirects_and_encoding(status, headers, body, monkeypatch):
+    class Connection:
+        def __init__(self, *args, **kwargs): pass
+        def request(self, *args, **kwargs): pass
+        def getresponse(self):
+            return SimpleNamespace(status=status, getheader=lambda name, default=None: headers.get(name, default),
+                                   read=lambda maximum: body[:maximum])
+        def close(self): pass
+    monkeypatch.setattr(setup.http.client, 'HTTPConnection', Connection)
+    with pytest.raises(setup.SetupError):
+        setup.download('http://memory.example.test' + setup.CA_ROUTE, maximum=5)
+
+
+def test_cli_url_defaults_to_current_project_and_keeps_token_out_of_download(monkeypatch, tmp_path, capsys):
+    monkeypatch.chdir(tmp_path)
+    pin = '2' * 64
+    monkeypatch.setattr('sys.argv', ['setup-claude.py', '--url', 'https://memory.example.test', '--expected-ca', pin])
+    monkeypatch.setenv('YS_AIMEMORY_SETUP_TOKEN', 'synthetic-worker-never-print')
+    calls = []
+    def download(url, expected_ca, destination):
+        calls.append(('download', url, expected_ca))
+        return destination
+    def install(bundle, project, expected_ca, token):
+        assert project == tmp_path and expected_ca == pin and token == 'synthetic-worker-never-print'
+        calls.append(('install',))
+        return {'status': 'installed_not_native_verified'}
+    monkeypatch.setattr(setup, 'download_bundle', download)
+    monkeypatch.setattr(setup, 'install', install)
+    assert setup.main() == 0
+    assert calls == [('download', 'https://memory.example.test', pin), ('install',)]
+    assert 'synthetic-worker-never-print' not in str(capsys.readouterr())
+
+
+def test_cli_bad_arguments_do_not_echo_secrets(monkeypatch, capsys):
+    monkeypatch.setattr('sys.argv', ['setup-claude.py', '--token', 'secret-must-not-print'])
+    assert setup.main() == 1
+    assert 'secret-must-not-print' not in str(capsys.readouterr())
+
+
+def test_bootstrap_source_digests_match_the_reviewed_installer():
+    root = Path(__file__).parents[1]
+    bootstrap = (root / 'scripts/connect-claude.ps1').read_text(encoding='utf-8')
+    assert re.search(r"\$SourceRevision = '[0-9a-f]{40}'", bootstrap)
+    entries = re.findall(r"Source = '([^']+)'; Name = '[^']+'; Sha256 = '([0-9a-f]{64})'", bootstrap)
+    assert {source for source, _ in entries} == {'scripts/setup-claude.py', 'memory_hub/client_secret.py'}
+    for source, digest in entries:
+        # Git's public raw files use LF; Windows checkout conversion is harmless.
+        assert hashlib.sha256((root / source).read_bytes().replace(b'\r\n', b'\n')).hexdigest() == digest
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='PowerShell bootstrap runs on Windows')
+def test_bootstrap_rejects_secret_url_before_download_or_install(tmp_path):
+    shell = shutil.which('pwsh') or shutil.which('powershell')
+    if not shell:
+        pytest.skip('PowerShell unavailable')
+    script = Path(__file__).parents[1] / 'scripts/connect-claude.ps1'
+    result = subprocess.run([shell, '-NoProfile', '-File', str(script),
+        '-Url', 'https://user:do-not-print-this-secret@example.test', '-ExpectedCa', '1' * 64,
+        '-Project', str(tmp_path)], capture_output=True, timeout=20)
+    assert result.returncode == 1
+    assert b'do-not-print-this-secret' not in result.stdout + result.stderr
+    assert not (tmp_path / '.mcp.json').exists()
 
 
 def test_cli_does_not_echo_secret_exception_or_token(monkeypatch, capsys):

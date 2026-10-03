@@ -1,0 +1,389 @@
+"""Bounded receiver contracts; no model, login, network or real credential use."""
+import importlib.util
+import json
+import io
+from pathlib import Path
+
+import pytest
+from test_sessions import collaboration, room, post, A, B
+from test_index import _migration_db
+
+spec = importlib.util.spec_from_file_location('codex_receiver', Path(__file__).parents[1] / 'scripts' / 'run-codex-chat.py')
+runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)
+
+CONFIG = {'project_id': 'test-project', 'session_id': 'a'*32, 'worker_id': 'codex-fixture',
+          'codex': 'codex.exe', 'python': 'python.exe', 'native_session_id': 'receiver-fixture',
+          'idempotency_key': 'join-fixture', 'after_sequence': 4, 'max_turns': 2,
+          'ttl_seconds': 60, 'expires_at': 160, 'turn_timeout': 60}
+DELIVERY = {'delivery_id': 'b'*32, 'lease_id': 'c'*32, 'after_sequence': 4, 'through_sequence': 6,
+            'message_ids': ['d'*32, 'e'*32], 'reply_idempotency_key': 'delivery-' + 'b'*32}
+
+
+def arguments(name, **changes):
+    if name == 'get_worker_inbox':
+        result = {'project_id': CONFIG['project_id']}
+    else:
+        result = {key: CONFIG[key] for key in ('project_id', 'session_id')} | {
+            key: DELIVERY[key] for key in ('delivery_id', 'lease_id')}
+        if name == 'read_session':
+            result.update(after_sequence=4, limit=20, max_bytes=16384, full_text=True)
+        else:
+            result.update(body='這是原生對話回覆。', idempotency_key=DELIVERY['reply_idempotency_key'])
+    return {'arguments': result | changes}
+
+
+def event(name, value, ident='call-1', **changes):
+    return {'type': 'item.completed', 'item': {'type': 'mcp_tool_call', 'server': 'ys_memory',
+        'tool': name, 'id': ident, 'arguments': arguments(name, **changes),
+        'result': {'structuredContent': value}}}
+
+
+def reading(sequence, message, complete=False):
+    return {'session': {key: CONFIG[key] for key in ('project_id', 'session_id')},
+        'items': [{'type': 'message', 'message_id': message, 'sequence': sequence, 'body_truncated': False}],
+        'next_after_sequence': sequence, 'delivery_receipt': {'delivery_id': DELIVERY['delivery_id'],
+        'status': 'tool_read' if complete else 'partial_tool_read',
+        'unread_message_ids': [] if complete else [DELIVERY['message_ids'][1]]}}
+
+
+def reply():
+    return {key: CONFIG[key] for key in ('project_id', 'session_id')} | {'message_id': 'f'*32,
+        'sequence': 7, 'actor': {'id': CONFIG['worker_id'], 'kind': 'worker'},
+        'delivery_receipt': {'delivery_id': DELIVERY['delivery_id'], 'status': 'replied', 'processed_sequence': 6}}
+
+
+def completed_proof():
+    proof = runner.NativeProof(CONFIG, DELIVERY)
+    proof.event(event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'))
+    proof.event(event('read_session', reading(5, 'd'*32), 'read-1'))
+    proof.event(event('read_session', reading(6, 'e'*32, True), 'read-2', after_sequence=5))
+    proof.event(event('post_session_message', reply(), 'post'))
+    return proof
+
+
+@pytest.mark.parametrize('name,changes', [
+    ('read_session', {'session_id': '9'*32}), ('read_session', {'project_id': 'another-project'}),
+    ('read_session', {'lease_id': '9'*32}), ('read_session', {'after_sequence': 0}),
+    ('read_session', {'after_sequence': 6}), ('read_session', {'full_text': False}),
+    ('read_session', {'limit': True}), ('post_session_message', {'idempotency_key': 'changed'}),
+    ('read_session', {'max_bytes': [65536]}), ('read_session', {'max_bytes': True}),
+    ('post_session_message', {'body': '字'*401}), ('post_session_message', {'attachment_ids': []}),
+])
+def test_scoped_gate_rejects_cross_room_token_cost_and_retry_changes(name, changes):
+    assert not runner.valid_scope(name, arguments(name, **changes), CONFIG, DELIVERY)
+
+
+def test_native_proof_requires_every_full_message_across_pages_and_real_post_receipt():
+    proof = completed_proof()
+    result = proof.finish(0)
+    assert result['status'] == 'passed' and result['native_tool_calls'] == 4
+    assert result['read_message_ids'] == DELIVERY['message_ids']
+    assert result['post_receipt']['sequence'] == 7
+    assert '原生對話回覆' not in json.dumps(result, ensure_ascii=False)
+    assert 'body_sha256' in result['post_receipt']
+
+
+def test_native_final_prose_and_forged_read_receipt_do_not_prove_success():
+    proof = runner.NativeProof(CONFIG, DELIVERY)
+    proof.event({'type': 'item.completed', 'item': {'type': 'agent_message', 'text': 'All done'}})
+    with pytest.raises(runner.ReceiverError, match='incomplete'):
+        proof.finish(0)
+    proof.event(event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'))
+    proof.event(event('read_session', reading(6, 'e'*32, True), 'read'))
+    with pytest.raises(runner.ReceiverError, match='not_read'):
+        proof.event(event('post_session_message', reply(), 'post'))
+
+
+def test_cli_completed_turn_records_only_reported_token_fields():
+    # Official non-interactive JSONL example, with untrusted extra fields added.
+    proof = completed_proof()
+    proof.event({'type': 'turn.completed', 'usage': {'input_tokens':24763,
+        'cached_input_tokens':24448, 'output_tokens':122, 'reasoning_output_tokens':0,
+        'credential':'synthetic-secret', 'text':'raw model text', 'cost':9.99}})
+    result = proof.finish(0)
+    assert result['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':24763, 'cached_input_tokens':24448, 'output_tokens':122}
+    assert result['status'] == 'passed'
+    assert all(value not in json.dumps(result) for value in ('synthetic-secret','raw model text','cost','reasoning_output_tokens'))
+
+
+@pytest.mark.parametrize('usage', [None, {}, [], 'secret', 42])
+def test_absent_usage_does_not_change_native_acceptance(usage):
+    proof = completed_proof()
+    assert set(proof.finish(0)['token_usage'].values()) == {'codex_cli.turn.completed.usage','not_reported'}
+    proof.event({'type':'turn.completed','usage':usage})
+    result = proof.finish(0)
+    assert result['status'] == 'passed'
+    assert result['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':'not_reported','cached_input_tokens':'not_reported','output_tokens':'not_reported'}
+
+
+@pytest.mark.parametrize('bad', [True, False, -1, 2**53, 10**100, 1.0, '123', None, [], {}])
+def test_malformed_token_count_is_not_coerced_or_estimated(bad):
+    proof = completed_proof()
+    proof.event({'type':'turn.completed','usage':{'input_tokens':bad,'cached_input_tokens':0,'output_tokens':2**53-1}})
+    result = proof.finish(0)
+    assert result['status'] == 'passed'
+    assert result['token_usage']['input_tokens'] == 'not_reported'
+    assert result['token_usage']['cached_input_tokens'] == 0
+    assert result['token_usage']['output_tokens'] == 2**53-1
+
+
+def test_usage_is_not_derived_from_other_events_or_accumulated():
+    proof = completed_proof()
+    proof.event({'type':'item.completed','usage':{'input_tokens':900},'item':{'type':'agent_message','text':'unused'}})
+    assert proof.finish(0)['token_usage']['input_tokens'] == 'not_reported'
+    proof.event({'type':'turn.completed','usage':{'input_tokens':100,'cached_input_tokens':10,'output_tokens':20}})
+    proof.event({'type':'turn.completed','usage':{'input_tokens':7}})
+    assert proof.finish(0)['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':7,'cached_input_tokens':'not_reported','output_tokens':'not_reported'}
+    with pytest.raises(runner.ReceiverError, match='incomplete'):
+        runner.NativeProof(CONFIG, DELIVERY).finish(0)
+
+
+def test_native_identity_scope_and_tool_failure_stop():
+    with pytest.raises(runner.ReceiverError, match='worker_mismatch'):
+        runner.NativeProof(CONFIG, DELIVERY).event(event('get_worker_inbox', {'worker_id': 'other'}))
+    failed = event('get_worker_inbox', {'worker_id': CONFIG['worker_id']})
+    failed['item']['result']['isError'] = True
+    with pytest.raises(runner.ReceiverError, match='tool_failed'):
+        runner.NativeProof(CONFIG, DELIVERY).event(failed)
+    proof = completed_proof()
+    with pytest.raises(runner.ReceiverError, match='extra_native_call'):
+        proof.event(event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'again'))
+
+
+def test_native_command_is_ephemeral_scoped_and_no_provider_secret_inheritance(monkeypatch, tmp_path):
+    monkeypatch.setenv('OPENAI_API_KEY', 'provider-secret-never-inherit')
+    monkeypatch.setenv('YS_AIMEMORY_TOKEN', 'other-worker-never-inherit')
+    monkeypatch.setenv('CODEX_HOME', 'other-session-never-inherit')
+    command = runner.command(CONFIG | {'delivery': DELIVERY}, tmp_path / 'scope.json', tmp_path)
+    assert '--ephemeral' in command and '--ignore-user-config' in command
+    assert command[command.index('--sandbox') + 1] == 'read-only'
+    assert '--dangerously-bypass-approvals-and-sandbox' not in command
+    assert 'project_doc_max_bytes=0' in command
+    assert 'skills.max_context_tokens=1' in command
+    assert not {'OPENAI_API_KEY', 'YS_AIMEMORY_TOKEN', 'CODEX_HOME'} & runner.environment().keys()
+    assert 'get_worker_inbox' in command[-1] and 'through_sequence=6' in command[-1]
+    assert 'provider-secret' not in json.dumps(command)
+
+
+class FakeClient:
+    def __init__(self, statuses):
+        self.statuses = iter(statuses)
+        self.calls = []
+
+    def post(self, path, json):
+        self.calls.append((path, json))
+        operation = path.rsplit('/', 1)[-1]
+        if operation == 'join':
+            value = {key: CONFIG[key] for key in ('worker_id', 'project_id', 'session_id')} | {'binding_id': '0'*32, 'version': 1}
+        elif operation == 'claim':
+            status = next(self.statuses)
+            value = {'status': status, 'delivery': DELIVERY if status == 'ready' else None}
+        else:
+            value = {'status': 'waiting'}
+        return type('Response', (), {'raise_for_status': lambda self: None, 'json': lambda self: value})()
+
+
+def test_idle_paused_budget_polling_never_spawns_model(tmp_path):
+    client, waits = FakeClient(['idle', 'paused', 'budget_exhausted']), []
+    def forbidden(*args):
+        pytest.fail('No model can run for idle/pause/budget')
+    result = runner.receiver(CONFIG, client, tmp_path, turn=forbidden, now=lambda: 100, sleep=waits.append)
+    assert result['state'] == 'budget_exhausted' and waits == [3, 3]
+    assert not any(path.endswith('dispatched') for path, _ in client.calls)
+
+
+def test_only_ready_delivery_runs_native_turn_and_failure_never_retries(tmp_path):
+    client = FakeClient(['ready', 'budget_exhausted'])
+    def turn(config, delivery, directory, heartbeat, stop):
+        assert heartbeat()['status'] == 'waiting'
+        proof = completed_proof()
+        proof.event({'type':'turn.completed','usage':{'input_tokens':100,'cached_input_tokens':40,'output_tokens':12}})
+        return proof.finish(0)
+    result = runner.receiver(CONFIG, client, tmp_path, turn=turn, now=lambda: 100, sleep=lambda _: None)
+    assert result['native_turns'] == 1
+    assert (tmp_path / ('receipt-' + DELIVERY['delivery_id'] + '.json')).exists()
+    receipt = json.loads((tmp_path / ('receipt-' + DELIVERY['delivery_id'] + '.json')).read_text(encoding='utf-8'))
+    assert receipt['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':100,'cached_input_tokens':40,'output_tokens':12}
+    assert '這是原生對話回覆' not in json.dumps(receipt,ensure_ascii=False)
+    calls = [path for path, _ in client.calls]
+    assert calls.count('/v1/chat/dispatched') == 1
+    assert not any('/tools/' in path for path in calls), 'REST must never impersonate native read/post'
+    failed = FakeClient(['ready'])
+    def stop_turn(*args):
+        raise runner.ReceiverError('native_tool_failed')
+    with pytest.raises(runner.ReceiverError):
+        runner.receiver(CONFIG, failed, tmp_path, turn=stop_turn, now=lambda: 100, sleep=lambda _: None)
+    assert len([path for path, _ in failed.calls if path.endswith('claim')]) == 1
+    assert failed.calls[-1] == ('/v1/chat/control', {'project_id': CONFIG['project_id'],
+        'binding_id': '0'*32, 'enabled': False, 'expected_version': 1})
+
+
+def test_stop_file_does_not_even_join(tmp_path):
+    (tmp_path / 'STOP').touch()
+    client = FakeClient([])
+    assert runner.receiver(CONFIG, client, tmp_path)['state'] == 'stopped'
+    assert client.calls == []
+
+
+def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_receipt(monkeypatch, tmp_path):
+    native_events = [event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'),
+        event('read_session', reading(5, 'd'*32), 'read-1'),
+        event('read_session', reading(6, 'e'*32, True), 'read-2', after_sequence=5),
+        event('post_session_message', reply(), 'post'),
+        {'type':'turn.completed','usage':{'input_tokens':101,'cached_input_tokens':0,'output_tokens':13}}]
+    class Process:
+        stdout = io.StringIO('\n'.join(json.dumps(item) for item in native_events) + '\n')
+        def poll(self): return 0
+        def wait(self, timeout): return 0
+    def launch(args, **kwargs):
+        assert kwargs['shell'] is False and kwargs['stderr'] is runner.subprocess.DEVNULL
+        return Process()
+    monkeypatch.setattr(runner.subprocess, 'Popen', launch)
+    clock, heartbeats = [0], []
+    def now():
+        clock[0] += 3
+        return clock[0]
+    def heartbeat():
+        heartbeats.append(True)
+        return {'status': 'processing'}
+    result = runner.native_turn(CONFIG, DELIVERY, tmp_path, heartbeat, lambda: False, now=now)
+    assert result['status'] == 'passed' and heartbeats
+    assert result['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':101,'cached_input_tokens':0,'output_tokens':13}
+    assert sorted(p.name for p in tmp_path.iterdir()) == ['native-empty', 'native-scope.json']
+    assert '這是原生對話回覆' not in (tmp_path / 'native-scope.json').read_text(encoding='utf-8')
+
+
+def budget_failed(ident='budget-error', **changes):
+    value = event('read_session', {}, ident, **changes)
+    value['item']['result'] = {'isError':True, 'content':[
+        {'type':'text','text':'Error executing tool read_session: response_budget_too_small: Increase max_bytes or request a compact event'}]}
+    return value
+
+
+def identified_proof():
+    proof=runner.NativeProof(CONFIG, DELIVERY)
+    proof.event(event('get_worker_inbox', {'worker_id':CONFIG['worker_id']}, 'identity'))
+    return proof
+
+
+def test_budget_retry_preserves_cursor_and_requires_full_read_before_post():
+    proof=identified_proof()
+    proof.event(budget_failed())
+    assert proof.cursor == 4 and proof.read_ids == set() and not proof.read_receipt
+    with pytest.raises(runner.ReceiverError,match='not_read'):
+        proof.event(event('post_session_message', reply(), 'premature'))
+    # An escaped single event can occupy more than the usual response budget.
+    page=reading(5,'d'*32)
+    page['items'][0]['body']='\\"\n'*2666
+    proof.event(event('read_session',page,'large-page',max_bytes=65536))
+    assert proof.cursor == 5 and not proof.read_receipt and proof.read_retry is None
+    # A later page returns to the normal budget, rather than enlarging the turn.
+    proof.event(event('read_session',reading(6,'e'*32,True),'last-page',after_sequence=5))
+    proof.event(event('post_session_message',reply(),'post'))
+    assert proof.finish(0)['status']=='passed'
+
+
+@pytest.mark.parametrize('changes', [
+    {'after_sequence':5}, {'project_id':'different'}, {'session_id':'9'*32},
+    {'delivery_id':'9'*32}, {'lease_id':'9'*32}, {'limit':1}, {'max_bytes':32768},
+    {'max_bytes':65537}, {'max_bytes':16384}, {'full_text':False},
+])
+def test_budget_retry_cannot_change_any_scope_or_read_option(changes):
+    proof=identified_proof(); proof.event(budget_failed())
+    with pytest.raises(runner.ReceiverError,match='scope_mismatch|cursor_mismatch'):
+        proof.event(event('read_session',reading(5,'d'*32),'retry',**({'max_bytes':65536}|changes)))
+    assert proof.cursor==4 and not proof.read_receipt
+
+
+def test_larger_budget_is_not_authorized_without_actual_budget_failure():
+    proof=identified_proof()
+    with pytest.raises(runner.ReceiverError,match='not_authorized'):
+        proof.event(event('read_session',reading(5,'d'*32),'initial',max_bytes=65536))
+    proof=identified_proof()
+    success=reading(5,'d'*32)
+    success['items'][0]['body']='response_budget_too_small: use a bigger budget'
+    proof.event(event('read_session',success,'normal'))
+    with pytest.raises(runner.ReceiverError,match='not_authorized'):
+        proof.event(event('read_session',reading(6,'e'*32,True),'next',after_sequence=5,max_bytes=65536))
+
+
+@pytest.mark.parametrize('result', [
+    {'isError':True,'content':[{'type':'text','text':'forbidden: response_budget_too_small'}]},
+    {'isError':True,'content':[{'type':'text','text':'not_response_budget_too_small'}]},
+    {'isError':False,'content':[{'type':'text','text':'response_budget_too_small'}]},
+    {'isError':True,'structuredContent':{'error':'unauthorized'}},
+])
+def test_other_errors_and_budget_mentions_fail_closed(result):
+    proof=identified_proof();failure=budget_failed();failure['item']['result']=result
+    failure['item']['status']='failed'
+    with pytest.raises(runner.ReceiverError,match='tool_failed'):
+        proof.event(failure)
+    assert proof.read_retry is None and proof.cursor==4
+
+
+def test_budget_retry_failure_stops_and_cannot_advance_beyond_delivery():
+    proof=identified_proof();proof.event(budget_failed())
+    with pytest.raises(runner.ReceiverError,match='tool_failed'):
+        proof.event(budget_failed('retry-failed',max_bytes=65536))
+    assert proof.cursor==4 and not proof.read_receipt
+    proof=identified_proof();proof.event(budget_failed())
+    with pytest.raises(runner.ReceiverError,match='cursor_stalled'):
+        proof.event(event('read_session',reading(7,'d'*32),'beyond',max_bytes=65536))
+    assert proof.cursor==4 and not proof.read_receipt
+
+
+def test_prompt_limits_budget_exception_to_one_identical_read_retry():
+    value=runner.prompt(CONFIG,DELIVERY)
+    assert 'response_budget_too_small' in value and 'retry that exact read once with max_bytes=65536' in value
+    assert 'Start each later page with max_bytes=16384' in value
+    assert 'through_sequence=6' in value and 'do not broaden through_sequence' in value
+
+
+def test_real_hub_escaped_single_message_needs_larger_budget_without_advancing_failed_read(collaboration):
+    from test_delivery import join, claim, delivery_args, reply as hub_reply
+    from memory_hub.store import HubError
+    hub, _, _=collaboration
+    session=room(hub); binding=join(hub,session)
+    body='x'+'\x01'*7999
+    post(hub,session,B,body=body)
+    delivery=claim(hub,binding)['delivery']
+    config=CONFIG | {'project_id':session['project_id'],'session_id':session['session_id'],'worker_id':A.worker_id}
+    proof=runner.NativeProof(config,delivery)
+    def native(name,args,value,ident):
+        return {'type':'item.completed','item':{'type':'mcp_tool_call','server':'ys_memory',
+            'tool':name,'id':ident,'arguments':{'arguments':args},'result':{'structuredContent':value}}}
+    proof.event(native('get_worker_inbox',{'project_id':session['project_id']},
+        hub.call('get_worker_inbox',{'project_id':session['project_id']},A),'identity'))
+    args=delivery_args(session,delivery,after_sequence=delivery['after_sequence'],limit=20,max_bytes=16384,full_text=True)
+    with pytest.raises(HubError) as failed:
+        hub.call('read_session',args,A)
+    assert failed.value.code=='response_budget_too_small'
+    failure=native('read_session',args,{},'budget')
+    failure['item']['result']={'isError':True,'structuredContent':{'error':failed.value.code}}
+    proof.event(failure)
+    assert proof.cursor==delivery['after_sequence'] and not proof.read_receipt
+    with pytest.raises(HubError) as premature:
+        hub_reply(hub,session,delivery)
+    assert premature.value.code=='delivery_not_read'
+    retry=args | {'max_bytes':65536}
+    page=hub.call('read_session',retry,A)
+    assert page['returned_bytes']>16384 and page['items'][0]['body']==body
+    proof.event(native('read_session',retry,page,'read'))
+    written=hub_reply(hub,session,delivery,body='Verified bounded reply')
+    send=delivery_args(session,delivery,body='Verified bounded reply',idempotency_key=delivery['reply_idempotency_key'])
+    proof.event(native('post_session_message',send,written,'post'))
+    assert proof.finish(0)['status']=='passed'
+
+
+@pytest.mark.parametrize('language,name', [('en','Codex Local'),('zh-TW','Codex 本機')])
+def test_receiver_join_display_name_follows_interface_language(tmp_path,language,name):
+    client=FakeClient(['budget_exhausted'])
+    runner.receiver(CONFIG | {'language':language},client,tmp_path,now=lambda:100)
+    assert client.calls[0][0]=='/v1/chat/join'
+    assert client.calls[0][1]['display_name']==name

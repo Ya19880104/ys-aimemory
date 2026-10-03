@@ -1,5 +1,7 @@
 # 確認 Codex／Claude 真正使用 MCP 對話
 
+[English](NATIVE_CLIENT_CHECK.md) | [繁體中文](NATIVE_CLIENT_CHECK.zh-TW.md)
+
 先依 [客戶端接線](CLIENT_SETUP.zh-TW.md) 安裝 1.1.1 stdio client，再依 [按需啟用](EFFICIENT_MCP.zh-TW.md) 從工作專案啟動。每個 AI 使用自己的 worker Token；網頁帳號與模型登入是另外兩種身分。
 
 ## 一輪最小驗收

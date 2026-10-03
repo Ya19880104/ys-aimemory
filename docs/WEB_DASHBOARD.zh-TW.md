@@ -1,5 +1,11 @@
 # 網頁管理與帳號密碼
 
+[English](WEB_DASHBOARD.md) | [繁體中文](WEB_DASHBOARD.zh-TW.md)
+
+## 語言
+
+預設英文。HUB_WEB_LANGUAGE 僅接受 en／zh-TW，其他值會被設定驗證拒絕。頁面語言切換使用 ?lang=en／?lang=zh-TW 與偏好 Cookie；只切換介面文字，不改訊息原文、worker 身分、專案授權或 Token 權限，API 識別碼與來源內容保持原樣。
+
 登入預設進入共享對話 `/ui/chat`：先選擇記憶庫與 Session，讓人與 AI 討論，再視需要保存方案、文件或任務／交接提案。一般聊天不需要任務認領；正式執行與交接才走 Hub 的任務流程。省 Token 透過按需接入、增量游標、片段與摘要完成，不要求先建立交接。
 
 ys-aimemory 的交接是系統功能：任務、讀取確認、租約、fence、指定接手者與稽核都在 Hub 保存，不只是本專案開發時的約定。網頁讓人類檢視這些狀態；AI 使用同一個服務的 MCP／REST。
