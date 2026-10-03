@@ -21,6 +21,18 @@ class WatchStopped(Exception):
     """Local stop or time budget reached while reconnecting."""
 
 
+class WatchDisconnected(Exception):
+    """Authoritative binding generation fence; explicit reconfiguration required."""
+
+
+def disconnected(config, state_path):
+    if not state_path.exists():
+        return False
+    state = json.loads(state_path.read_text(encoding='utf-8'))
+    return (state.get('state') == 'disconnected' and
+            state.get('join_key') == config['idempotency_key'])
+
+
 def load_module(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -120,6 +132,8 @@ def reminder(config, delivery):
 def watch(config, event, client, state_path, *, now=time.time, sleep=time.sleep):
     if event.get('hook_event_name') != 'Stop' or event.get('session_id') != config['native_session_id']:
         return None
+    if disconnected(config, state_path):
+        return None
     if now() >= config['expires_at'] or state_path.with_name('STOP').exists():
         return None
 
@@ -129,6 +143,10 @@ def watch(config, event, client, state_path, *, now=time.time, sleep=time.sleep)
             try:
                 response = client.post('/v1/chat/' + operation, json=data)
                 if response.status_code < 500 and response.status_code not in {408, 429}:
+                    if response.status_code == 409 and response.json().get('error') == 'stale_binding':
+                        save(state_path, {'state': 'disconnected', 'reason': 'stale_binding',
+                             'join_key': config['idempotency_key'], 'at': now()})
+                        raise WatchDisconnected()
                     response.raise_for_status()
                     return response.json()
             except httpx.TransportError:
@@ -184,6 +202,8 @@ def watch(config, event, client, state_path, *, now=time.time, sleep=time.sleep)
              'binding_id': binding_id, 'expires_at': config['expires_at']})
         if status == 'ready':
             delivery = response['delivery']
+            if now() >= config['expires_at'] or state_path.with_name('STOP').exists():
+                raise WatchStopped()
             try:
                 call('dispatched', scope | {k: delivery[k] for k in ('delivery_id', 'lease_id')})
             except httpx.HTTPStatusError as exc:
@@ -222,6 +242,8 @@ def main():
             if not bind_activation(config, event, state_path):
                 return 0
             save(here / 'chat-binding.json', config)
+            if disconnected(config, state_path):
+                return 0
             bridge = load_module('chat_bridge', here / 'bridge.py')
             secret = load_module('chat_secret', here / 'launcher.py')
             connection = bridge.load_connection(here / 'connection.json')
@@ -234,6 +256,8 @@ def main():
             if message and time.time() < config['expires_at'] and not (here / 'STOP').exists():
                 print(message, file=sys.stderr, flush=True)
                 return 2
+        return 0
+    except WatchDisconnected:
         return 0
     except WatchStopped:
         save(state_path, {'state':'stopped', 'at':time.time()})

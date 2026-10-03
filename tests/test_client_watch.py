@@ -3,7 +3,7 @@ from pathlib import Path
 import httpx
 
 import pytest
-from memory_hub.client_watch import WatchStopped, bind_activation, exclusive, reminder, watch
+from memory_hub.client_watch import WatchDisconnected, WatchStopped, bind_activation, exclusive, reminder, watch
 
 
 def config():
@@ -281,9 +281,12 @@ def test_stale_binding_is_terminal_and_preserves_pending_request(tmp_path):
             return httpx.Response(409, json={'error': 'stale_binding'})
         return httpx.Response(200, json={})
     with httpx.Client(base_url='https://hub.test', transport=httpx.MockTransport(handle)) as client:
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(WatchDisconnected):
             watch(config(), {'hook_event_name': 'Stop', 'session_id': 'native'}, client,
                 tmp_path / 'status.json', now=lambda:100, sleep=lambda _:pytest.fail('Must not retry'))
+        assert watch(config(), {'hook_event_name': 'Stop', 'session_id': 'native'}, client,
+            tmp_path / 'status.json', now=lambda:100) is None
+    assert json.loads((tmp_path / 'status.json').read_text())['state'] == 'disconnected'
     assert len(requests) == 1
     assert json.loads((tmp_path / 'chat-claim.json').read_text())['request_id'] == requests[0]['request_id']
 
@@ -309,3 +312,37 @@ def test_stop_during_dispatch_never_returns_model_reminder(tmp_path, stop_mode):
                 tmp_path / 'status.json', now=lambda:clock[0], sleep=lambda _:pytest.fail('No wait'))
     assert not (tmp_path / 'chat-delivery.json').exists()
     assert (tmp_path / 'chat-claim.json').exists()  # Recovery remains fenced by server dispatch state.
+
+
+@pytest.mark.parametrize('mode', ['STOP', 'expiry'])
+def test_stop_after_claim_prevents_dispatch(tmp_path, mode):
+    clock = [100]; operations = []
+    def handle(req):
+        op = req.url.path.rsplit('/', 1)[-1]; operations.append(op)
+        if op == 'join':
+            return httpx.Response(200, json={'binding_id': 'b', 'generation': 1})
+        if op == 'claim':
+            if mode == 'STOP':
+                (tmp_path / 'STOP').touch()
+            else:
+                clock[0] = 500
+            return httpx.Response(200, json={'status': 'ready', 'delivery': delivery()})
+        return httpx.Response(200, json={})
+    with httpx.Client(base_url='https://hub.test', transport=httpx.MockTransport(handle)) as client:
+        with pytest.raises(WatchStopped):
+            watch(config(), {'hook_event_name': 'Stop', 'session_id': 'native'}, client,
+                  tmp_path / 'status.json', now=lambda:clock[0])
+    assert 'dispatched' not in operations
+
+
+def test_explicit_new_join_key_clears_terminal_gate(tmp_path):
+    (tmp_path / 'status.json').write_text(json.dumps({'state': 'disconnected', 'join_key': 'old'}))
+    operations = []
+    def handle(req):
+        operations.append(req.url.path)
+        return httpx.Response(200, json={'binding_id': 'b', 'generation': 2} if req.url.path.endswith('join') else
+            {'status': 'budget_exhausted', 'delivery': None})
+    with httpx.Client(base_url='https://hub.test', transport=httpx.MockTransport(handle)) as client:
+        assert watch(config(), {'hook_event_name': 'Stop', 'session_id': 'native'}, client,
+            tmp_path / 'status.json', now=lambda:100) is None
+    assert operations[0].endswith('join')
