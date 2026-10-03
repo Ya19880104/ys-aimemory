@@ -80,6 +80,10 @@ def existing_install(project, source, origin, pin):
     expected_entry = {'command': str(directory / '.venv' / 'Scripts' / 'python.exe'),
                       'args': ['-B', str(directory / 'launcher.py'), '--config',
                                str(directory / 'connection.json'), '--compact']}
+    # Current adapter emits type=stdio; older owned receipts omit it. Both
+    # exact shapes still require the original complete configuration digest.
+    if 'type' in entry:
+        expected_entry['type'] = 'stdio'
     if (entry != expected_entry
             or receipt.get('status') != 'installed_not_native_verified'
             or Path(receipt.get('project', '')).resolve() != project
