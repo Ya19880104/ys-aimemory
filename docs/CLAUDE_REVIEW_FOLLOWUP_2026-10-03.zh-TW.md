@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | P1-1 暫時錯誤令 listener 結束 | 來源已修正 | `client_watch.py:watch` 對 transport/5xx/408/429 有有限退避，保留原 expiry；dispatch 409 重新 claim。`test_client_watch.py` 有 outage、pause race、expiry、撤銷測試；原生無人值守復原仍需觀察。 |
 | P1-2 failed batch 無法復原 | 來源已修正 | `delivery_service.py` 明確 re-enable 將同範圍設為 retry-ready、清 attempts、撤銷舊 lease；`test_failed_batch_explicit_reenable_retries_same_range_and_fences_old_lease` 檢查 cursor/range。不是自動丟棄批次。 |
-| P1-3 receipt 擠爆 byte budget | 來源已修正 | `session_service.py` 分頁先預留回條；`delivery_service.py:read_reservation` 提供 reserve/ceiling；near-limit pagination 測試覆蓋。單一過大事件仍可能需加 budget；Codex 僅允許真 budget error 後一次相同 scope read retry。 |
+| P1-3 receipt 擠爆 byte budget | 來源已修正 | `session_service.py` 分頁先預留回條；`delivery_service.py:prepare_tool_read` 提供 reserve/ceiling；near-limit pagination 測試覆蓋。單一過大事件仍可能需加 budget；Codex 僅允許真 budget error 後一次相同 scope read retry。 |
 | P1-4 AI 互回循環 | 替代有限政策 | Server 決定 depth：人類/manual root 0，自動回覆 1/2，depth 2 不再觸發。保留短 AI follow-up，不是 human-only/@mention-only。測試覆蓋 ping-pong 與 mixed batch 新人類 root；兩原生客戶端仍需驗收。 |
 | P1-5 setup 重播整房歷史 | 來源已修正 | `setup-chat.py` 預設 `after_sequence=None`，fresh join 從最新開始；明確 `--after-sequence 0` 才請求歷史。Renew/rejoin cursor 與 fresh join 分開驗收。 |
 | P1-6 通用寫入工具預授權 | 來源已修正 | 自動 bridge 只開 `chat_status/chat_read/chat_reply`，注入 room/delivery/lease/cursor/key；setup 僅授予三個精確專案工具，不授予通用 `memory_call`。實際安裝 permissions 仍需查核。 |
