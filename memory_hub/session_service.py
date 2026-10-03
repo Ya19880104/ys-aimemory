@@ -101,6 +101,26 @@ class SessionService:
         require(row is not None, 'not_found', 'Session or reference not found', 404)
         return dict(row)
 
+    def latest_artifacts(self, project_id, session_id, actor: SessionActor, limit=10):
+        """Small web sidebar index, independent of the loaded message window.
+
+        Keep this out of MCP read/list metadata: browser convenience must not
+        make every model poll pay for the same artifact index again.
+        """
+        require(isinstance(actor, SessionActor), 'forbidden', 'Authenticated actor required', 403)
+        require(project_id in actor.projects, 'forbidden', 'Project not authorized', 403)
+        require(type(limit) is int and 1 <= limit <= 20, 'invalid_arguments', 'Invalid index limit', 422)
+        with self.store.engine.connect() as conn:
+            room = self._room(conn, project_id, session_id)
+            artifacts = self.tables['artifacts']
+            rows = conn.execute(select(artifacts.c.metadata).where(
+                artifacts.c.project_id == project_id, artifacts.c.session_id == session_id,
+                artifacts.c.sequence <= room['latest_sequence']
+            ).order_by(artifacts.c.sequence.desc()).limit(limit + 1)).scalars().all()
+            keys = ('artifact_id', 'kind', 'title', 'sequence', 'covered_through_sequence', 'actor', 'created_at')
+            return {'items': [{key: row[key] for key in keys} for row in rows[:limit]],
+                    'has_more': len(rows) > limit}
+
     def _metadata(self, conn, room):
         artifacts = self.tables['artifacts']
         summary = conn.execute(select(artifacts.c.metadata).where(

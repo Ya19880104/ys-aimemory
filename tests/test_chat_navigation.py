@@ -23,6 +23,10 @@ pytestmark = pytest.mark.skipif(NODE is None, reason="Node.js is required for ch
     "project_change_during_deep_link",
     "project_change_clears_old_rooms",
     "close_pending_artifact",
+    "composer_enter_and_ime",
+    "restore_last_room",
+    "restore_authorization_and_explicit_url",
+    "latest_artifacts_outside_message_window",
 ])
 def test_chat_navigation(tmp_path, monkeypatch, scenario):
     # Render the actual page so IDs, focusability and form controls are not

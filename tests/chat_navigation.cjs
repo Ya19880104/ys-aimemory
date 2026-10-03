@@ -15,6 +15,7 @@ function documentFrom(html) {
       this.attributes = {}; this.value = ''; this.hidden = false; this.disabled = false;
       this._text = ''; this.scrollTop = 0; this.scrollHeight = 300; this.clientHeight = 300;
       this.scrollCalls = 0;
+      this.listeners = {}; this.submitCalls = 0;
     }
     set textContent(value) { this._text = String(value); this.children = []; }
     get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
@@ -39,6 +40,8 @@ function documentFrom(html) {
           || Object.hasOwn(this.attributes, 'tabindex'))) document.activeElement = this;
     }
     scrollIntoView() { this.scrollCalls++; }
+    addEventListener(name, listener) { this.listeners[name] = listener; }
+    requestSubmit() { this.submitCalls++; }
   }
   const root = new Element('root'), stack = [root];
   // Skip executable/style text; build the hierarchy from the real response.
@@ -69,25 +72,30 @@ const reading = (room, items = []) => ({session: room, items, next_after_sequenc
 function deferred() { let resolve; const promise = new Promise(done => { resolve = done; }); return {promise, resolve}; }
 async function settle() { for (let i = 0; i < 6; i++) await new Promise(setImmediate); }
 
-function boot(handler, session = roomB.session_id) {
+function boot(handler, session = roomB.session_id, options = {}) {
   const document = documentFrom(input.html), requests = [], navigation = [];
-  const location = {search: '?project=alpha&session=' + session};
+  const location = {search: options.search ?? ('?project=alpha&session=' + session)};
+  const storage = new Map(Object.entries(options.storage || {}));
+  const userKey = 'ys-memory:last-chat:' + document.getElementById('room-config').dataset.user;
+  if(options.saved)storage.set(userKey,JSON.stringify(options.saved));
   const context = {
     document, location, URLSearchParams, TextEncoder,
+    localStorage: {getItem: key=>storage.get(key)||null, setItem: (key,value)=>storage.set(key,value), removeItem:key=>storage.delete(key)},
     history: {replaceState(_state, _title, url) { navigation.push(url); location.search = new URL(url, 'http://example.test').search; }},
     setTimeout() { /* Polling is not part of these deterministic interactions. */ },
-    fetch: async (path, options) => {
-      assert.equal(options.credentials, 'same-origin');
-      assert.equal(options.cache, 'no-store');
-      assert.ok(!options.method || options.method === 'GET', 'Navigation must not write');
+    fetch: async (path, fetchOptions) => {
+      assert.equal(fetchOptions.credentials, 'same-origin');
+      assert.equal(fetchOptions.cache, 'no-store');
+      assert.ok(!fetchOptions.method || fetchOptions.method === 'GET', 'Navigation must not write');
       const q = Object.fromEntries(new URL(path, 'http://example.test').searchParams);
       requests.push(q);
+      if(q.op==='artifacts'&&!options.artifactsHandler)return {ok:true,status:200,json:async()=>listing([])};
       const data = await handler(q);
       return {ok: true, status: 200, json: async () => data};
     },
   };
   vm.runInNewContext(input.script, context, {filename: 'CHAT_JS', timeout: 1000});
-  return {document, requests, navigation, location, get: id => document.getElementById(id)};
+  return {document, requests, navigation, location, storage, userKey, get: id => document.getElementById(id)};
 }
 
 async function deepLinkOutsideFirstPage() {
@@ -190,11 +198,66 @@ async function projectChangeClearsOldRooms() {
   assert.ok(!ui.get('room-list').textContent.includes(roomA.title));
 }
 
+async function composerEnterAndIme() {
+  const ui=boot(q=>q.op==='list'?listing([roomB]):reading(roomB));
+  await settle();
+  const body=ui.get('message-body'),form=ui.get('message-form');body.value='一則訊息';
+  const key=extras=>{let prevented=false;body.listeners.keydown({key:'Enter',preventDefault(){prevented=true;},...extras});return prevented;};
+  assert.equal(key({shiftKey:true}),false);assert.equal(form.submitCalls,0);
+  assert.equal(key({isComposing:true}),false);assert.equal(key({keyCode:229}),false);
+  body.listeners.compositionstart();assert.equal(key({}),false);body.listeners.compositionend();
+  assert.equal(form.submitCalls,0,'IME confirmation must never send');
+  assert.equal(key({}),true);assert.equal(form.submitCalls,1);
+  key({repeat:true});assert.equal(form.submitCalls,1,'Holding Enter must not duplicate');
+  ui.get('send-message').disabled=true;key({});assert.equal(form.submitCalls,1);
+  ui.get('send-message').disabled=false;body.value=' \n ';key({});assert.equal(form.submitCalls,1);
+}
+
+async function restoreLastRoom() {
+  const ui=boot(q=>{assert.equal(q.project,'beta');return q.op==='list'?listing([roomC]):reading(roomC);},'',
+    {search:'',saved:{project:'beta',session:roomC.session_id}});
+  await settle();assert.equal(ui.get('active-room').textContent,roomC.title);
+  assert.equal(ui.get('chat-project').value,'beta');
+  assert.deepEqual(JSON.parse(ui.storage.get(ui.userKey)),{project:'beta',session:roomC.session_id});
+  assert.equal(ui.get('chat-error').hidden,true);
+}
+
+async function restoreAuthorizationAndExplicitUrl() {
+  const forbidden=boot(q=>{assert.equal(q.op,'list');assert.equal(q.project,'alpha');return listing([roomA]);},'',
+    {search:'',saved:{project:'unauthorized',session:roomC.session_id}});
+  await settle();assert.ok(!forbidden.requests.some(q=>q.op==='read'));
+  const explicit=boot(q=>{assert.equal(q.project,'alpha');return q.op==='list'?listing([roomA]):reading(roomA);},roomA.session_id,
+    {saved:{project:'beta',session:roomC.session_id}});
+  await settle();assert.equal(explicit.get('active-room').textContent,roomA.title);
+  const otherUser=boot(q=>{assert.equal(q.op,'list');return listing([roomA]);},'',
+    {search:'',storage:{'ys-memory:last-chat:another-user':JSON.stringify({project:'alpha',session:roomB.session_id})}});
+  await settle();assert.ok(!otherUser.requests.some(q=>q.op==='read'));
+}
+
+async function latestArtifactsOutsideMessageWindow() {
+  const recent={artifact_id:'1'.repeat(32),kind:'plan',title:'Recent reviewed plan',sequence:75,covered_through_sequence:74,created_at:2,actor:{display_name:'Codex'}};
+  const older={...recent,artifact_id:'2'.repeat(32),title:'Previous plan',sequence:12};
+  const room={...roomB,latest_sequence:150};
+  const ui=boot(q=>{if(q.op==='list')return listing([room]);if(q.op==='artifacts')return {items:[recent,older],has_more:false};assert.equal(q.op,'read');return reading(room);},room.session_id,{artifactsHandler:true});
+  await settle();
+  assert.equal(ui.get('artifact-list').querySelectorAll('button').length,2);
+  assert.ok(ui.get('artifact-list').textContent.includes(recent.title));
+  assert.ok(ui.get('artifact-list').textContent.includes(older.title));
+  assert.equal(ui.requests.filter(q=>q.op==='artifacts').length,1);
+  await ui.get('sync-now').onclick();
+  assert.equal(ui.requests.filter(q=>q.op==='artifacts').length,1,'Idle sync must not reload the same index');
+  assert.ok(!ui.requests.some(q=>q.op==='artifact'),'Index must not download document bodies');
+}
+
 const scenarios = {
   deep_link_outside_first_page: deepLinkOutsideFirstPage,
   project_change_during_deep_link: projectChangeDuringDeepLink,
   project_change_clears_old_rooms: projectChangeClearsOldRooms,
   close_pending_artifact: closePendingArtifact,
+  composer_enter_and_ime: composerEnterAndIme,
+  restore_last_room: restoreLastRoom,
+  restore_authorization_and_explicit_url: restoreAuthorizationAndExplicitUrl,
+  latest_artifacts_outside_message_window: latestArtifactsOutsideMessageWindow,
 };
 (async () => {
   assert.ok(Object.hasOwn(scenarios, input.scenario), 'Unknown test scenario');

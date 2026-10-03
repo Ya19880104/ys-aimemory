@@ -20,6 +20,7 @@ def room(tmp_path, monkeypatch):
     monkeypatch.setenv('HUB_WEB_ROLE', 'admin')
     monkeypatch.setenv('HUB_WEB_COOKIE_SECURE', 'false')
     monkeypatch.setenv('HUB_WEB_MCP_ENABLED', 'false')
+    monkeypatch.setenv('HUB_WORKER_DISPLAY_NAMES', json.dumps({'ai-a': 'Codex 測試端'}))
     app = create_app(database_url='sqlite:///' + str(tmp_path / 'room.db'), allow_sqlite=True,
         auth_tokens=json.dumps({'synthetic-room-worker-token-1234': {
             'worker_id': 'ai-a', 'projects': ['shared'], 'role': 'worker'}}))
@@ -51,7 +52,9 @@ def test_chat_page_and_incremental_human_worker_conversation(room):
     client, hub, _ = room
     page = client.get('/ui/chat?project=shared')
     assert page.status_code == 200
-    assert '共享對話' in page.text and '人類管理員' in page.text
+    assert '共享對話' in page.text and '以 管理員 ' in page.text
+    assert '人類管理員' not in page.text
+    assert 'Enter 傳送' in page.text and 'Shift+Enter 換行' in page.text
     assert "connect-src 'self'" in page.headers['content-security-policy']
     created = action(client, 'create_session', {'project_id': 'shared', 'title': '<script>room</script>'})
     assert created.status_code == 200, created.text
@@ -67,10 +70,31 @@ def test_chat_page_and_incremental_human_worker_conversation(room):
     data = client.get('/ui/chat/data', params={'op': 'read', 'project': 'shared', 'session': sid}).json()
     messages = [item for item in data['items'] if item['type'] == 'message']
     assert [item['actor']['kind'] for item in messages] == ['human', 'worker']
+    assert messages[1]['actor']['display_name'] == 'Codex 測試端'
+    assert messages[1]['actor']['id'] == 'ai-a'
     assert messages[0]['body'].startswith('<img')  # JSON data, rendered by textContent.
     empty = client.get('/ui/chat/data', params={'op': 'read', 'project': 'shared',
         'session': sid, 'after': data['next_after_sequence']}).json()
     assert empty['items'] == []
+
+
+def test_latest_artifacts_index_is_scoped_bounded_and_omits_contents(room):
+    client, hub, admin = room
+    sid = action(client, 'create_session', {'project_id': 'shared', 'title': 'Index'}).json()['session_id']
+    for index in range(12):
+        hub.call('create_session_artifact', {'project_id': 'shared', 'session_id': sid,
+            'kind': 'plan', 'title': f'Plan {index}', 'content': 'private full content',
+            'covered_through_sequence': 0, 'idempotency_key': f'plan-{index}'}, admin)
+    data = client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'shared', 'session': sid})
+    assert data.status_code == 200
+    result = data.json()
+    assert [item['title'] for item in result['items']] == [f'Plan {i}' for i in range(11, 1, -1)]
+    assert result['has_more'] and 'private full content' not in data.text
+    assert all('content' not in item and 'reference_message_ids' not in item for item in result['items'])
+    assert client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'private', 'session': sid}).status_code == 404
+    assert client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'shared', 'session': '0'*32}).status_code == 404
+    client.cookies.clear()
+    assert client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'shared', 'session': sid}).status_code == 401
 
 
 def test_chat_rejects_csrf_actor_forgery_and_cross_project(room):
