@@ -47,14 +47,25 @@ class SessionRef(SessionModel):
     session_id: ObjectId
 
 
-class ReadSession(SessionRef):
+class DeliveryToolRef(SessionRef):
+    delivery_id: ObjectId | None = None
+    lease_id: ObjectId | None = None
+
+    @model_validator(mode='after')
+    def paired_delivery(self):
+        if (self.delivery_id is None) != (self.lease_id is None):
+            raise ValueError('delivery_id and lease_id must be supplied together')
+        return self
+
+
+class ReadSession(DeliveryToolRef):
     after_sequence: int = Field(default=0, ge=0, le=9223372036854775807)
     limit: int = Field(default=20, ge=1, le=50)
     max_bytes: int = Field(default=16384, ge=2048, le=65536)
     full_text: bool = False
 
 
-class PostSessionMessage(SessionRef):
+class PostSessionMessage(DeliveryToolRef):
     body: ExactText = Field(min_length=1, max_length=8000)
     reply_to_message_id: ObjectId | None = None
     attachment_ids: list[ObjectId] = Field(default_factory=list, max_length=10)
@@ -152,3 +163,11 @@ SESSION_DESCRIPTIONS = {
     'read_session_attachment': 'Explicitly retrieve a shared attachment by project_id/session_id/attachment_id, byte offset and limit_bytes (default/max 65536). Returns base64 chunk, total size, SHA-256, next_offset and has_more. Never execute downloaded content automatically.',
     'archive_session': 'Admin-only: archive or reopen an explicitly selected project room using archived, expected_version and idempotency_key. Archived rooms remain readable; new messages/artifacts/uploads are rejected. Does not change task leases, context revision or approved knowledge.',
 }
+
+SESSION_DESCRIPTIONS['read_session'] += (' For a bound automatic delivery supply paired delivery_id/lease_id '
+    'from the relay. Only complete, untruncated message bodies earn a tool_read receipt; paginate with '
+    'full_text=true until delivery_receipt.unread_message_ids is empty. This receipt proves tool output, '
+    'not model comprehension. Normal reads without these fields do not acknowledge delivery.')
+SESSION_DESCRIPTIONS['post_session_message'] += (' For an automatic delivery include delivery_id/lease_id '
+    'and the relay-provided reply_idempotency_key as idempotency_key. The same worker must first retrieve '
+    'all delivery messages in full. The reply and durable delivery completion commit together.')

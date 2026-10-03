@@ -162,6 +162,8 @@ def create_app(*, database_url=None, auth_tokens=None, allow_sqlite=None):
     app = FastAPI(title="Project Memory Hub", version="0.3.0", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.hub = hub
     app.state.mcp = mcp
+    from .delivery_api import install_delivery_api
+    install_delivery_api(app, hub, principal_context)
     app.add_middleware(AuthenticationMiddleware, tokens=tokens, credentials=hub.credentials)
     app.add_middleware(RequestSizeMiddleware)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)

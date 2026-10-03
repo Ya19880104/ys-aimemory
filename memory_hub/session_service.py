@@ -60,11 +60,16 @@ class SessionService:
 
     def __init__(self, store, clock=time.time):
         self.store, self.clock, self.tables = store, clock, SESSION_TABLES
+        self.delivery = None
 
     def call(self, name, arguments, actor: SessionActor):
         require(isinstance(actor, SessionActor), 'forbidden', 'Authenticated actor required', 403)
         require(name in SESSION_MODELS, 'unknown_tool', 'Unknown session tool', 404)
         a = SESSION_MODELS[name].model_validate(arguments).model_dump()
+        # Preserve pre-v6 mutation hashes for requests without delivery metadata.
+        if name in {'read_session', 'post_session_message'} and a.get('delivery_id') is None:
+            a.pop('delivery_id', None)
+            a.pop('lease_id', None)
         project = a.get('project_id')
         if project is not None:
             require(project in actor.projects, 'forbidden', 'Project not authorized', 403)
@@ -73,6 +78,12 @@ class SessionService:
         if name in {'create_session', 'archive_session'}:
             require(actor.role == 'admin', 'forbidden', 'Admin role required', 403)
         if name in self.READS:
+            if name == 'read_session' and a.get('delivery_id') is not None:
+                require(self.delivery is not None, 'delivery_unavailable', 'Delivery service unavailable', 503)
+                with self.store.transaction(project, initialize_index=False) as (_, conn):
+                    result = self._read(name, a, actor, conn)
+                    self.delivery.record_tool_read(conn, a, actor, result)
+                    return result
             with self.store.engine.connect() as conn:
                 return self._read(name, a, actor, conn)
         with self.store.transaction(project, initialize_index=False) as (state, conn):
@@ -90,7 +101,14 @@ class SessionService:
                 return previous['result']
             if room is not None and name != 'archive_session':
                 require(room['status'] == 'open', 'session_archived', 'Session is archived')
+            if name == 'post_session_message' and a.get('delivery_id') is not None:
+                require(self.delivery is not None, 'delivery_unavailable', 'Delivery service unavailable', 503)
+                self.delivery.validate_tool_reply(conn, a, actor)
+            elif name == 'post_session_message' and self.delivery is not None:
+                self.delivery.guard_unbound_post(conn, a, actor)
             result = self._write(name, a, actor, conn, state, room, self.clock())
+            if name == 'post_session_message' and a.get('delivery_id') is not None:
+                self.delivery.record_tool_reply(conn, a, actor, result)
             conn.execute(requests.insert().values(**key, payload_hash=digest, result=result))
             return result
 
