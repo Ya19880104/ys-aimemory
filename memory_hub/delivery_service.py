@@ -456,7 +456,13 @@ class DeliveryService:
         if blocked == 'expired':
             return
         require(blocked is None, 'delivery_stopped', 'Bound participant delivery is ' + (blocked or 'stopped'))
-        require(self._pending(conn, binding) is None, 'delivery_metadata_required',
+        pending = self._pending(conn, binding)
+        # An exhausted receiver cannot retry an expired lease. Keep its unread
+        # batch and cursor intact for rejoin; stronger controls were checked above.
+        if (pending is not None and binding['turns_used'] >= binding['max_turns'] and
+                pending['lease_until'] <= self.clock()):
+            return
+        require(pending is None, 'delivery_metadata_required',
                 'An outstanding delivery must be answered with its delivery_id and lease_id')
 
     def record_tool_reply(self, conn, a, actor, result):

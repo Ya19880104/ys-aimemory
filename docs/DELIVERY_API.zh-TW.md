@@ -76,7 +76,7 @@
 
 本人或管理員 `POST /v1/chat/disconnect`：`{project_id,binding_id,expected_version}`，明確退出自動模式。它記錄 `released_at`、停用綁定、增加 generation，把舊的未完成 delivery 標記 `released`；訊息仍在事件紀錄中，已處理游標不會前進。之後可以正常手動發文。重新加入保留游標，未處理訊息仍會交付。Disconnect 使用版本 CAS；回應不明時應重新查看 status，確認是否已 `disconnected`，而非盲目重送舊版本。
 
-單純到期後，若綁定原本啟用、worker／房間權限仍有效，可恢復一般手動發文；不推進交付游標、不復活舊 lease，舊交付讀取／回覆仍會被拒絕。暫停、停用綁定、封存或撤銷權限依舊阻擋發文。批次失敗或預算用完不會解除仍有效的綁定；要退出自動模式請明確 disconnect。到期或解除後，一般請求視為手動請求；相同 Bearer 憑證無法從密碼學上判定呼叫者意圖。因此 relay 到期或收到 disconnect 必須停止，發生錯誤時也絕不能移除 delivery 欄位重發。
+單純到期後，若綁定原本啟用、worker／房間權限仍有效，可恢復一般手動發文；不推進交付游標、不復活舊 lease，舊交付讀取／回覆仍會被拒絕。暫停、停用綁定、封存或撤銷權限依舊阻擋發文。預算用完且未完成批次的 lease 已到期時（包括 failed 批次），也可恢復一般手動發文；不解除綁定、不丟棄未讀訊息、不推進游標或復活收據。仍有效的 lease，或仍有預算的 failed 批次，依舊要求 delivery 欄位；要退出自動模式請明確 disconnect。到期或解除後，一般請求視為手動請求；相同 Bearer 憑證無法從密碼學上判定呼叫者意圖。因此 relay 到期或收到 disconnect 必須停止，發生錯誤時也絕不能移除 delivery 欄位重發。
 
 Cookie 管理員 UI 直接透過 `hub.delivery.call('status'|'pause'|'control'|'disconnect', arguments, SessionActor)` 共用上述檢查，另外由 UI 邊界驗證登入、CSRF 與 nonce。唯讀成員可以看狀態，不能控制接線。
 
