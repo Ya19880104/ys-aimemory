@@ -21,6 +21,7 @@ import sys
 import threading
 import time
 import uuid
+import httpx
 
 TOOLS = ('get_worker_inbox', 'read_session', 'post_session_message')
 SYSTEM_ENV = {'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATH', 'PATHEXT', 'TEMP', 'TMP',
@@ -457,22 +458,54 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
 
 
 def receiver(config, client, directory, *, turn=native_turn, now=time.time, sleep=time.sleep):
-    def call(operation, arguments):
-        result = client.post('/v1/chat/' + operation, json=arguments)
-        result.raise_for_status()
-        return result.json()
-
     stop = lambda: (directory / 'STOP').exists() or now() >= config['expires_at']
+    class Stopped(Exception):
+        pass
+
+    def call(operation, arguments, *, retry=False):
+        delay = 2
+        while True:
+            if retry and stop():
+                raise Stopped()
+            try:
+                result = client.post('/v1/chat/' + operation, json=arguments)
+                if not retry or result.status_code < 500 and result.status_code not in {408, 429}:
+                    result.raise_for_status()
+                    return result.json()
+            except httpx.TransportError:
+                if not retry:
+                    raise
+            sleep(min(delay, max(0, config['expires_at'] - now())))
+            delay = min(30, delay * 2)
+
     if stop():
         return {'state': 'stopped'}
-    binding = call('join', {k: config[k] for k in ('project_id', 'session_id', 'native_session_id',
-        'max_turns', 'after_sequence', 'idempotency_key')} | {'client': 'codex',
-        'display_name': 'Codex 本機' if config.get('language') == 'zh-TW' else 'Codex Local',
-        'ttl_seconds': config['ttl_seconds']})
+    try:
+        binding = call('join', {k: config[k] for k in ('project_id', 'session_id', 'native_session_id',
+            'max_turns', 'after_sequence', 'idempotency_key')} | {'client': 'codex',
+            'display_name': 'Codex 本機' if config.get('language') == 'zh-TW' else 'Codex Local',
+            'ttl_seconds': config['ttl_seconds']}, retry=True)
+    except Stopped:
+        return {'state': 'stopped'}
     if (binding.get('worker_id') != config['worker_id'] or binding.get('project_id') != config['project_id']
         or binding.get('session_id') != config['session_id']):
         raise ReceiverError('binding_identity_mismatch')
+    if type(binding.get('generation')) is not int or binding['generation'] < 1:
+        raise ReceiverError('invalid_binding_generation')
     scope = {'project_id': config['project_id'], 'binding_id': binding['binding_id']}
+    claim_path = directory / 'receiver-claim.json'
+    if claim_path.is_symlink():
+        raise ReceiverError('linked_claim_state')
+    pending_claim = json.loads(claim_path.read_text()) if claim_path.exists() else None
+    if pending_claim is not None and (not isinstance(pending_claim, dict)
+            or set(pending_claim) != set(scope) | {'generation', 'request_id', 'lease_seconds'}
+            or any(pending_claim[k] != v for k, v in scope.items())
+            or type(pending_claim['generation']) is not int
+            or pending_claim['generation'] != binding['generation']
+            or pending_claim['lease_seconds'] != 300
+            or not isinstance(pending_claim['request_id'], str)
+            or not re.fullmatch('[0-9a-f]{32}', pending_claim['request_id'])):
+        raise ReceiverError('claim_state_scope_changed')
     def disable_own_binding():
         # A stop/control receipt is never a read/reply acknowledgement. CAS also
         # keeps an administrator's newer binding change from being overwritten.
@@ -484,9 +517,21 @@ def receiver(config, client, directory, *, turn=native_turn, now=time.time, slee
     try:
         while not stop():
             if now() - last_beat >= 15:
-                call('heartbeat', scope)
+                call('heartbeat', scope, retry=True)
                 last_beat = now()
-            response = call('claim', scope | {'lease_seconds': 300})
+            if pending_claim is None:
+                pending_claim = scope | {'lease_seconds': 300, 'generation': binding['generation'],
+                                         'request_id': uuid.uuid4().hex}
+                # Written under the receiver's kernel lock before any HTTP claim.
+                save(claim_path, pending_claim)
+            try:
+                response = call('claim', pending_claim, retry=True)
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 409 and exc.response.json().get('error') == 'stale_claim':
+                    pending_claim = None
+                    claim_path.unlink()
+                    continue
+                raise
             polls += 1
             status = response['status']
             record = {'state': status, 'at': now(), 'polls': polls, 'native_turns': turns,
@@ -505,7 +550,18 @@ def receiver(config, client, directory, *, turn=native_turn, now=time.time, slee
                 delivery = {k: delivery[k] for k in ('delivery_id', 'lease_id', 'after_sequence',
                     'through_sequence', 'message_ids', 'reply_idempotency_key')}
                 # A dispatch receipt never advances processed_sequence or pretends read.
-                call('dispatched', scope | {k: delivery[k] for k in ('delivery_id', 'lease_id')})
+                try:
+                    call('dispatched', scope | {k: delivery[k] for k in ('delivery_id', 'lease_id')}, retry=True)
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code != 409:
+                        raise
+                    # A fenced lease cannot wake the model; the original claim
+                    # remains pending until the server explicitly declares it stale.
+                    sleep(1)
+                    continue
+                if stop():
+                    raise Stopped()
+                save(directory / 'receiver-delivery.json', delivery)
                 result = turn(config, delivery, directory, lambda: call('heartbeat', scope), stop)
                 turns += 1
                 record['native_turns'] = turns
@@ -517,11 +573,19 @@ def receiver(config, client, directory, *, turn=native_turn, now=time.time, slee
                     break
             elif status not in {'idle', 'paused', 'busy'}:
                 break
+            if status == 'idle':
+                pending_claim = None
+                claim_path.unlink()
             sleep(3)
         else:
             record = {'state': 'stopped', 'at': now(), 'native_turns': turns, 'binding_id': binding['binding_id']}
             if (directory / 'STOP').exists():
                 disable_own_binding()
+        save(directory / 'receiver-status.json', record)
+        return record
+    except Stopped:
+        disable_own_binding()
+        record = {'state': 'stopped', 'at': now(), 'native_turns': turns, 'binding_id': binding['binding_id']}
         save(directory / 'receiver-status.json', record)
         return record
     except Exception:
