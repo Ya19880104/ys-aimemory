@@ -250,14 +250,17 @@ def test_automatic_setup_commands_escape_values_and_do_not_activate():
 const fields = { 'auto-worker':{value:"worker'o"}, 'auto-hours':{value:'1'}, 'auto-turns':{value:'6'}, 'auto-client':{value:'codex'}, 'auto-instructions':{}, 'auto-setup-status':{} };
 const $=id=>fields[id]||(fields[id]={});
 const state={project:"project'o",room:{session_id:'a'.repeat(32)}};
-const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32)}};
+const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32),claudeGuide:'/help?lang=en',codexGuide:'https://docs.example.test/CODEX_CHAT_SETUP.md'}};
+const location={href:'https://hub.example.com/ui/chat'};
 const UI_LANGUAGE='en'; const uiText=key=>key;
 let copied=''; const navigator={clipboard:{writeText:async text=>{copied=text;}}};
 """ + handler + r"""
 (async()=>{ $('auto-client').onchange(); if(!$('auto-project-hint').hidden)throw Error('Codex path hint'); await $('copy-auto-setup').onclick();
 if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('3A9DC4603260D40E39FC04A3B639F35DF72533B53C809CAC3D6E317E0AC22B81'))throw Error('Codex command');
+if(!copied.includes('# https://docs.example.test/CODEX_CHAT_SETUP.md'))throw Error('Codex guide');
 fields['auto-client'].value='claude';$('auto-client').onchange();if($('auto-project-hint').hidden)throw Error('Claude path hint');await $('copy-auto-setup').onclick();
 if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E'))throw Error('Claude command');
+if(!copied.includes('# https://hub.example.com/help?lang=en'))throw Error('Claude offline guide');
 copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if(copied)throw Error('invalid budget copied');
 })().catch(e=>{console.error(e);process.exitCode=1});
 """
@@ -280,7 +283,8 @@ def test_complete_installation_payload_is_safe_powershell_with_hostile_worker():
 const fields={'auto-worker':{value:WORKER},'auto-hours':{value:'1'},'auto-turns':{value:'6'},'auto-client':{value:'codex'},'auto-instructions':{},'auto-setup-status':{}};
 const $=id=>fields[id]||(fields[id]={});
 const state={project:'shared',room:{session_id:'a'.repeat(32)}};
-const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32)}};
+const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32),claudeGuide:'/help?lang=en',codexGuide:'https://docs.example.test/CODEX_CHAT_SETUP.md'}};
+const location={href:'https://hub.example.com/ui/chat'};
 let UI_LANGUAGE='en';const uiText=key=>CATALOG[key][UI_LANGUAGE];let copied='';
 const navigator={clipboard:{writeText:async text=>{copied=text;}}};
 """.replace('WORKER', json.dumps(worker)) + handler + r"""
