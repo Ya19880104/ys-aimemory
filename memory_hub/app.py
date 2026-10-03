@@ -17,6 +17,7 @@ from .service import Hub
 from .store import HubError, Store
 from .client_bundle import BUNDLE_ROUTE, install_client_bundle
 from .web_sessions import CHAT_ROUTES, install_sessions
+from .web_quickstart import IMAGES
 
 ACCOUNT_ROUTES = {'/ui/users', '/ui/users/create', '/ui/users/update', '/ui/users/password',
                   '/ui/users/enable', '/ui/users/disable', '/ui/account/password'}
@@ -34,7 +35,7 @@ class AuthenticationMiddleware:
         if scope['type'] == 'http' and scope['path'] in CHAT_ROUTES | ACCOUNT_ROUTES:
             # Each exact route independently validates its opaque human session.
             return await self.app(scope, receive, send)
-        if scope['type'] == 'http' and scope.get('method') in {'GET','HEAD'} and scope['path'] in {'/help','/downloads/ys-ai-memory-ca.crt', BUNDLE_ROUTE}:
+        if scope['type'] == 'http' and scope.get('method') in {'GET','HEAD'} and scope['path'] in {'/help','/downloads/ys-ai-memory-ca.crt', BUNDLE_ROUTE, *('/help/images/' + name for name in IMAGES)}:
             return await self.app(scope, receive, send)
         if scope['type'] == 'http' and scope['path'] in {'/ui/mcp','/ui/mcp/project','/ui/mcp/issue','/ui/mcp/rotate','/ui/mcp/revoke'}:
             return await self.app(scope, receive, send)

@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 
-DOWNLOAD = '/downloads/ys-memory-stdio-1.1.0.zip'
+DOWNLOAD = '/downloads/ys-memory-stdio-1.1.1.zip'
 TOKEN = 'synthetic-bundle-worker-token-123456'
 
 
@@ -48,7 +48,7 @@ def test_download_is_public_deterministic_and_contains_only_client_assets(bundle
     assert response.headers['content-type'] == 'application/zip'
     assert response.headers['cache-control'] == 'no-store'
     assert response.headers['x-content-type-options'] == 'nosniff'
-    assert response.headers['content-disposition'] == 'attachment; filename="ys-memory-stdio-1.1.0.zip"'
+    assert response.headers['content-disposition'] == 'attachment; filename="ys-memory-stdio-1.1.1.zip"'
     assert response.content == client.get(DOWNLOAD).content
     head = client.head(DOWNLOAD)
     assert head.status_code == 200 and head.content == b''

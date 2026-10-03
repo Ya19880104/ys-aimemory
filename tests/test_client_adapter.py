@@ -93,7 +93,7 @@ def test_print_claude_config_is_offline_needs_no_token_and_changes_no_files(adap
     server = json.loads(result.stdout)['mcpServers']['ys_memory']
     assert server == {'type': 'stdio', 'command': str(Path(sys.executable).resolve()),
                       'args': ['-B', str(Path(adapter.__file__).resolve()), '--config', str(path.resolve())],
-                      'env': {'YS_AIMEMORY_TOKEN': '${YS_AIMEMORY_TOKEN}'}}
+                      'env': {'YS_AIMEMORY_TOKEN': '${YS_AIMEMORY_TOKEN:-}'}}
     assert before == {f.name: f.read_bytes() for f in path.parent.iterdir()}
 
 
@@ -103,7 +103,7 @@ def test_missing_token_exits_without_leaking_config_or_exceptions(adapter, conne
     result = subprocess.run([sys.executable, '-B', adapter.__file__, '--config', str(path)],
                             capture_output=True, text=True, timeout=15)
     assert result.returncode == 1 and result.stdout == ''
-    assert result.stderr == 'bridge_stopped: ValueError\n'
+    assert result.stderr == 'bridge_stopped: WorkerTokenUnavailable\n'
 
 
 def test_accidental_secret_command_argument_is_not_echoed(adapter):
@@ -136,7 +136,7 @@ def test_compact_print_config_is_opt_in_and_offline(adapter, connection, monkeyp
     assert result.returncode == 0 and result.stderr == ''
     server = json.loads(result.stdout)['mcpServers']['ys_memory']
     assert server['args'] == ['-B', str(Path(adapter.__file__).resolve()), '--config', str(path.resolve()), '--compact']
-    assert server['env'] == {'YS_AIMEMORY_TOKEN': '${YS_AIMEMORY_TOKEN}'}
+    assert server['env'] == {'YS_AIMEMORY_TOKEN': '${YS_AIMEMORY_TOKEN:-}'}
 
 
 def test_compact_discovery_follows_pages_but_returns_only_one_schema(adapter):

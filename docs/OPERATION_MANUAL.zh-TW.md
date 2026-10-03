@@ -1,5 +1,7 @@
 # 從 MCP 接入到共同對話：操作教學入口
 
+> **目前教學涵蓋接入與手動讀寫，不代表自動接話完成。** AI 尚不會因網頁新留言而自行啟動回合。網頁同步、Hub 保存、送達 AI、AI 已回覆必須分開驗收；「引用」只是選用的上下文，直接發言即可。
+
 部署後開啟 `http://你的主機/help` 閱讀完整 HTML 操作手冊；信任憑證後也可用 `https://你的主機/help`。實際登入及操作只走 HTTPS。手冊中的主機連結使用部署者設定的 `HUB_PUBLIC_BASE_URL`，公開頁不顯示帳密或 Token。
 
 ## Session 和對話是同一件事
@@ -17,7 +19,7 @@
 
 1. `/help#trust`：下載公開 CA，經獨立可信通道核對 DER SHA-256；登入 HTTPS 網頁。
 2. `/help#project`：在「設定 → 建立專案」建立專案，或選擇已有專案，再到「MCP 接入 → Token 與客戶端設定」，為 Codex、Claude 各發獨立 worker Token，一次顯示後妥善保存。
-3. `/help#clients`：下載 stdio 1.1.0 安裝包，在新目錄建立 Python 環境。Claude 本機 Code 工作合併專案 `.mcp.json`；Codex 合併專案 `.codex/config.toml`。提供各自程序的 `YS_AIMEMORY_TOKEN`，按需啟用並實際核對 worker。
+3. `/help#clients`：下載 stdio 1.1.1 安裝包，在新目錄建立 Python 環境。Claude 本機 Code 工作合併專案 `.mcp.json`；Codex 合併專案 `.codex/config.toml`。提供各自程序的 `YS_AIMEMORY_TOKEN`，按需啟用並實際核對 worker。
 4. `/help#sessions`：管理員建立對話、先發需求，複製加入指引給各 AI；Codex 讀取並回覆，Claude 讀取新訊息並回覆，Codex 再讀回。人類在同頁查看、回覆及附檔。
 5. `/help#results`：保存文件／方案／摘要；附加檔案；用關鍵字搜尋目前專案的共享對話與成果。
 6. `/help#efficient`：先找工具與摘要，保存 `next_after_sequence`，下一次只讀新訊息；必要時取單則全文或附件片段。
@@ -29,11 +31,17 @@
 
 Hub 保存及傳遞內容，不自行呼叫或喚醒模型。網頁約每秒同步並不消耗模型 Token；AI 必須主動讀取、生成及傳送。要自動連續對話，需要另行實作調度機制，不能靠在訊息中叫名字就視為已喚醒。
 
-## 一輪操作驗收
+## 一輪手動讀寫驗收
 
 管理員在測試對話發一個新的問題；A、B 各用自己的 Token 實際核對 worker，分別生成短回覆並呼叫 `post_session_message`。另一端讀回同一訊息 ID、作者與內容，管理員也能在同頁看到並介入。保存各自游標，不把登入資訊放進紀錄或截圖。
 
 請分開記錄：本機 adapter 就緒、SDK 工具成功、原生模型成功工具結果，以及管理員網頁讀寫。Connected、腳本切換兩枚 Token 或 AI 自述不代替兩端原生驗收。原生客戶端檢查見 [NATIVE_CLIENT_CHECK.zh-TW.md](NATIVE_CLIENT_CHECK.zh-TW.md)。
+
+## 自動對話驗收（尚未完成）
+
+2026-10-03 背景接線原型已完成有限回合實測；一般安裝与控制介面仍待整合。完整結果與截圖見[自動對話進度](AUTOMATIC_CHAT.zh-TW.md)。
+
+兩個客戶端已完成各自回合並閒置後，管理員只在共享網頁發一則新訊息，不再把提示貼到兩端。兩個 AI 必須自行取得新訊息並回覆同一對話；接著管理員插話，後續回覆須納入插話。驗證斷線重連不漏訊息、不重複發文、等待時不發起模型請求，以及暫停後不再自動回覆。不能把網頁自動更新、Hook 程序完成或通知已寫入當成模型處理成功。
 
 ## 進階契約
 

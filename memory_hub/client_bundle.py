@@ -8,10 +8,10 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 from fastapi.responses import Response
 
 
-BUNDLE_VERSION = '1.1.0'
+BUNDLE_VERSION = '1.1.1'
 BUNDLE_NAME = 'ys-memory-stdio-' + BUNDLE_VERSION + '.zip'
 BUNDLE_ROUTE = '/downloads/' + BUNDLE_NAME
-README = '''YS Memory stdio HTTPS adapter 1.1.0
+README = '''YS Memory stdio HTTPS adapter 1.1.1
 
 Extract into a new directory you choose. Never overwrite an existing client or
 MCP configuration. Check the public CA DER SHA-256 in connection.json against

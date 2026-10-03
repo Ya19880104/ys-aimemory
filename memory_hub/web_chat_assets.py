@@ -28,6 +28,8 @@ html,body{overflow-x:clip}
 .room-heading button{background:transparent;color:var(--muted);border:1px solid var(--line);font-size:12px;padding:5px 10px;flex-shrink:0}
 .sync-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 28px;color:var(--muted);font-size:11px}
 .sync-bar button{padding:4px 0;font-size:12px;background:transparent;color:var(--accent);flex-shrink:0}
+.delivery-notice{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0 28px 8px;padding:8px 12px;border-left:2px solid var(--accent);background:var(--panel);font-size:12px;line-height:1.6}
+.delivery-notice span{color:var(--muted)}.delivery-notice a{font-size:11px}
 #chat-error{margin:0 20px 8px;background:var(--chat-error-bg);padding:10px 13px;color:var(--chat-error-text);font-size:13px;border-radius:8px;overflow-wrap:anywhere}
 #chat-stream{overflow-y:auto;flex:1;min-height:180px;padding:8px 28px 24px;scroll-behavior:auto}
 .chat-empty{color:var(--muted);text-align:center;margin:60px auto;max-width:410px;font-size:15px}.chat-empty strong{display:block;color:var(--text);font-size:20px;margin-bottom:12px}.chat-empty p{font-size:13px;line-height:1.9}
@@ -102,17 +104,17 @@ CHAT_JS = r'''
   }
   function roomFields(){return {project_id:state.project,session_id:state.room.session_id};}
   function linkFile(file){const a=node('a',file.filename);a.href='/ui/chat/file?'+new URLSearchParams({project:state.project,session:state.room.session_id,attachment:file.attachment_id});return a;}
-  function setReply(message) {state.reply=message;const p=$('reply-preview');p.replaceChildren();p.hidden=!message;if(message){p.append(node('span','回覆 #'+message.sequence+' · '+message.actor.display_name));const x=node('button','取消');x.type='button';x.onclick=()=>setReply(null);p.append(x);}}
+  function setReply(message) {state.reply=message;const p=$('reply-preview');p.replaceChildren();p.hidden=!message;if(message){p.append(node('span','引用 #'+message.sequence+' · '+message.actor.display_name));const x=node('button','取消引用');x.type='button';x.onclick=()=>setReply(null);p.append(x);}}
   function appendEvent(item) {
     const article=node('article',undefined,'chat-event '+(item.actor?.kind||'system')+(item.type==='message'?'':' system-event'));article.dataset.sequence=item.sequence;
     const header=node('header'), actor=item.actor||{kind:'system',display_name:'系統'};
     header.append(node('span',actor.kind==='human'?'人類':actor.kind==='worker'?'AI':'系統','actor-mark '+actor.kind),node('span',actor.display_name||actor.id,'actor-name'));
     const when=node('time',new Date(item.created_at*1000).toLocaleString());header.append(when);article.append(header);
     if(item.type==='message') {
-      if(item.reply_to_message_id){const parent=[...state.events.values()].find(e=>e.message_id===item.reply_to_message_id);article.append(node('div',parent?'回覆 #'+parent.sequence+' · '+parent.actor.display_name:'回覆較早訊息','reply-ref'));}
+      if(item.reply_to_message_id){const parent=[...state.events.values()].find(e=>e.message_id===item.reply_to_message_id);article.append(node('div',parent?'引用 #'+parent.sequence+' · '+parent.actor.display_name:'引用較早訊息','reply-ref'));}
       article.append(node('div',item.body,'chat-message'));
       if(item.body_truncated)article.append(node('small','此訊息尚未完整載入。'));
-      const reply=node('button','回覆 #'+item.sequence,'reply-button');reply.type='button';reply.onclick=()=>{$('message-body').focus();setReply(item);};article.append(reply);
+      const reply=node('button','引用 #'+item.sequence,'reply-button');reply.type='button';reply.onclick=()=>{$('message-body').focus();setReply(item);};article.append(reply);
       for(const f of item.attachments||[]){article.append(linkFile(f));state.files.set(f.attachment_id,f);}
     } else if(item.type==='artifact') {
       const record=item.artifact||item;state.artifacts.set(record.artifact_id,record);
@@ -142,7 +144,7 @@ CHAT_JS = r'''
       state.room=r.session;for(const item of r.items)state.events.set(item.sequence,item);state.cursor=Math.max(state.cursor,r.next_after_sequence);more=r.has_more;
       if(r.items.length)renderEvents();controls();
     } while(more&&++pages<5);
-    $('sync-status').textContent='已同步至 #'+state.cursor+' · '+new Date().toLocaleTimeString()+(more?' · 繼續載入中':'');
+    $('sync-status').textContent='網頁已同步至 #'+state.cursor+' · '+new Date().toLocaleTimeString()+(more?' · 繼續載入中':'');
   }
   function saveDraft(){if(state.room)state.drafts.set(state.room.session_id,{body:$('message-body').value,reply:state.reply,files:[...state.pendingFiles]});}
   async function selectRoom(room) {

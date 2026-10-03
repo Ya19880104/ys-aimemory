@@ -4,7 +4,7 @@
 `/downloads/ys-ai-memory-ca.crt`；登入後的 `/ui/mcp` 提供建立記憶庫、
 簽發 worker token、輪替、撤銷，以及 Codex／Claude Code 設定範本。
 Claude stdio 安裝包下載為 HTTPS 的
-`/downloads/ys-memory-stdio-1.1.0.zip`；公開手冊與後台提供入口。
+`/downloads/ys-memory-stdio-1.1.1.zip`；公開手冊與後台提供入口。
 
 部署需設定 `HUB_WEB_ROLE=admin`、`HUB_WEB_MCP_ENABLED=true`，以及固定的
 `HUB_WEB_OWNER_ID` UUID。這個 UUID 代表本安裝的單一網頁管理帳號，

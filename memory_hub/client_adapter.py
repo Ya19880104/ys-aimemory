@@ -29,7 +29,7 @@ from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 
 
-VERSION = '1.1.0'
+VERSION = '1.1.1'
 CA_NAME = 'ys-ai-memory-ca.crt'
 _PEM = re.compile(rb'-----BEGIN CERTIFICATE-----\r?\n[A-Za-z0-9+/=\r\n]+-----END CERTIFICATE-----')
 _DNS = re.compile(r'(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?')
@@ -39,6 +39,18 @@ class _Parser(argparse.ArgumentParser):
     def error(self, message):
         # An accidentally supplied token or URL must not reach stderr/history.
         raise ValueError('Command arguments invalid')
+
+
+class WorkerTokenUnavailable(ValueError):
+    pass
+
+
+def worker_token() -> str:
+    token = os.environ.get('YS_AIMEMORY_TOKEN', '')
+    if (not token or len(token) > 4096 or '${' in token
+            or any(not 33 <= ord(c) <= 126 for c in token)):
+        raise WorkerTokenUnavailable('Worker token unavailable')
+    return token
 
 
 def load_connection(path: Path) -> dict:
@@ -97,9 +109,7 @@ def verified_context(config: dict) -> ssl.SSLContext:
 
 
 async def serve(config: dict) -> None:
-    token = os.environ.get('YS_AIMEMORY_TOKEN', '')
-    if not token or len(token) > 4096 or any(not 33 <= ord(c) <= 126 for c in token):
-        raise ValueError('Worker token unavailable')
+    token = worker_token()
     context = verified_context(config)
     async with httpx.AsyncClient(
         verify=context, trust_env=False, follow_redirects=False, timeout=httpx.Timeout(30.0),
@@ -147,7 +157,7 @@ def compact_tools() -> list[types.Tool]:
                 'limit': {'type': 'integer', 'minimum': 1, 'maximum': 8, 'default': 5},
             }, 'additionalProperties': False}),
         types.Tool(name='memory_call',
-            description='Call one YS Memory tool with its exact schema arguments. May write. Hub bearer identity and ACL apply unchanged. No automatic retry; failed writes may have committed. Read only the history needed for this task.',
+            description='Call one YS Memory tool with its exact schema arguments. Hub tools require an inner arguments object; do not flatten it. May write. Hub bearer identity and ACL apply unchanged. No automatic retry; failed writes may have committed. Read only the history needed for this task.',
             inputSchema={'type': 'object', 'properties': {
                 'name': name_schema, 'arguments': {'type': 'object'},
             }, 'required': ['name', 'arguments'], 'additionalProperties': False}),
@@ -184,9 +194,7 @@ def _compact_result(payload: dict) -> types.CallToolResult:
 async def compact_upstream(config: dict):
     # A fresh session for each explicit call avoids cached credentials/discovery
     # and cross-request cancel scopes. Nothing here is run by initialize/list.
-    token = os.environ.get('YS_AIMEMORY_TOKEN', '')
-    if not token or len(token) > 4096 or any(not 33 <= ord(c) <= 126 for c in token):
-        raise ValueError('Worker token unavailable')
+    token = worker_token()
     context = verified_context(config)
     async with httpx.AsyncClient(
         verify=context, trust_env=False, follow_redirects=False, timeout=httpx.Timeout(30.0),
@@ -252,17 +260,48 @@ async def serve_compact(config: dict) -> None:
         # here and emit fixed messages. The Hub still validates actual tool args.
         if not _compact_arguments(name, arguments):
             return _compact_error('Bridge compact tool arguments invalid')
+        tool_attempted = False
         try:
             async with compact_upstream(config) as upstream:
                 if name == 'memory_tools':
                     return await compact_discover(upstream, arguments)
                 # Exactly one attempt. Preserve structuredContent/content/isError.
-                return await upstream.call_tool(arguments['name'], arguments['arguments'])
-        except Exception:
-            return _compact_error('Bridge upstream tool request failed; outcome unconfirmed')
+                # Use the public protocol API: SDK call_tool otherwise performs
+                # implicit output-schema discovery AFTER the operation. A relay
+                # must not lose a committed result because that extra fetch fails.
+                tool_attempted = True
+                return await upstream.send_request(types.ClientRequest(types.CallToolRequest(
+                    params=types.CallToolRequestParams(name=arguments['name'], arguments=arguments['arguments']))),
+                    types.CallToolResult)
+        except Exception as exc:
+            return _compact_error(compact_failure(exc, tool_attempted))
 
     async with stdio_server() as (read, write):
         await server.run(read, write, server.create_initialization_options())
+
+
+def compact_failure(exc: Exception, tool_attempted: bool) -> str:
+    # Inspect only exception types/status codes. Never render exception messages,
+    # response bodies, URLs or headers (which may contain credentials).
+    pending, seen, errors = [exc], set(), []
+    while pending and len(seen) < 64:
+        item = pending.pop()
+        if id(item) in seen:
+            continue
+        seen.add(id(item))
+        errors.append(item)
+        pending.extend(getattr(item, 'exceptions', ()))
+        pending.extend(e for e in (item.__cause__, item.__context__) if e is not None)
+    if any(isinstance(e, WorkerTokenUnavailable) for e in errors):
+        code = 'TOKEN_MISSING: provide your worker token to this MCP process'
+    elif any(isinstance(e, ssl.SSLCertVerificationError) for e in errors):
+        code = 'TLS_VERIFY_FAILED: verify the CA, hostname and certificate validity'
+    elif any(isinstance(e, httpx.HTTPStatusError) and e.response.status_code in (401, 403) for e in errors):
+        code = 'AUTH_REJECTED: check the worker token and authorization'
+    else:
+        code = 'UPSTREAM_FAILED: check Hub availability and client connection settings'
+    outcome = 'outcome unconfirmed; inspect server state before retrying' if tool_attempted else 'Hub tool not invoked'
+    return code + '; ' + outcome
 
 
 def main() -> int:
@@ -280,7 +319,7 @@ def main() -> int:
             settings = {'mcpServers': {'ys_memory': {
                 'type': 'stdio', 'command': str(Path(sys.executable).resolve()),
                 'args': ['-B', str(Path(__file__).resolve()), '--config', str(args.config.resolve())] + (['--compact'] if args.compact else []),
-                'env': {'YS_AIMEMORY_TOKEN': '${YS_AIMEMORY_TOKEN}'},
+                'env': {'YS_AIMEMORY_TOKEN': '${YS_AIMEMORY_TOKEN:-}'},
             }}}
             # ASCII JSON escapes preserve any chosen Windows path even when the
             # invoking terminal/pipeline cannot encode all Unicode characters.
