@@ -280,9 +280,32 @@ class DeliveryService:
             'has_more': len(rows) > 100, 'receipt_semantics': 'tool_read means complete messages returned by a tool; not proof of model comprehension'}
 
     def _claim(self, conn, binding, room, a, now):
+        request_key, request_digest, previous = None, None, None
+        if a['request_id'] is not None:
+            require(a['generation'] == binding['generation'], 'stale_binding', 'Binding generation changed')
+            request_key = {'project_id': binding['project_id'], 'operation': 'claim',
+                           'actor_kind': 'worker', 'worker_id': binding['worker_id'],
+                           'request_key': hashlib.sha256(a['request_id'].encode()).hexdigest()}
+            request_digest = hashlib.sha256(json.dumps(a, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            requests = self.tables['joins']
+            previous = conn.execute(select(requests).where(
+                *(requests.c[key] == value for key, value in request_key.items()))).mappings().one_or_none()
+            if previous is not None:
+                require(previous['payload_hash'] == request_digest, 'idempotency_conflict',
+                        'Claim request was used for different arguments')
         blocked = self._blocked(conn, binding, room, now)
         if blocked:
             return {'status': blocked, 'delivery': None}
+        if previous is not None:
+            original = previous['result']['delivery']
+            current = self._owned_delivery(conn, original['delivery_id'], binding)
+            require(current['lease_id'] == original['lease_id'] and current['lease_until'] > now and
+                    current['status'] in {'leased', 'dispatched', 'tool_read'},
+                    'stale_claim', 'Claim request no longer owns a live lease')
+            # Receipt replay never restarts a model once relay dispatch was recorded.
+            if current['status'] != 'leased' or current['dispatched_at'] is not None:
+                return {'status': 'busy', 'delivery': None}
+            return previous['result']
         pending = self._pending(conn, binding)
         if pending and pending['status'] == 'failed':
             return {'status': 'failed', 'delivery': None}
@@ -328,10 +351,14 @@ class DeliveryService:
             conn.execute(d.insert().values(**pending))
         binding['turns_used'] += 1
         self._save_binding(conn, binding, 'turns_used')
-        return {'status': 'ready', 'delivery': {**self._public_delivery(pending),
+        result = {'status': 'ready', 'delivery': {**self._public_delivery(pending),
             'lease_id': pending['lease_id'], 'lease_until': pending['lease_until'],
             'message_ids': [x['message_id'] for x in pending['messages']],
             'messages': pending['messages'], 'reply_idempotency_key': 'delivery-' + pending['delivery_id']}}
+        if request_key is not None:
+            conn.execute(self.tables['joins'].insert().values(
+                **request_key, payload_hash=request_digest, result=result))
+        return result
 
     def _owned_delivery(self, conn, identifier, binding):
         t = self.tables['deliveries']
@@ -420,6 +447,12 @@ class DeliveryService:
         if binding['released_at'] is not None:
             return
         blocked = self._blocked(conn, binding, self._room(conn, a['project_id'], a['session_id']), self.clock())
+        # Expiry alone restores manual discussion. Earlier safety controls in
+        # _blocked (revoked/archive/pause/disable) still stop an expired binding.
+        # Leases are capped at binding expiry; old delivery fields remain fenced
+        # by _live, and this path never advances the durable automatic cursor.
+        if blocked == 'expired':
+            return
         require(blocked is None, 'delivery_stopped', 'Bound participant delivery is ' + (blocked or 'stopped'))
         require(self._pending(conn, binding) is None, 'delivery_metadata_required',
                 'An outstanding delivery must be answered with its delivery_id and lease_id')

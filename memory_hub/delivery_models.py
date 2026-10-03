@@ -1,6 +1,6 @@
 """Relay-only contracts; these APIs never run a model or grant task authority."""
 from typing import Literal
-from pydantic import Field
+from pydantic import Field, model_validator
 from .session_models import SessionModel, SessionRef, ProjectId, ObjectId, Key
 
 
@@ -21,6 +21,14 @@ class BindingRef(SessionModel):
 
 class ClaimDelivery(BindingRef):
     lease_seconds: int = Field(default=120, ge=15, le=300)
+    request_id: ObjectId | None = None
+    generation: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode='after')
+    def recovery_identity_is_paired(self):
+        if (self.request_id is None) != (self.generation is None):
+            raise ValueError('request_id and generation must be supplied together')
+        return self
 
 
 class DispatchDelivery(BindingRef):
