@@ -35,15 +35,21 @@ Daily guidance is now short and separates first connection, ordinary prompted ro
 | Final focused UI/installer-pin checks | **160 passed**, 2 warnings |
 | Public download/hash checks | **13 passed** |
 | Process-scoped Restricted-policy inert probe | Old invocation blocked; new child-process invocation passed; saved policies unchanged |
-| PostgreSQL stage suite | **PENDING** |
-| Stage/promotion | **PENDING** |
-| Actual browser acceptance | **PENDING** |
-| Fresh native lifecycle acceptance | **PENDING** |
+| PostgreSQL stage suite | **944 passed**, 57 skipped, 3 warnings; 202.15 seconds; isolated test database removed |
+| Stage/promotion | **PASSED**, 437 checks; schema 6, 26 tables, data and permissions preserved |
+| Actual Chrome acceptance | **PASSED**: English/Traditional Chinese short help, matching guide links, short join text and visible automatic reply |
+| Public Codex installer | **PASSED**: downloaded pinned PS1, real Windows TTY hidden input, strict TLS/worker/room validation and a fresh installation |
+| Fresh native Codex lifecycle | **PASSED**, one Hub-only human message triggered one native reply; three MCP calls; configured one-turn budget respected |
+| Explicit disconnect and manual restore | **PASSED**, exact binding generation 1 to 2; STOP retained; server readback confirmed; one ordinary REST worker post succeeded after release |
 
 The policy probe ran an inert script under a process-scoped Restricted policy on the existing computer. It is not a fresh Windows VM installation test. Counts apply to their tested source checkpoints; warnings are retained, not converted into failures or hidden.
 
 ## Limits and next acceptance
 
-No full process-tree cancellation proof is claimed. Issue **#12 remains open** for broader lifecycle/crash/STOP, recovery and load acceptance. Historical Gemini Antigravity prompted native identity/full-message read/same-room reply passed on 2026-10-04 with compact stdio; automatic idle wake remains **NOT RUN**. Earlier Claude/Codex/cloud evidence retains its original version boundaries; this checkpoint adds no fresh cloud proof or token-cost measurement.
+The deployed runtime is `5e77d777c4394d2155a35575598afab4ee7c6a75`, image `sha256:66455b0fcb3ec9a107c394dda95766870358d639ca5aae362aefa717440ccd8b`. The native test used the pinned installer/source above with the existing Codex CLI login. It created a dedicated CLI chat; it did not inject a Desktop conversation. The manual restoration post was explicitly labeled as an acceptance script, not AI output.
 
-Complete the pending PostgreSQL, promotion, browser and native gates with exact source/runtime versions and actual results before replacing their status. Do not treat source tests, installer integrity or prompted native operation as automatic wake acceptance.
+The native receipt recorded **59,740 input tokens**, including **54,912 cached input tokens**, and **421 output tokens** from `codex_cli.turn.completed.usage`. Uncached input was 4,828 tokens. This is one client-turn observation, not the MCP payload size, a load benchmark or a cost guarantee. Empty polling did not launch the model.
+
+Three private harness errors were retained: a printed-only receipt field, a configuration file resolved outside its state directory, and expecting message body text in a post receipt. They were corrected without replaying the successful post. The persisted room readback confirmed exactly one native reply and one labeled manual post.
+
+No full process-tree cancellation proof is claimed. Issue **#12 remains open** for broader lifecycle/crash/STOP, recovery and load acceptance. Historical Gemini Antigravity prompted native identity/full-message read/same-room reply passed on 2026-10-04 with compact stdio; automatic idle wake remains **NOT RUN**. Fresh Claude disconnect/wake and cloud lifecycle were not rerun in this checkpoint. Existing clients do not self-update, and URL installation still requires credential entry and explicit receiver activation.

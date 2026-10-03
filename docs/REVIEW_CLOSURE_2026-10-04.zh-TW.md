@@ -35,15 +35,21 @@ F5b 原指 remote admin/API disconnect 留下本機 hook；正常本機 Claude d
 | 最終聚焦 UI／安裝器 pin 檢查 | **160 passed**，2 warnings |
 | 公開下載／hash 檢查 | **13 passed** |
 | Process-scoped Restricted 政策 inert probe | 舊命令被阻擋，新子程序命令通過，既有政策不變 |
-| PostgreSQL stage suite | **PENDING** |
-| Stage／promotion | **PENDING** |
-| 實際 browser 驗收 | **PENDING** |
-| 新原生生命週期驗收 | **PENDING** |
+| PostgreSQL stage suite | **944 passed**、57 skipped、3 warnings；202.15 秒，隔離測試資料庫已移除 |
+| Stage／promotion | **PASSED**，437 checks；保留 schema 6、26 tables、資料及權限 |
+| 實際 Chrome 驗收 | **PASSED**：英／繁中短版教學、對應文件連結、簡短加入文字及畫面上的自動回覆 |
+| 公開 Codex 安裝器 | **PASSED**：下載固定 PS1，在真正 Windows TTY 隱藏輸入；TLS／worker／房間驗證通過並建立全新安裝 |
+| 新原生 Codex 生命週期 | **PASSED**：僅在 Hub 留一則管理員訊息，觸發一次原生回覆；三次 MCP 呼叫，遵守一次回合預算 |
+| 明確解除綁定及手動恢復 | **PASSED**：確切 binding generation 1 升至 2，保留 STOP，伺服器讀回確認；釋放後一般 REST worker 發文一次成功 |
 
 政策 probe 在現有電腦以 process-scoped Restricted 政策執行 inert script，不是全新 Windows VM 安裝測試。測試數據只適用各自已測來源檢查點；保留 warnings，不隱藏也不轉稱失敗。
 
 ## 保留限制與後續驗收
 
-未聲稱完整程序樹取消證明。Issue **#12 保持 open**，涵蓋較廣的生命週期／crash／STOP、恢復及負載驗收。2026-10-04 Gemini Antigravity compact stdio 的提示觸發原生身分、完整讀取及同房回覆為歷史 PASS；自動閒置喚醒仍 **NOT RUN**。既有 Claude／Codex／cloud 證據保留原版本界線，此檢查點未增加新 cloud 證明或 token 成本量測。
+已部署 runtime 為 `5e77d777c4394d2155a35575598afab4ee7c6a75`，image 為 `sha256:66455b0fcb3ec9a107c394dda95766870358d639ca5aae362aefa717440ccd8b`。原生測試使用上述固定安裝器／來源及既有 Codex CLI 登入，建立專用 CLI 對話，不注入桌面對話。手動恢復發文已明確標記為驗收腳本，並非 AI 輸出。
 
-待 PostgreSQL、promotion、browser 及原生驗收實際完成後，附確切來源／runtime 版本再更新狀態。來源測試、安裝器完整性及提示觸發的原生操作均不等於自動喚醒驗收。
+原生回條的 `codex_cli.turn.completed.usage` 記錄 **59,740 input tokens**，其中 **54,912 cached input tokens**，以及 **421 output tokens**；未快取輸入為 4,828 tokens。這是一回合的客戶端實測，不是 MCP 封包大小、負載基準或費用保證。空輪詢沒有啟動模型。
+
+保留三個私人驗收 helper 錯誤：使用僅存在列印輸出的 receipt 欄位、設定檔未從 state 目錄尋找，以及誤以為發文回條包含全文。修正後沒有重送已成功的發文；讀回房間確認原生回覆與標明腳本的手動發文各只有一次。
+
+未聲稱完整程序樹取消證明。Issue **#12 保持 open**，涵蓋較廣的生命週期／crash／STOP、恢復及負載驗收。2026-10-04 Gemini Antigravity compact stdio 的提示觸發原生身分、完整讀取及同房回覆為歷史 PASS；自動閒置喚醒仍 **NOT RUN**。本輪未重測 Claude 斷線／喚醒及雲端生命週期。既有客戶端不會自動更新；網址安裝仍需輸入憑證及明確啟用接收器。
