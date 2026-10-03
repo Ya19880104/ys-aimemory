@@ -264,7 +264,7 @@ const location={href:'https://hub.example.com/ui/chat'};
 let copied=''; const navigator={clipboard:{writeText:async text=>{copied=text;}}};
 """ + handler + r"""
 (async()=>{ $('auto-client').onchange(); if(!$('auto-project-hint').hidden)throw Error('Codex path hint'); await $('copy-auto-setup').onclick();
-if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('FAC11173072834B6A5CBA9FC949C75F2E58385A6C8E04F439C1DFBB876058B72'))throw Error('Codex command');
+if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('F5E622AC3BC21CA06B311238C4B49491324FDD01C40F84FC97081913A4EBFDD7'))throw Error('Codex command');
 if(!copied.includes('# https://docs.example.test/CODEX_CHAT_SETUP.md'))throw Error('Codex guide');
 if(copied.includes('# undefined')||!copied.includes('# '+expected.codex))throw Error('Codex translated instructions');
 fields['auto-client'].value='claude';$('auto-client').onchange();if($('auto-project-hint').hidden)throw Error('Claude path hint');await $('copy-auto-setup').onclick();
