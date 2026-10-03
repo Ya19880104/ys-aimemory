@@ -207,3 +207,26 @@ def test_idle_busy_pause_do_not_grow_memos_and_same_operation_converges(collabor
     observed = memos()
     assert len(observed) == 1 and 'Private message body' not in json.dumps(observed[0]['result'])
     assert status(hub, s)['participants'][0]['turns_used'] == 1
+
+
+
+def test_partial_tool_read_without_dispatch_prevents_ready_replay(collaboration):
+    hub, _, _ = collaboration
+    s = room(hub); binding = join(hub, s)
+    messages = [post(hub, s, B) for _ in range(2)]
+    args = request(binding)
+    delivery = claim(hub, binding, **args)['delivery']
+    partial = read_delivery(hub, s, delivery, limit=1)
+    assert partial['delivery_receipt']['status'] == 'partial_tool_read'
+    assert len(partial['delivery_receipt']['unread_message_ids']) == 1
+    assert claim(hub, binding, **args) == {'status': 'busy', 'delivery': None}
+    observed = status(hub, s)['participants'][0]
+    assert observed['latest_delivery']['status'] == 'leased'
+    assert observed['latest_delivery']['dispatched_at'] is None
+    assert observed['latest_delivery']['read_at'] is None
+    assert observed['turns_used'] == observed['latest_delivery']['attempts'] == 1
+    assert observed['processed_sequence'] == binding['processed_sequence']
+    # The same lease can finish its remaining read/reply without another start.
+    assert read_delivery(hub, s, delivery, after_sequence=messages[0]['sequence'], limit=1)[
+        'delivery_receipt']['status'] == 'tool_read'
+    reply(hub, s, delivery)

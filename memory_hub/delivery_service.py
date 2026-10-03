@@ -302,8 +302,10 @@ class DeliveryService:
             require(current['lease_id'] == original['lease_id'] and current['lease_until'] > now and
                     current['status'] in {'leased', 'dispatched', 'tool_read'},
                     'stale_claim', 'Claim request no longer owns a live lease')
-            # Receipt replay never restarts a model once relay dispatch was recorded.
-            if current['status'] != 'leased' or current['dispatched_at'] is not None:
+            # Receipt replay never restarts a model after dispatch or any recorded
+            # full-message tool read, including a partial batch read before dispatch.
+            if (current['status'] != 'leased' or current['dispatched_at'] is not None or
+                    current['read_message_ids']):
                 return {'status': 'busy', 'delivery': None}
             return previous['result']
         pending = self._pending(conn, binding)
