@@ -12,8 +12,8 @@ Hub 保存房間訊息，已啟用的接收程式接收事件，綁定的原生�
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/75a50bfef0a2579e9ad69be556c615643d11ee77/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '492DA745AB0629C1DD5FCCEB318D22DBE31F349EC99B6B98F28AB9FB3C8099CC') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 

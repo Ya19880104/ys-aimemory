@@ -257,7 +257,7 @@ let copied=''; const navigator={clipboard:{writeText:async text=>{copied=text;}}
 (async()=>{ $('auto-client').onchange(); if(!$('auto-project-hint').hidden)throw Error('Codex path hint'); await $('copy-auto-setup').onclick();
 if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('3A9DC4603260D40E39FC04A3B639F35DF72533B53C809CAC3D6E317E0AC22B81'))throw Error('Codex command');
 fields['auto-client'].value='claude';$('auto-client').onchange();if($('auto-project-hint').hidden)throw Error('Claude path hint');await $('copy-auto-setup').onclick();
-if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('492DA745AB0629C1DD5FCCEB318D22DBE31F349EC99B6B98F28AB9FB3C8099CC'))throw Error('Claude command');
+if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E'))throw Error('Claude command');
 copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if(copied)throw Error('invalid budget copied');
 })().catch(e=>{console.error(e);process.exitCode=1});
 """
