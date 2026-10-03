@@ -33,4 +33,3 @@
 | Web dashboard and human accounts | [English](WEB_DASHBOARD.md) | [繁體中文](WEB_DASHBOARD.zh-TW.md) |
 
 [歷史設計計畫](superpowers/plans/README.zh-TW.md)與[原交付測試](../TEST_REPORT.zh-TW.md)保存當時證據，不代表目前驗收。
-

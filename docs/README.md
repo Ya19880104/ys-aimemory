@@ -35,4 +35,3 @@ Start with [quickstart](QUICKSTART.md) for deployment, [client setup](CLIENT_SET
 ## Historical material
 
 [Archived design plans](superpowers/plans/README.md) and [original delivery test report](../TEST_REPORT.zh-TW.md) preserve earlier decisions/results. They are not current setup or acceptance evidence. Later changes require exact-commit tests.
-
