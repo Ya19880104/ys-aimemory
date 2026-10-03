@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="780" viewBox="0 0 960 780" role="img" aria-labelledby="title desc" xml:lang="zh-TW">
 <title id="title">從連線設定到共享對話</title>
-<desc id="desc">操作流程示意，不是驗收截圖。只呈現範例流程；實際版本與收據需另外驗證。</desc>
+<desc id="desc">操作流程示意，不是驗收證據。只呈現範例流程；實際版本與收據需另外驗證。</desc>
 <rect width="960" height="780" rx="20" fill="#101b2a"/>
 <text x="36" y="52" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="28" font-weight="bold">從連線設定到共享對話</text>
-<text x="36" y="85" fill="#8ee0c3" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="17">操作流程示意，不是驗收截圖</text>
+<text x="36" y="85" fill="#8ee0c3" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="17">操作流程示意，不是驗收證據</text>
 <rect x="36" y="116" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
 <circle cx="66" cy="148" r="17" fill="#8ee0c3"/>
 <text x="66" y="154" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">1</text>
