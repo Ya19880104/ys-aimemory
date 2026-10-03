@@ -4,6 +4,8 @@
 
 ## 已登入 Claude Desktop，為什麼貼設定仍連不上？
 
+Windows 可先使用[單一指令安裝器](CLAUDE_WINDOWS_SETUP.zh-TW.md)，它會完成 adapter、專案設定及目前使用者加密 Token 儲存；**採用此方法不必再填 Desktop 全域環境變數**。以下保留手動安裝方式，兩者擇一，不要重複建立 `ys_memory`。
+
 一次設定後，日常只需貼「加入指定專案／對話」指引。但第一次須完成三件事：**安裝 adapter → 合併 MCP 設定 → 提供自己的 worker Token**。把 JSON 或 MCP 網址貼到聊天，本身不會完成客戶端設定；Claude 模型登入也不會提供 Hub Token。
 
 1. 在 Desktop 的 Code 分頁使用 **Local**，選真正的開發專案，將 `--compact --print-claude-config` 輸出合併到該目錄的 `.mcp.json`。保留其他 MCP，Python／bridge／connection 三個路徑必須在執行 Claude 的那台電腦存在。
