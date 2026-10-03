@@ -2,7 +2,42 @@
 
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
-## Current verification snapshot (not a final deployment certification)
+## Latest deployed candidate: `c4fe0f1`
+
+Candidate source: `c4fe0f1ecedbe186cc4b80f195e47dc606fe9470`. Promotion completed at **2026-10-03T09:45:32Z**. These are version- and environment-specific results, not acceptance for every client. The executor supplied deployment/HTTP results; this document update independently checked the CI totals and sanitized native receipt fields. No private IDs, credentials, host addresses, or evidence paths are published.
+
+| Gate | Result | Scope |
+| --- | --- | --- |
+| GitHub CI: Windows | 211 passed | All three candidate CI jobs passed |
+| GitHub CI: SQLite | 599 passed, 32 skipped | Skips are not passes |
+| GitHub CI: PostgreSQL | 787 passed, 30 skipped, 3 warnings | Separate from VM stage |
+| VM stage | 761 passed, 56 skipped, 3 warnings | Candidate runtime/environment |
+| Promotion | 417 checks passed in 22.147 seconds | All 26 tables, schema v6 data, permissions, and backup-header reads passed |
+| Fresh HTTP checks | Passed | Language switching preserved the selected room; English/Traditional Chinese automatic-setup panel, trusted CA and installer pin checks passed |
+| Public Codex installer `49fb77a` | TTY reinstallation passed | Immutable source dependencies at `3577118`; no clone required |
+| Fresh dedicated Codex native automatic exchange | Passed | One new human message triggered three native MCP identity/read/reply calls; reply after 26.6066 seconds, actor shown as Codex, receiver stopped at one-turn budget |
+| Cloud tunnel | Healthy / ready after restoration | Transport health does not establish event subscription |
+| ChatGPT prompted native identity/read/write | Observed passed | Earlier prompted exchange; cloud automatic subscription remains not_run due stale plugin metadata |
+| Claude hook automatic replies | not_run | Provider OAuth login remains expired |
+| Chrome GUI acceptance | not_run | Control connection remains offline; HTTP actions are not browser clicks |
+
+The earlier `e1d71f8` CI run had one failure: the bootstrap source pin was stale after the receiver changed. That failure remains part of the record. For `c4fe0f1`, the public `49fb77ae3c64a6da61c4d4175d32b9f71e32d001` installer returned HTTP 200 and matched SHA-256 `3A9DC4603260D40E39FC04A3B639F35DF72533B53C809CAC3D6E317E0AC22B81`; all four dependencies at `35771181eeceba4375de631859eac270504103bc` returned HTTP 200, matched the declared hashes, and byte-matched their Git blobs. Candidate CI subsequently passed all three jobs. Earlier deployment-helper first failures remain preserved despite service recovery.
+
+### Observed token usage; optimization remains under investigation
+
+| Single-turn observation | Input tokens | Cached input tokens (included in input) | Output tokens |
+| --- | ---: | ---: | ---: |
+| Initial installer pilot | 71,711 | 58,880 | 436 |
+| Scoped `skills.max_context_tokens=1` experiment at `ab1f20a` | 59,287 | 49,024 | 410 |
+| Final candidate native exchange | 59,520 | 51,584 | 467 |
+
+Each row is one observed turn, not a controlled benchmark or a guaranteed saving. The scoped skills override was followed by lower observed input, but these small samples do not establish causality, billing savings, or complete low-token optimization. The inspected inbox was only 126 bytes and was not the large-cost cause in this exchange; the new chat-scoped identity projection limits future inflation from unrelated task inboxes. Cost investigation continues.
+
+The copied-installation guidance safety fix has source-scoped acceptance: 28 tests passed with two existing warnings, including real PowerShell parser coverage for both languages/clients and hostile `;` / `$()` worker values. Complete-guide paste performs download/hash verification/review only; installation stays commented until explicitly selected after review. The fresh HTTP panel check confirms rendered deployment behavior, while the parser check covers generated command safety. Neither substitutes for GUI clicks or cloud automatic acceptance.
+
+Historical snapshots below retain their original version boundaries; their pending-at-the-time statements do not override the deployed candidate evidence above.
+
+## Earlier verification snapshot (before final candidate deployment)
 
 This update separates the tested/deployed `0e8ca5e76fd5bb5f186e3294d32e56d353bdcd94` candidate from later source changes. The executing coordinator supplied runtime results; this documentation review independently checked the three CI log totals and the sanitized fields of the private Codex native receipt. Private IDs, credentials, host addresses, and evidence paths are omitted.
 

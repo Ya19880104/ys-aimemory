@@ -2,7 +2,42 @@
 
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
-## 目前驗證快照（不是最終部署認證）
+## 最新已部署候選版：`c4fe0f1`
+
+候選來源：`c4fe0f1ecedbe186cc4b80f195e47dc606fe9470`。Promotion 於 **2026-10-03T09:45:32Z** 完成。結果僅對所述版本／環境有效，不代表所有客戶端均已驗收。部署／HTTP 結果由執行者提供；本輪文件更新另外核對 CI 總數與原生回條的去秘密欄位。不公開私人 ID、憑證、主機地址或證據路徑。
+
+| 關卡 | 結果 | 範圍 |
+| --- | --- | --- |
+| GitHub CI：Windows | 211 passed | 候選版三個 CI jobs 全部通過 |
+| GitHub CI：SQLite | 599 passed、32 skipped | skip 不是 PASS |
+| GitHub CI：PostgreSQL | 787 passed、30 skipped、3 warnings | 與 VM stage 分開 |
+| VM stage | 761 passed、56 skipped、3 warnings | 候選 runtime／環境 |
+| Promotion | 417 checks passed、22.147 秒 | 完整 26 表、schema v6 資料、權限與備份 header 讀取皆通過 |
+| Fresh HTTP 檢查 | passed | 語言切換保留選定房間；英／繁自動設定面板、可信 CA 與安裝器 pin 檢查通過 |
+| `49fb77a` 公開 Codex 安裝器 | TTY 重新安裝 passed | immutable 來源依賴 `3577118`；不需 clone |
+| Fresh Codex 專用原生自動交換 | passed | 新的人類留言觸發 identity／read／reply 三次原生 MCP 呼叫；26.6066 秒後回覆、actor 顯示 Codex、一回合上限後接收器停止 |
+| Cloud tunnel | 恢復後 healthy／ready | Transport 健康不代表已訂閱事件 |
+| ChatGPT 提示後原生身分／讀取／寫回 | 已觀測 passed | 先前提示交換；雲端自動訂閱仍因舊 plugin metadata 而 not_run |
+| Claude hook 自動接話 | not_run | 供應商 OAuth 登入仍過期 |
+| Chrome GUI 驗收 | not_run | 控制連線仍離線；HTTP 操作不是 browser click |
+
+先前 `e1d71f8` CI 有一項失敗：receiver 更新後 bootstrap source pin 尚未同步。首次失敗仍保留。`c4fe0f1` 使用的公開 `49fb77ae3c64a6da61c4d4175d32b9f71e32d001` 安裝器 HTTP 200，SHA-256 符合 `3A9DC4603260D40E39FC04A3B639F35DF72533B53C809CAC3D6E317E0AC22B81`；來源 `35771181eeceba4375de631859eac270504103bc` 的四個依賴均 HTTP 200、符合宣告 hash，且 bytes 與該版本 Git blob 一致。後續候選 CI 三個 jobs 全綠。服務恢復不抹去先前部署 helper 的首次失敗。
+
+### 已觀測 token 用量；最佳化仍在調查
+
+| 單回合觀察 | Input tokens | Cached input tokens（已含於 input） | Output tokens |
+| --- | ---: | ---: | ---: |
+| 初始安裝器 pilot | 71,711 | 58,880 | 436 |
+| `ab1f20a` 限定 scope 的 `skills.max_context_tokens=1` 實驗 | 59,287 | 49,024 | 410 |
+| 最終候選版原生交換 | 59,520 | 51,584 | 467 |
+
+每列只有一個已觀測回合，不是受控 benchmark 或保證節省。限定 skills override 後觀測 input 較低，但小樣本不足以證明因果、帳單節省或低 token 最佳化全面完成。本次檢查的 inbox 僅 126 bytes，不是此交換的大成本原因；新增聊天限定 identity projection 用來限制未來無關任務 inbox 膨脹。成本調查仍繼續。
+
+複製安裝指引安全修正有來源 scoped 驗收：28 tests passed、兩項既有 warnings，包含英／繁、兩用戶端與含 `;`／`$()` worker 值的真 PowerShell parser。貼上完整指引只下載／驗 hash／開啟審閱；安裝命令保持註解，審閱後才明確選取執行。Fresh HTTP 面板檢查證明部署後的呈現，parser 檢查涵蓋產生命令的安全性；兩者均不取代 GUI 點擊或雲端自動驗收。
+
+以下歷史快照保留當時版本界線；當時的待執行敘述不凌駕上述已部署候選版證據。
+
+## 先前驗證快照（最終候選版部署前）
 
 本次更新區分已測試／部署的 `0e8ca5e76fd5bb5f186e3294d32e56d353bdcd94` 候選版與後續來源變更。runtime 結果由執行 coordinator 提供；本輪文件檢查另外核對三份 CI 日誌總數與私人 Codex 原生回條的去秘密欄位。不附私人 ID、憑證、主機地址或證據路徑。
 
