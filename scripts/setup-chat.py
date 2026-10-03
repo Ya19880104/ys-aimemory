@@ -11,12 +11,14 @@ import time
 import uuid
 
 
-def configure(project, project_id, session_id, native_session_id, *, display_name='Claude',
-              hours=8, max_turns=20, after_sequence=0):
+def configure(project, project_id, session_id, native_session_id=None, *, display_name='Claude',
+              hours=8, max_turns=20, after_sequence=0, language='en'):
     project = Path(project).resolve(strict=True)
     if not 1 <= hours <= 8 or not 1 <= max_turns <= 100 or after_sequence < 0:
         raise ValueError('invalid_budget')
-    for identifier in (project_id, session_id, native_session_id, display_name):
+    if language not in {'en', 'zh-TW'}:
+        raise ValueError('invalid_language')
+    for identifier in (project_id, session_id, native_session_id or 'unbound', display_name):
         if not identifier or len(identifier) > 160 or any(ord(c) < 32 for c in identifier):
             raise ValueError('invalid_identifier')
     entry = json.loads((project / '.mcp.json').read_text(encoding='utf-8-sig'))['mcpServers']['ys_memory']
@@ -49,9 +51,12 @@ def configure(project, project_id, session_id, native_session_id, *, display_nam
     shutil.copyfile(Path(__file__).resolve().parents[1] / 'memory_hub/client_watch.py', watcher)
     binding = {'version': 1, 'client': 'claude', 'display_name': display_name,
         'project_id': project_id, 'session_id': session_id, 'native_session_id': native_session_id,
+        'project_path': str(project), 'language': language,
         'after_sequence': after_sequence, 'max_turns': max_turns,
         'expires_at': time.time() + hours * 3600, 'ttl_seconds': hours * 3600,
         'idempotency_key': 'chat-' + uuid.uuid4().hex}
+    if not native_session_id:
+        binding['activation_phrase'] = 'YS_MEMORY_JOIN_' + uuid.uuid4().hex
     binding_path.write_text(json.dumps(binding, ensure_ascii=True, indent=2), encoding='utf-8')
     hooks.append({'hooks': [{'type': 'command', 'command': entry['command'],
         'args': [str(watcher)], 'async': True, 'asyncRewake': True, 'timeout': hours * 3600 + 30}]})
@@ -71,6 +76,9 @@ def configure(project, project_id, session_id, native_session_id, *, display_nam
         'expires_at': binding['expires_at'], 'max_turns': max_turns,
         'settings_sha256': hashlib.sha256(candidate).hexdigest(),
         'stop_file': str(directory / 'STOP'), 'global_settings_changed': False,
+        'activation_prompt': ('I authorize automatic chat only in the configured YS Memory room, '
+            'within the displayed time and turn budget. Reply with exactly this single line and no tools: '
+            + binding['activation_phrase']) if not native_session_id else None,
         'notice': 'Resume this exact Claude conversation after reloading hooks; verify online state in Hub.'}
 
 
@@ -79,11 +87,12 @@ def main():
     parser.add_argument('--project', type=Path, default=Path.cwd())
     parser.add_argument('--project-id', required=True)
     parser.add_argument('--session-id', required=True)
-    parser.add_argument('--native-session-id', required=True)
+    parser.add_argument('--native-session-id')
     parser.add_argument('--display-name', default='Claude')
     parser.add_argument('--hours', type=int, default=8)
     parser.add_argument('--max-turns', type=int, default=20)
     parser.add_argument('--after-sequence', type=int, default=0)
+    parser.add_argument('--language', choices=('en', 'zh-TW'), default='en')
     args = parser.parse_args()
     try:
         print(json.dumps(configure(**vars(args)), ensure_ascii=True, indent=2))

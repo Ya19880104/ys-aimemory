@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import httpx
 
-from memory_hub.client_watch import exclusive, reminder, watch
+from memory_hub.client_watch import bind_activation, exclusive, reminder, watch
 
 
 def config():
@@ -85,3 +85,18 @@ def test_notification_contains_metadata_not_chat_body():
     text = reminder(config(), record)
     assert record['body'] not in text
     assert 'once' in text and 'through_sequence=12' in text
+    assert 'brief English conversational reply' in text
+    assert 'brief Traditional Chinese conversational reply' in reminder(config() | {'language':'zh-TW'}, record)
+
+
+def test_one_time_activation_matches_exact_response_and_project(tmp_path):
+    c = config() | {'native_session_id': None, 'project_path': str(tmp_path),
+                    'activation_phrase': 'YS_MEMORY_JOIN_random'}
+    event = {'hook_event_name':'Stop', 'session_id':'new-native', 'cwd':str(tmp_path),
+             'last_assistant_message':'quoted YS_MEMORY_JOIN_random not an activation'}
+    assert not bind_activation(c, event)
+    event['last_assistant_message'] = 'YS_MEMORY_JOIN_random'
+    assert not bind_activation(c, event | {'cwd':str(tmp_path/'other')})
+    assert bind_activation(c, event)
+    assert c['native_session_id'] == 'new-native' and 'activation_phrase' not in c
+    assert not bind_activation(c, event | {'session_id':'other'})
