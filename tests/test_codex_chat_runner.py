@@ -95,6 +95,53 @@ def test_native_final_prose_and_forged_read_receipt_do_not_prove_success():
         proof.event(event('post_session_message', reply(), 'post'))
 
 
+def test_cli_completed_turn_records_only_reported_token_fields():
+    # Official non-interactive JSONL example, with untrusted extra fields added.
+    proof = completed_proof()
+    proof.event({'type': 'turn.completed', 'usage': {'input_tokens':24763,
+        'cached_input_tokens':24448, 'output_tokens':122, 'reasoning_output_tokens':0,
+        'credential':'synthetic-secret', 'text':'raw model text', 'cost':9.99}})
+    result = proof.finish(0)
+    assert result['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':24763, 'cached_input_tokens':24448, 'output_tokens':122}
+    assert result['status'] == 'passed'
+    assert all(value not in json.dumps(result) for value in ('synthetic-secret','raw model text','cost','reasoning_output_tokens'))
+
+
+@pytest.mark.parametrize('usage', [None, {}, [], 'secret', 42])
+def test_absent_usage_does_not_change_native_acceptance(usage):
+    proof = completed_proof()
+    assert set(proof.finish(0)['token_usage'].values()) == {'codex_cli.turn.completed.usage','not_reported'}
+    proof.event({'type':'turn.completed','usage':usage})
+    result = proof.finish(0)
+    assert result['status'] == 'passed'
+    assert result['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':'not_reported','cached_input_tokens':'not_reported','output_tokens':'not_reported'}
+
+
+@pytest.mark.parametrize('bad', [True, False, -1, 2**53, 10**100, 1.0, '123', None, [], {}])
+def test_malformed_token_count_is_not_coerced_or_estimated(bad):
+    proof = completed_proof()
+    proof.event({'type':'turn.completed','usage':{'input_tokens':bad,'cached_input_tokens':0,'output_tokens':2**53-1}})
+    result = proof.finish(0)
+    assert result['status'] == 'passed'
+    assert result['token_usage']['input_tokens'] == 'not_reported'
+    assert result['token_usage']['cached_input_tokens'] == 0
+    assert result['token_usage']['output_tokens'] == 2**53-1
+
+
+def test_usage_is_not_derived_from_other_events_or_accumulated():
+    proof = completed_proof()
+    proof.event({'type':'item.completed','usage':{'input_tokens':900},'item':{'type':'agent_message','text':'unused'}})
+    assert proof.finish(0)['token_usage']['input_tokens'] == 'not_reported'
+    proof.event({'type':'turn.completed','usage':{'input_tokens':100,'cached_input_tokens':10,'output_tokens':20}})
+    proof.event({'type':'turn.completed','usage':{'input_tokens':7}})
+    assert proof.finish(0)['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':7,'cached_input_tokens':'not_reported','output_tokens':'not_reported'}
+    with pytest.raises(runner.ReceiverError, match='incomplete'):
+        runner.NativeProof(CONFIG, DELIVERY).finish(0)
+
+
 def test_native_identity_scope_and_tool_failure_stop():
     with pytest.raises(runner.ReceiverError, match='worker_mismatch'):
         runner.NativeProof(CONFIG, DELIVERY).event(event('get_worker_inbox', {'worker_id': 'other'}))
@@ -152,10 +199,16 @@ def test_only_ready_delivery_runs_native_turn_and_failure_never_retries(tmp_path
     client = FakeClient(['ready', 'budget_exhausted'])
     def turn(config, delivery, directory, heartbeat, stop):
         assert heartbeat()['status'] == 'waiting'
-        return completed_proof().finish(0)
+        proof = completed_proof()
+        proof.event({'type':'turn.completed','usage':{'input_tokens':100,'cached_input_tokens':40,'output_tokens':12}})
+        return proof.finish(0)
     result = runner.receiver(CONFIG, client, tmp_path, turn=turn, now=lambda: 100, sleep=lambda _: None)
     assert result['native_turns'] == 1
     assert (tmp_path / ('receipt-' + DELIVERY['delivery_id'] + '.json')).exists()
+    receipt = json.loads((tmp_path / ('receipt-' + DELIVERY['delivery_id'] + '.json')).read_text(encoding='utf-8'))
+    assert receipt['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':100,'cached_input_tokens':40,'output_tokens':12}
+    assert '這是原生對話回覆' not in json.dumps(receipt,ensure_ascii=False)
     calls = [path for path, _ in client.calls]
     assert calls.count('/v1/chat/dispatched') == 1
     assert not any('/tools/' in path for path in calls), 'REST must never impersonate native read/post'
@@ -180,7 +233,8 @@ def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_recei
     native_events = [event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'),
         event('read_session', reading(5, 'd'*32), 'read-1'),
         event('read_session', reading(6, 'e'*32, True), 'read-2', after_sequence=5),
-        event('post_session_message', reply(), 'post')]
+        event('post_session_message', reply(), 'post'),
+        {'type':'turn.completed','usage':{'input_tokens':101,'cached_input_tokens':0,'output_tokens':13}}]
     class Process:
         stdout = io.StringIO('\n'.join(json.dumps(item) for item in native_events) + '\n')
         def poll(self): return 0
@@ -198,6 +252,8 @@ def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_recei
         return {'status': 'processing'}
     result = runner.native_turn(CONFIG, DELIVERY, tmp_path, heartbeat, lambda: False, now=now)
     assert result['status'] == 'passed' and heartbeats
+    assert result['token_usage'] == {'source':'codex_cli.turn.completed.usage',
+        'input_tokens':101,'cached_input_tokens':0,'output_tokens':13}
     assert sorted(p.name for p in tmp_path.iterdir()) == ['native-empty', 'native-scope.json']
     assert '這是原生對話回覆' not in (tmp_path / 'native-scope.json').read_text(encoding='utf-8')
 

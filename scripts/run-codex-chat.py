@@ -150,6 +150,18 @@ class NativeProof:
         self.calls = 0
         self.thread_id = None
         self.read_retry = None
+        self.token_usage = self.reported_usage(None)
+
+    @staticmethod
+    def reported_usage(usage):
+        # Official codex exec --json turn.completed.usage fields. This receipt
+        # records observations only; missing/malformed values are never zero or
+        # estimates. Bound integers to JSON's interoperable exact-integer range.
+        fields = ('input_tokens', 'cached_input_tokens', 'output_tokens')
+        usage = usage if isinstance(usage, dict) else {}
+        return {'source': 'codex_cli.turn.completed.usage', **{
+            key: usage[key] if type(usage.get(key)) is int and 0 <= usage[key] <= 2**53-1
+            else 'not_reported' for key in fields}}
 
     def event(self, event):
         kind = event.get('type')
@@ -157,6 +169,9 @@ class NativeProof:
             self.thread_id = event.get('thread_id')
         if kind in {'error', 'turn.failed'}:
             raise ReceiverError('native_turn_failed')
+        if kind == 'turn.completed':
+            # Keep this event's observations; never sum or merge separate turns.
+            self.token_usage = self.reported_usage(event.get('usage'))
         if not str(kind).startswith('item.'):
             return
         item = event.get('item', {})
@@ -241,7 +256,8 @@ class NativeProof:
             raise ReceiverError('native_acceptance_incomplete')
         return {'status': 'passed', 'native_thread_id': self.thread_id, 'native_tool_calls': self.calls,
                 'worker_id': self.config['worker_id'], 'delivery_id': self.delivery['delivery_id'],
-                'read_message_ids': sorted(set(self.delivery['message_ids'])), 'post_receipt': self.post}
+                'read_message_ids': sorted(set(self.delivery['message_ids'])), 'post_receipt': self.post,
+                'token_usage': dict(self.token_usage)}
 
 
 def prompt(config, delivery):
