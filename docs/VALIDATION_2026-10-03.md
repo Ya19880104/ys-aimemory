@@ -5,6 +5,16 @@
 
 
 
+
+## Latest runtime and browser language verification
+
+Runtime `9c0b1ac59bde180bd1567fa349d775a8d3237a74` replaced `af53efb`, promoted **2026-10-03T16:12:30Z–16:12:52Z** (2026-10-04 00:12 Taipei). Image: `sha256:759776279eaac21212778d58ae984840a20a95a22386929da6438fd943d0c608`. All 429 promotion checks passed. PostgreSQL stage: 800 passed, 56 skipped, 3 warnings in 185.86 seconds; archive SHA-256 `3e496be9ee296d5f10a185e197994eb9a8e96befce662acedcd1991763e492c0`. All three GitHub push/PR jobs passed for 9c. CodeRabbit was rate-limited; this is not a fresh complete review.
+
+Actual logged-in Chrome checks passed: help language switching zh→en→zh preserved the help route; room zh→en preserved selected project/conversation and displayed the English heading. The first asynchronous snapshot retained old DOM; a later completed snapshot confirmed the heading. A human UI action fetched the full client-specific shared guide. This is human UI artifact retrieval, not native AI artifact-full-fetch acceptance. Unauthenticated public-help behavior was covered only by unit tests, not this logged-in browser run.
+
+The help language-flow defect found after af53 was corrected in i18n.py with UI-i18n tests. These executor-supplied deployment/browser results do not rerun earlier native Claude/Codex/cloud evidence, which retains its original version boundaries. The following af53 section is historical; this documentation commit itself is not the deployed runtime.
+
+
 ## Final runtime promotion: 2026-10-04 Taipei
 
 Runtime remains `af53efb1309f2527cbd9548a5a19f0dc57325825`, image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`, promoted from `24f3173` during **2026-10-03T16:01:18Z–16:01:40Z** (2026-10-04 00:01 Taipei). All 429 runtime checks passed; schema v6 and 26 tables were preserved. Independent host PostgreSQL regression: 785 passed, 56 skipped, 3 warnings in 181.81 seconds; archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`. GitHub Windows-installer, SQLite and PostgreSQL push/PR jobs passed for af53. Executor-supplied results retain private source logs.

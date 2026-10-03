@@ -5,6 +5,16 @@
 
 
 
+
+## 最新 runtime 與瀏覽器語系驗證
+
+Runtime `9c0b1ac59bde180bd1567fa349d775a8d3237a74` 取代 `af53efb`，於 **2026-10-03T16:12:30Z–16:12:52Z**（台北 2026-10-04 00:12）promotion。Image：`sha256:759776279eaac21212778d58ae984840a20a95a22386929da6438fd943d0c608`。429 promotion checks 全 passed。PostgreSQL stage：800 passed、56 skipped、3 warnings，185.86 秒；archive SHA-256 `3e496be9ee296d5f10a185e197994eb9a8e96befce662acedcd1991763e492c0`。9c GitHub 三個 push/PR jobs 全 passed。CodeRabbit rate-limited，不代表新完整審查。
+
+真實已登入 Chrome passed：help zh→en→zh 保留 help route；指定 room zh→en 保留選定 project/conversation，英文 heading 已顯示。首次非同步 snapshot 還是舊 DOM，後續完成畫面確認成功。人類 UI 操作取得完整 client-specific shared guide；這是人類 UI artifact retrieval，不是 native AI artifact-full-fetch 驗收。未登入 public help 僅 unit tests 覆蓋，本次登入瀏覽器沒有驗該情境。
+
+af53 後發現的 help 語系流程缺陷已由 i18n.py／UI-i18n tests 修正。以上部署／browser 結果由執行者提供，沒有重跑先前 Claude/Codex/cloud native 證據，仍保留各自版本界線。下方 af53 是歷史區段；本文件 commit 本身不是部署版本。
+
+
 ## 最終 runtime promotion：台北 2026-10-04
 
 Runtime 維持 `af53efb1309f2527cbd9548a5a19f0dc57325825`，image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`，於 **2026-10-03T16:01:18Z–16:01:40Z**（台北 2026-10-04 00:01）自 `24f3173` promotion。429 runtime checks 全 passed，schema v6／26 tables 保留。主機獨立 PostgreSQL 回歸：785 passed、56 skipped、3 warnings，181.81 秒；archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`。af53 GitHub Windows-installer／SQLite／PostgreSQL push/PR jobs 全 passed。結果由執行者提供，私人來源日誌保留。
