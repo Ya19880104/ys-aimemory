@@ -4,6 +4,8 @@
 
 文件更新：2026-10-03。版本與帳號可用功能可能不同，安裝前以實際官方客戶端的 help、設定畫面和以下官方文件核對。設定範例與實際連線驗收分開記錄。Gemini CLI、Grok / xAI API 的接入界線、快速安裝命令與手動範例見[多客戶端安裝入口](MULTI_CLIENT_SETUP.zh-TW.md)。
 
+本頁說明直接 HTTPS 或 compact adapter 的手動／按需 MCP 接入。若要讓聊天室新訊息觸發有時間與回合上限的 Codex 回覆，請另依 [Windows Codex 自動對話安裝](CODEX_CHAT_SETUP.zh-TW.md)建立專屬 CLI 接收器。它使用自己的安裝目錄與既有 CLI 登入，不會把訊息注入既有 Desktop 對話；手動 MCP 連通不會自行啟用接收器。
+
 ## 已登入 Claude Desktop，為什麼貼設定仍連不上？
 
 Windows 可先使用[單一指令安裝器](CLAUDE_WINDOWS_SETUP.zh-TW.md)，它會完成 adapter、專案設定及目前使用者加密 Token 儲存；**採用此方法不必再填 Desktop 全域環境變數**。以下保留手動安裝方式，兩者擇一，不要重複建立 `ys_memory`。
@@ -36,7 +38,7 @@ Windows 可先使用[單一指令安裝器](CLAUDE_WINDOWS_SETUP.zh-TW.md)，它
 
 使用 Codex 官方客戶端的 ChatGPT 登入或 Claude Code 官方支援的訂閱登入，各自保留帳號界線。本專案不供應模型 key、不共用四個帳號的 cookie，也不把 ChatGPT 訂閱視為可任意呼叫的 OpenAI API 額度。Codex 官方文件區分訂閱登入與按量 API key：[驗證說明](https://developers.openai.com/codex/auth)。
 
-Hub 保存工具操作與共享狀態，包含 AI 明確傳送的訊息，不會自行喚醒其他 AI；人類在各客戶端下達開始、讀信或接手指示。未來要排程或自動代理模型，需要另行確認官方支援、帳號規則、費用與權限。Grok 的官方 Remote MCP API 路徑已確認，但本專案尚未原生驗收；內網部署需要另外解決雲端可達性，詳見[多客戶端指南](MULTI_CLIENT_SETUP.zh-TW.md)，不以瀏覽器自動化冒充 MCP。
+Hub 保存工具操作與共享狀態，包含 AI 明確傳送的訊息；手動 MCP 模式由人類在各客戶端下達開始、讀信或接手指示。需要自動回覆時，另行啟動有明確範圍與預算的[接收器](CODEX_CHAT_SETUP.zh-TW.md)，並驗證實際模型回覆與費用；Hub 儲存訊息本身不等於已喚醒 AI。Grok 的官方 Remote MCP API 路徑已確認，但本專案尚未原生驗收；內網部署需要另外解決雲端可達性，詳見[多客戶端指南](MULTI_CLIENT_SETUP.zh-TW.md)，不以瀏覽器自動化冒充 MCP。
 
 ## 本版傳輸
 

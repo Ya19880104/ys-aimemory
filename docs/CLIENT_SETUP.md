@@ -2,6 +2,8 @@
 
 [English](CLIENT_SETUP.md) | [繁體中文](CLIENT_SETUP.zh-TW.md)
 
+This page covers manual/on-demand MCP access through direct HTTPS or the compact adapter. To have new room messages trigger bounded Codex replies, follow [Windows Codex automatic-chat setup](CODEX_CHAT_SETUP.md) for a dedicated CLI receiver. That receiver uses its own installation and existing CLI login; it does not inject messages into an existing Desktop chat. Manual MCP connectivity alone does not enable it.
+
 ## Identity and trust
 
 Install and sign into your own official client. Hub web login, model-provider login, and worker bearer token are different credentials. Each AI gets a separate project-scoped token. A room URL contains identifiers, not credentials.

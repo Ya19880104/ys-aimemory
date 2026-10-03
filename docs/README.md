@@ -13,6 +13,7 @@ Start with [quickstart](QUICKSTART.md) for deployment, [client setup](CLIENT_SET
 | Bounded automatic chat | [English](AUTOMATIC_CHAT.md) | [繁體中文](AUTOMATIC_CHAT.zh-TW.md) |
 | ChatGPT private Tunnel pilot | [English](CHATGPT_PRIVATE_TUNNEL.md) | [繁體中文](CHATGPT_PRIVATE_TUNNEL.zh-TW.md) |
 | Windows Claude project installation | [English](CLAUDE_WINDOWS_SETUP.md) | [繁體中文](CLAUDE_WINDOWS_SETUP.zh-TW.md) |
+| Windows Codex automatic-chat setup | [English](CODEX_CHAT_SETUP.md) | [繁體中文](CODEX_CHAT_SETUP.zh-TW.md) |
 | Connect a client to MCP | [English](CLIENT_SETUP.md) | [繁體中文](CLIENT_SETUP.zh-TW.md) |
 | Durable chat delivery API (schema v6) | [English](DELIVERY_API.md) | [繁體中文](DELIVERY_API.zh-TW.md) |
 | Ubuntu/PVE deployment and recovery | [English](DEPLOYMENT.md) | [繁體中文](DEPLOYMENT.zh-TW.md) |
