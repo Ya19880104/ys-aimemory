@@ -83,10 +83,10 @@ class WebAuthStore:
             if record is None: return None
             return self.users._identity(conn, self.users._load(conn, record['user_id']))
 
-    def start_login(self,token,csrf):
+    def start_login(self,token,csrf,return_to='/ui/chat'):
         with self.transaction() as conn:
             if not self._active(conn):return False
-            self._put(conn,self.key(token),'login',{'csrf':csrf},self.clock()+600)
+            self._put(conn,self.key(token),'login',{'csrf':csrf,'return_to':return_to},self.clock()+600)
             return True
 
     def consume_login(self,token):

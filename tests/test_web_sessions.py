@@ -311,3 +311,51 @@ foreach ($item in $items) {
 """
     checked = subprocess.run([powershell, '-NoProfile', '-NonInteractive', '-Command', parser], input=generated.stdout, capture_output=True, text=True, encoding='utf-8')
     assert checked.returncode == 0, checked.stderr
+
+
+def test_room_invite_survives_login_and_wrong_password_without_secret_queries(room):
+    client, _, _ = room
+    client.cookies.clear()
+    target = '/ui/chat?project=shared&session=' + '1' * 32 + '&lang=en'
+    response = client.get(target + '&token=DO_NOT_RETAIN&password=DO_NOT_RETAIN', follow_redirects=False)
+    assert response.status_code == 303
+    assert 'DO_NOT_RETAIN' not in response.headers['location']
+    page = client.get(response.headers['location'])
+    assert 'DO_NOT_RETAIN' not in page.text
+    token = re.search('name="csrf" value="([^"]+)"', page.text)[1]
+    failed = client.post('/login', data={'csrf': token, 'username': 'human-room-admin',
+        'password': 'wrong', 'return_to': 'https://evil.test'}, follow_redirects=False)
+    assert failed.status_code == 401
+    token = re.search('name="csrf" value="([^"]+)"', failed.text)[1]
+    success = client.post('/login', data={'csrf': token, 'username': 'human-room-admin',
+        'password': 'synthetic-room-password', 'return_to': '/ui/chat?project=private'},
+        follow_redirects=False)
+    assert success.status_code == 303 and success.headers['location'] == target
+    assert client.get(success.headers['location']).status_code == 200
+
+
+@pytest.mark.parametrize('target', [
+    'https://evil.test/ui/chat', '//evil.test/ui/chat', '/\\evil.test/ui/chat',
+    '/ui/chat/../action', '/ui/chat%2f..%2faction', '/logout',
+    '/ui/chat?project=shared&project=private', '/ui/chat?session=invalid',
+    '/ui/chat?project=shared%0d%0aLocation%3Aevil', '/ui/chat#secret',
+])
+def test_login_rejects_unsafe_return_targets(room, target):
+    client, _, _ = room
+    client.cookies.clear()
+    page = client.get('/login', params={'return_to': target})
+    token = re.search('name="csrf" value="([^"]+)"', page.text)[1]
+    response = client.post('/login', data={'csrf': token, 'username': 'human-room-admin',
+        'password': 'synthetic-room-password'}, follow_redirects=False)
+    assert response.status_code == 303 and response.headers['location'] == '/ui/chat'
+
+
+def test_room_return_does_not_grant_project_access(room):
+    client, _, _ = room
+    client.cookies.clear()
+    response = client.get('/ui/chat?project=private&session=' + '1' * 32, follow_redirects=False)
+    page = client.get(response.headers['location'])
+    token = re.search('name="csrf" value="([^"]+)"', page.text)[1]
+    response = client.post('/login', data={'csrf': token, 'username': 'human-room-admin',
+        'password': 'synthetic-room-password'}, follow_redirects=False)
+    assert client.get(response.headers['location']).status_code == 404

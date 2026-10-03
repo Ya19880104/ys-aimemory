@@ -52,10 +52,12 @@ def login(client,password='fixture-shared-password'):
 
 def test_session_and_login_csrf_survive_instance_handoff_and_logout(shared):
     one,two,hub,_,_,_,_=shared
-    csrf=token(one.get('/login'))
+    target = '/ui/chat?project=visible&session=' + '1' * 32
+    csrf=token(one.get('/login', params={'return_to': target}))
     two.cookies.update(one.cookies)
     response=two.post('/login',data={'csrf':csrf,'username':'fixture','password':'fixture-shared-password'},follow_redirects=False)
     assert response.status_code==303
+    assert response.headers['location'] == target
     one.cookies.update(two.cookies)
     assert one.get('/ui').status_code==200
     raw_token=one.cookies.get(COOKIE)
