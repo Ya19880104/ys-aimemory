@@ -8,15 +8,15 @@
 
 ## 1. 準備 CLI 與聊天室
 
-使用 Windows、Python 3.12 與 Git。先按照 [Codex CLI 官方教學](https://learn.chatgpt.com/docs/codex/cli)的 **Windows** 步驟安裝正式 CLI，再開啟新的 PowerShell 終端機。檢查原生執行檔：
+使用 Windows 與 Python 3.12，只有選擇 checkout 替代方式才需要 Git。先按照 [Codex CLI 官方教學](https://learn.chatgpt.com/docs/codex/cli)的 **Windows** 步驟安裝正式 CLI，再開啟新的 PowerShell 終端機。檢查安裝：
 
 ```powershell
-Get-Command codex.exe -CommandType Application
-codex.exe --version
+Get-Command codex -All
+codex --version
 py -3.12 --version
 ```
 
-安裝器會從 `PATH` 尋找 `codex.exe`，只有 `codex.cmd` 或 `codex.ps1` 包裝器並不足夠。必要時可用 `--codex` 指定你已確認存在的原生執行檔絕對路徑；不要猜測帶有版本編號的應用程式資料夾。安裝器也會檢查接收器所需的 CLI 功能。
+安裝器會從 `PATH` 尋找 `codex.exe`。若為標準官方 npm 安裝、只公開 `codex.cmd`，會讀取該安裝的 package metadata，自動找到對應 Windows x64／arm64 原生相依套件；不會執行包裝器，也不需要猜應用程式資料夾。套件名稱、alias 版本、OS 與架構必須符合。非標準安裝可用 `--codex`（啟動腳本為 `-CodexPath`）指定已確認的原生執行檔。版本／help 預檢只檢查 CLI 功能，不呼叫模型。
 
 沿用已登入的 CLI。若 CLI 尚未登入，請依[官方驗證教學](https://learn.chatgpt.com/docs/auth)自行完成 `codex login`。安裝器不會代為登入、複製模型憑證或更換帳號。下方的 Hub worker Token 是另一組獨立憑證。
 
@@ -33,13 +33,35 @@ py -3.12 --version
 
 本機必須能連到 Hub 的 HTTP 80 公開 CA 下載、經驗證的 HTTPS 客戶端套件，以及套件使用的 Python 套件來源。只有公開 CA 透過 HTTP 下載；其指紋必須先符合可信指紋，後續才進行帶身分驗證的 HTTPS 操作。安裝器不會新增全域 CA 信任、不接受轉址，也不會對 Hub 請求使用環境代理設定。
 
-## 2. 從專案原始碼安裝
+## 2. 使用固定網址安裝，不需要 clone
+
+下載並檢視這份固定版本腳本，雜湊核對通過後才執行：
+
+```powershell
+$Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/78c37add40d3927cce00636060bd4160cfe53e31/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '112849D6CF4F025E4EB2BB6F31FA9F1A040A0A6DC524A14F60A70840A2AE1BA1') { throw 'Installer hash mismatch' }
+notepad $Installer
+```
+
+檢視後換成自己的資料再安裝，使用 Codex 專屬 worker，不借用 Claude 的 Token：
+
+```powershell
+& $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_32_LOWERCASE_HEX_ROOM_ID' -WorkerId 'YOUR_CODEX_WORKER_ID' -Language zh-TW -Hours 1 -MaxTurns 20 -Print
+```
+
+預設 `-Print` 會安裝並核對授權，不啟動模型。於隱藏提示輸入 Token 後，依下方「啟動專用接收器」複製收據的完整 `start_command`。明確使用 `-Run` 則會安裝後立即啟動有限額接收器，兩個開關不可同時使用。`-PythonPath` 可指定既有 Python 3.12；`-TurnTimeout` 預設 90 秒。不需要填本機專案資料夾：接收器會建立私有空白工作目錄進行對話回合。
+
+啟動腳本核對來源版本 `a3e73180761e2f77f870af3cf98a5eed77e54d4b` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
+
+### 替代方式：從 checkout 安裝
 
 複製到**新目錄**，使用包含 `scripts/setup-codex-chat.py` 的版本：
 
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
+git checkout --detach a3e73180761e2f77f870af3cf98a5eed77e54d4b
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
@@ -114,6 +136,7 @@ native_acceptance: not_run
 | --- | --- |
 | `codex_exe_not_found_install_official_cli_or_use_codex_option` | 安裝官方原生 Windows CLI、重開 PowerShell，或用 `--codex` 指定已確認的執行檔路徑。 |
 | `codex_cli_missing_required_features` | 依官方步驟更新 CLI；目前版本缺少接收器所需功能。 |
+| `codex_npm_metadata_invalid`、`codex_npm_native_metadata_invalid` 或原生套件缺失 | 修復／重裝官方 npm 套件，不要猜執行檔或更改核對條件。支援標準 nested 與 hoisted optional dependency 目錄。 |
 | CA／TLS 或公開下載失敗 | 核對管理員提供的網址／指紋與直接網路連線，不要關閉 TLS 驗證。 |
 | `dedicated_worker_identity_mismatch` | 核對 worker ID 與 Hub 核發的專屬 Token 是否對應。 |
 | `room_identity_or_active_state_mismatch` | 核對專案／對話 ID、worker 授權，並確認聊天室為開啟狀態。 |
