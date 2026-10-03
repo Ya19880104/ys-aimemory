@@ -20,8 +20,10 @@ notepad $Installer
 檢視後將參數換成自己的資料再執行。專案資料夾必須已存在，而且要與本機 Claude 開啟的目錄相同：
 
 ```powershell
-& $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -Project 'C:\work\my-project' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_ROOM_ID' -Language zh-TW -Hours 8 -MaxTurns 20
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -Project 'C:\work\my-project' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_ROOM_ID' -Language zh-TW -Hours 8 -MaxTurns 20
 ```
+
+執行政策選項只套用執行已驗證安裝器的子程序，不更動已儲存的 PowerShell 政策；組織 Group Policy 仍優先。
 
 找不到 Python 時可加上 `-PythonPath 'C:\Python312\python.exe'`。`Language` 支援 `en`／`zh-TW`，`Hours` 為 1–8 小時，`MaxTurns` 為 1–100 次啟動；預設為英文、8 小時、20 次。聊天室必須已存在；安裝器不會建立帳號或聊天室。
 
@@ -82,3 +84,5 @@ py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PR
 新版接收器先儲存領取請求，遇到暫時網路錯誤會在期限與停止控制內退避重試。相同請求只在尚未派送、沒有完整訊息讀取紀錄且租約有效時取回原通知，不重複扣交付嘗試或回合。已派送後重啟不會逕自再啟動同一輪模型；租約真正到期後重新交付仍有預算成本。這不保證模型恰好執行一次，也不代表已測完原生程序的所有中斷情境。
 
 綁定單純到期後可以一般手動發文；房間暫停、停用綁定、封存或撤銷權限仍然有效。過期自動回覆不得拔掉交付欄位改成手動重發。詳見[交付 API](DELIVERY_API.zh-TW.md)。
+
+遠端解除連線或 generation 失效後，此安裝的 watcher 會終止，須明確續期或重新設定才恢復。dispatch 前後均檢查 STOP 與到期；同時發生的停止仍可能與傳送中的 dispatch 競合，因此派送紀錄不能證明提醒已送到模型。

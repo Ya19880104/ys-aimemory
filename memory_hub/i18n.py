@@ -2,6 +2,7 @@
 from contextvars import ContextVar
 from html import escape
 import json
+import logging
 import os
 import re
 from pathlib import Path
@@ -18,7 +19,7 @@ ENGLISH_GUIDES = frozenset({
     'CHATGPT_PRIVATE_TUNNEL', 'CLAUDE_WINDOWS_SETUP', 'CODEX_CHAT_SETUP', 'CLIENT_SETUP', 'DELIVERY_API', 'DEPLOYMENT',
     'EFFICIENT_MCP', 'FOUR_AGENT_RUNBOOK', 'IMPORTING_MEMORY', 'KNOWLEDGE_INDEX',
     'MCP_GENERATOR', 'MCP_MESSAGES', 'MULTI_CLIENT_SETUP', 'NATIVE_CLIENT_CHECK',
-    'OPERATION_MANUAL', 'QUICKSTART', 'SHARED_SESSIONS', 'V02_ACCEPTANCE', 'WEB_DASHBOARD',
+    'OPERATION_MANUAL', 'QUICKSTART', 'SHARED_SESSIONS', 'START_CHATTING', 'V02_ACCEPTANCE', 'WEB_DASHBOARD',
 })
 
 
@@ -62,11 +63,14 @@ def _validated_documentation_base_url():
     return value.rstrip('/') or '/'
 
 
-def documentation_base_url():
+def documentation_base_url(*, warn=False):
     """Misconfigured mirrors fall back locally without breaking UI requests."""
     try:
         return _validated_documentation_base_url()
     except ValueError:
+        if warn:
+            # Do not log the rejected value: it may contain credentials or query data.
+            logging.getLogger(__name__).warning('Invalid HUB_DOCS_BASE_URL; using the local /help fallback')
         return '/help'
 
 
@@ -143,7 +147,7 @@ class LanguageMiddleware:
     def __init__(self, app):
         self.app = app
         default_language()
-        documentation_base_url()
+        documentation_base_url(warn=True)
 
     async def __call__(self, scope, receive, send):
         if scope['type'] != 'http':

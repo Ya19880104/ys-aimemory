@@ -20,8 +20,10 @@ notepad $Installer
 After review, run it with your values. The project directory must already exist and be the same directory opened by local Claude:
 
 ```powershell
-& $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -Project 'C:\work\my-project' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_ROOM_ID' -Language en -Hours 8 -MaxTurns 20
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https://YOUR-HUB' -ExpectedCa 'TRUSTED_CA_DER_SHA256' -Project 'C:\work\my-project' -ProjectId 'YOUR_PROJECT_ID' -SessionId 'YOUR_ROOM_ID' -Language en -Hours 8 -MaxTurns 20
 ```
+
+The execution-policy option applies only to this child process running the verified installer; it does not change your saved PowerShell policy. Organization Group Policy still takes precedence.
 
 If Python is not detected, append `-PythonPath 'C:\Python312\python.exe'`. `Language` supports `en` and `zh-TW`; `Hours` is 1–8 and `MaxTurns` is 1–100. English, 8 hours and 20 starts are the defaults. A room must already exist; this installer does not create accounts or rooms.
 
@@ -84,3 +86,5 @@ Upgrade the Hub first, then stop the old receiver and use this page's current pi
 Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid, dispatch has not started, and no full-message read has been recorded, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
 
 Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).
+
+A remote disconnect or generation fence makes this watcher terminal for the current installation. Explicitly renew or reconfigure to resume. STOP and expiry are checked before and after dispatch; a concurrent stop can still race an in-flight dispatch, whose receipt does not prove that a reminder was emitted.

@@ -11,6 +11,15 @@ IMAGES = {
 }
 
 
+def daily_chat_guidance():
+    return ('<section id="start-chatting" class="panel"><h2>'+tr('daily_chat_title')+'</h2>'
+            '<ol><li>'+tr('daily_chat_connect')+'</li><li>'+tr('daily_chat_choose')+'</li>'
+            '<li>'+tr('daily_chat_check')+'</li></ol><pre class="path"><code>'
+            +tr('daily_chat_prompt')+'</code></pre><p>'+tr('daily_chat_limits')
+            +'</p><p><a href="'+documentation_url('START_CHATTING.zh-TW.md')+'">'
+            +tr('daily_chat_guide')+'</a></p></section>')
+
+
 def automatic_client_guidance():
     return ('<h3>'+tr('automatic_client_setup_title')+'</h3><p>'
             +tr('automatic_claude_setup')+'</p><p>'+tr('automatic_codex_cloud_setup')

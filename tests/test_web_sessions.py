@@ -311,12 +311,13 @@ foreach ($item in $items) {
     if ($errors.Count) { throw 'Complete guide failed PowerShell parsing' }
     $commands=@($ast.FindAll({param($n) $n -is [System.Management.Automation.Language.CommandAst]},$true))
     foreach ($command in $commands) { if ($command.GetCommandName() -notin @('Join-Path','Invoke-WebRequest','Get-FileHash','notepad')) { throw 'Unexpected executable command in complete guide' } }
-    $line=@($item.text -split "`n" | Where-Object { $_.StartsWith('# & $Installer ') })
+    $line=@($item.text -split "`n" | Where-Object { $_.StartsWith('# powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer ') })
     if ($line.Count -ne 1) { throw 'Missing separate commented installation command' }
     $install=[System.Management.Automation.Language.Parser]::ParseInput($line[0].Substring(2),[ref]$tokens,[ref]$errors)
     if ($errors.Count) { throw 'Installation command failed parsing' }
     $calls=@($install.FindAll({param($n) $n -is [System.Management.Automation.Language.CommandAst]},$true))
     if ($calls.Count -ne 1) { throw 'Worker added an executable command' }
+    if ($calls[0].GetCommandName() -ne 'powershell.exe') { throw 'Expected process-scoped installer invocation' }
     if ($item.client -eq 'codex') {
         $literal=@($install.FindAll({param($n) $n -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $n.Value -eq $item.worker},$true))
         if ($literal.Count -ne 1) { throw 'Worker is not an exact literal parameter' }
