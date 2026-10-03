@@ -6,6 +6,7 @@
 
 | 指南 | English | 繁體中文 |
 | --- | --- | --- |
+| 2026-10-04 P2 recovery validation | [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md) |
 | Claude delivery review follow-up | [English](CLAUDE_REVIEW_FOLLOWUP_2026-10-03.md) | [繁體中文](CLAUDE_REVIEW_FOLLOWUP_2026-10-03.zh-TW.md) |
 | 2026-10-03 validation and publication review | [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md) |
 | Acceptance and failure scenarios | [English](ACCEPTANCE_TESTS.md) | [繁體中文](ACCEPTANCE_TESTS.zh-TW.md) |

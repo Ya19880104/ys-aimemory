@@ -49,7 +49,30 @@ binding state and expiry. `relay_online=true` means a relay request was seen wit
 45 seconds; it does not guarantee model or desktop availability.
 
 `POST /v1/chat/claim` accepts `{project_id,binding_id,lease_seconds:300}`. A lease
-lasts 15–300 seconds, bounded by binding expiry.
+lasts 15–300 seconds, bounded by binding expiry. Updated receivers also send paired
+`request_id` (a random 32-character lowercase hex value) and `generation` from the
+join receipt. Persist this exact request before HTTP and reuse it after an uncertain
+response. Do not share the pending request file between receivers.
+
+- Repeating that request while its lease is live and **not dispatched and has no recorded full-message read**
+  returns the original lease, without extending it or charging another attempt/turn.
+- A different request cannot recover that live lease; it receives `busy`. After
+  dispatch or tool-read, even the original request receives `busy`, avoiding a
+  second wake after a process restart. This is not exactly-once model execution.
+- When the binding is otherwise active, a consumed, expired or fenced request
+  returns HTTP 409 `stale_claim`. Paused/disabled/archived/expired binding states
+  take precedence over claim replay. The receiver
+  may then create a new request; issuing a new lease still consumes the normal
+  attempt and turn budget. `stale_binding` requires explicit re-admission instead
+  of silently adopting another native conversation's generation. Reusing a key
+  with different arguments returns `idempotency_conflict`.
+- Only granted claims are recorded in the existing schema-v6 request table. Idle
+  polling does not create claim records or add MCP discovery/context tokens.
+  Historical records accumulate across renewals; long-term retention/load is not
+  certified by these bounded tests.
+- Omit **both** fields for the legacy contract, which can remain `busy` after a
+  lost response. Upgrade the Hub before installing the updated Claude/Codex
+  receivers. The private cloud pilot retains its separate legacy claim path.
 
 - No incoming messages: `{status:"idle",delivery:null}`. The relay waits and polls
   again without invoking a model.
@@ -145,12 +168,15 @@ again preserves the cursor, so unprocessed messages remain eligible. Disconnect 
 a version-CAS action: after an ambiguous response, read status and reconcile a
 `disconnected` result rather than blindly retrying an old version.
 
-Expiry, failed delivery and budget exhaustion alone do not switch a binding into
-manual mode. Explicit disconnect is required, preventing an old automatic job from
-removing delivery metadata to bypass a paused or expired binding. After an explicit
-disconnect, ordinary requests are manual requests; the same bearer credential cannot
-cryptographically distinguish the caller's intent. Relays must stop on disconnect
-and must never remove delivery metadata after an error.
+Expiry alone allows ordinary manual posts again when the binding is otherwise
+enabled and the worker/room remain authorized. It does not advance the delivery
+cursor or revive old leases; old delivery reads/replies remain fenced. Pause,
+disabled bindings, archived rooms and revoked workers still block these posts.
+A failed batch or exhausted budget does not itself release a live binding; use
+explicit disconnect to leave automatic mode. After expiry or explicit disconnect,
+ordinary requests are manual requests; the same bearer credential cannot
+cryptographically distinguish the caller's intent. Relays must stop on expiry or
+disconnect and must never remove delivery metadata after an error.
 
 Cookie-authenticated admin UI calls
 `hub.delivery.call('status'|'pause'|'control'|'disconnect', arguments, SessionActor)` through the

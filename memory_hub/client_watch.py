@@ -8,6 +8,8 @@ from contextlib import contextmanager
 import importlib.util
 import json
 import os
+import re
+import uuid
 from pathlib import Path
 import sys
 import time
@@ -144,13 +146,38 @@ def watch(config, event, client, state_path, *, now=time.time, sleep=time.sleep)
         {'ttl_seconds': config.get('ttl_seconds', 28800)})
     binding_id = binding['binding_id']
     scope = {'project_id': config['project_id'], 'binding_id': binding_id}
+    claim_path = state_path.with_name('chat-claim.json')
+    claim_scope = scope | {'generation': binding['generation'], 'join_key': config['idempotency_key']}
+
+    def claim_request():
+        if claim_path.exists():
+            pending = json.loads(claim_path.read_text(encoding='utf-8'))
+            if all(pending.get(key) == value for key, value in claim_scope.items()):
+                if not isinstance(pending.get('request_id'), str) or re.fullmatch('[0-9a-f]{32}', pending['request_id']) is None:
+                    raise ValueError('invalid_pending_claim')
+                return pending['request_id']
+        identifier = uuid.uuid4().hex
+        # main() holds the kernel listener lock: persist before the first request
+        # so a crash/response loss can recover only this receiver's operation.
+        save(claim_path, claim_scope | {'request_id': identifier})
+        return identifier
+
     last_beat = 0
     polls = 0
     while now() < config['expires_at'] and not state_path.with_name('STOP').exists():
         if now() - last_beat >= 15:
             call('heartbeat', scope)
             last_beat = now()
-        response = call('claim', scope | {'lease_seconds': 300})
+        try:
+            response = call('claim', scope | {'lease_seconds': 300,
+                'generation': binding['generation'], 'request_id': claim_request()})
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 409 or exc.response.json().get('error') != 'stale_claim':
+                raise
+            # An authoritative fence/expiry/reply invalidates this request. A new
+            # request may make a normal budgeted claim; it never revives the lease.
+            claim_path.unlink(missing_ok=True)
+            continue
         polls += 1
         status = response['status']
         save(state_path, {'state': status, 'at': now(), 'polls': polls,
@@ -166,10 +193,15 @@ def watch(config, event, client, state_path, *, now=time.time, sleep=time.sleep)
                 # reminder; re-read authoritative state through the normal loop.
                 sleep(1)
                 continue
+            if now() >= config['expires_at'] or state_path.with_name('STOP').exists():
+                raise WatchStopped()
             save(state_path.with_name('chat-delivery.json'), delivery | {'join_key':config['idempotency_key']})
             save(state_path, {'state': 'handed_to_client', 'at': now(), 'polls': polls,
                  'binding_id': binding_id, 'delivery_id': delivery['delivery_id'],
                  'expires_at': config['expires_at']})
+            if now() >= config['expires_at'] or state_path.with_name('STOP').exists():
+                raise WatchStopped()
+            claim_path.unlink(missing_ok=True)
             return reminder(config, delivery)
         if status not in {'idle', 'paused', 'busy', 'failed'}:
             return None
@@ -199,7 +231,7 @@ def main():
                     verify=bridge.verified_context(connection), trust_env=False, follow_redirects=False,
                     timeout=10, headers={'Authorization': 'Bearer ' + token}) as client:
                 message = watch(config, event, client, state_path)
-            if message:
+            if message and time.time() < config['expires_at'] and not (here / 'STOP').exists():
                 print(message, file=sys.stderr, flush=True)
                 return 2
         return 0

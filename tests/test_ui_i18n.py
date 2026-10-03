@@ -254,3 +254,77 @@ def test_language_form_rejects_external_and_encoded_destinations(localized, targ
     response = client.get('/ui/language', params={'lang': 'en', 'return_to': target},
         headers={'referer': 'http://testserver/help'}, follow_redirects=False)
     assert response.status_code == 303 and response.headers['location'] == '/login'
+
+
+@pytest.mark.parametrize('base', [None, '', 'https://mirror.example/guides/', '/offline/docs/', '/'])
+@pytest.mark.parametrize('language', ['en', 'zh-TW'])
+def test_documentation_base_default_and_mirror(monkeypatch, base, language):
+    from memory_hub.i18n import _locale, documentation_url, DEFAULT_DOCS_BASE_URL
+    if base is None:
+        monkeypatch.delenv('HUB_DOCS_BASE_URL', raising=False)
+    else:
+        monkeypatch.setenv('HUB_DOCS_BASE_URL', base)
+    token = _locale.set(language)
+    try:
+        filename = 'CLIENT_SETUP'+('.zh-TW' if language == 'zh-TW' else '')+'.md'
+        assert documentation_url('CLIENT_SETUP.zh-TW.md') == (base or DEFAULT_DOCS_BASE_URL).rstrip('/')+'/'+filename
+        assert documentation_url('CHATGPT_PRIVATE_TUNNEL.zh-TW.md').endswith('CHATGPT_PRIVATE_TUNNEL'+('.zh-TW' if language == 'zh-TW' else '')+'.md')
+    finally:
+        _locale.reset(token)
+
+
+@pytest.mark.parametrize('base', [
+    'http://mirror.example/docs', '//mirror.example/docs', 'javascript:alert(1)',
+    'https://user:password@mirror.example/docs', 'https://mirror.example/docs?x=1',
+    'https://mirror.example/docs#x', '/docs/../secret', '/docs/./file',
+    '/docs/%2e%2e', '/docs/%252e%252e', '/docs\\secret', '/docs//secret',
+    '/docs/"onclick="evil', '/docs/<script>', '/docs;evil', '/docs evil',
+    'https://mirror.example:99999/docs', 'https://[broken/docs', ' https://mirror.example',
+    '/docs\nsecret', '/docs\tsecret', 'https:///docs', 'relative/docs',
+])
+def test_malicious_documentation_base_falls_back_to_real_help(monkeypatch, base):
+    from memory_hub.i18n import _locale, documentation_url
+    monkeypatch.setenv('HUB_DOCS_BASE_URL', base)
+    token = _locale.set('en')
+    try:
+        assert documentation_url('CLIENT_SETUP.zh-TW.md') == '/help?lang=en'
+    finally:
+        _locale.reset(token)
+
+
+@pytest.mark.parametrize('name', ['../secret.md', 'GUIDE.md?x=1', 'GUIDE.md#x', 'GUIDE%2emd', '<script>.md'])
+def test_documentation_filename_cannot_escape_directory(name):
+    from memory_hub.i18n import documentation_url
+    with pytest.raises(ValueError):
+        documentation_url(name)
+
+
+@pytest.mark.parametrize('base', ['/help', '/help/', 'http://unsafe.example/docs'])
+@pytest.mark.parametrize('language', ['en', 'zh-TW'])
+def test_offline_docs_fallback_is_real_localized_help_route(localized, monkeypatch, base, language):
+    client, _, _ = localized
+    monkeypatch.setenv('HUB_DOCS_BASE_URL', base)
+    from memory_hub.i18n import _locale, documentation_url
+    token = _locale.set(language)
+    try:
+        destination = documentation_url('CLIENT_SETUP.zh-TW.md')
+    finally:
+        _locale.reset(token)
+    assert destination == '/help?lang='+language
+    response = client.get(destination)
+    assert response.status_code == 200
+    assert response.headers['content-language'] == language
+    assert 'href="/help/CLIENT_SETUP' not in response.text
+    assert 'https://github.com/Ya19880104/ys-aimemory/blob/main/docs/' not in response.text
+
+
+@pytest.mark.parametrize('base', ['https://mirror.example/guides', '/offline/docs'])
+@pytest.mark.parametrize('language', ['en', 'zh-TW'])
+def test_rendered_help_uses_configured_mirror(localized, monkeypatch, base, language):
+    client, _, _ = localized
+    monkeypatch.setenv('HUB_DOCS_BASE_URL', base)
+    response = client.get('/help?lang='+language)
+    assert response.status_code == 200
+    guide = 'AUTOMATIC_CHAT'+('.zh-TW' if language == 'zh-TW' else '')+'.md'
+    assert base+'/'+guide in response.text
+    assert 'https://github.com/Ya19880104/ys-aimemory/blob/main/docs/' not in response.text

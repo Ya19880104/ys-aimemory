@@ -312,7 +312,9 @@ def test_expiry_guard_disconnect_manual_and_rejoin_preserve_unprocessed_messages
     s = room(hub); binding = join(hub, s, ttl_seconds=60); original = post(hub, s, B)
     delivery = claim(hub, binding)['delivery']
     now[0] += 61
-    reject('delivery_stopped', lambda: post(hub, s, A, body='Cannot drop metadata after expiry'))
+    post(hub, s, A, body='Expiry alone restores manual discussion')
+    reject('delivery_stopped', lambda: read_delivery(hub, s, delivery))
+    reject('delivery_stopped', lambda: reply(hub, s, delivery))
     reject('forbidden', lambda: call(hub, 'disconnect', B, project_id='p', binding_id=binding['binding_id'],
                                    expected_version=1))
     released = call(hub, 'disconnect', project_id='p', binding_id=binding['binding_id'], expected_version=1)

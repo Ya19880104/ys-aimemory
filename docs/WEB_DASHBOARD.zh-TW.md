@@ -61,3 +61,12 @@ Session 固定到期，不因讀取延長；登入 CSRF 為 600 秒，操作 non
 登入限制為同一直接對端 IP 每 5 分鐘 5 次、全域每 5 分鐘 100 次。反向代理可能使多個人共用同一 peer IP 的限制；服務不任意信任使用者提供的 forwarded IP。此保護不是公網完整防禦方案。
 
 先 LAN 驗證。未來公開需另行處理公開 DNS、TLS 更新、反向代理信任設定、邊界防火牆／速率限制、認證方案、備份與還原、認證生命週期、監控及安全審查，並取得明確部署授權。不要將測試設定直接改成綁定所有介面。
+
+
+## 文件鏡像與離線 help
+
+`HUB_DOCS_BASE_URL` 控制 Hub server-rendered guide links。未設定／空值保留 `https://github.com/Ya19880104/ys-aimemory/blob/main/docs`。可設 HTTPS directory（如 `https://docs.example.com/ys-memory`）或 root-relative directory（如 `/mirror/docs`）；連結追加選定英文／繁中 Markdown filename。鏡像檔案與 web-server mapping 由 operator 提供，Hub 不下載、代管或驗證內容；wheel 未包 Markdown guides。
+
+離線 LAN 設 `HUB_DOCS_BASE_URL=/help`，連結使用既有語系 help landing page（`/help?lang=en`／`/help?lang=zh-TW`），不產生不存在的單份文件 route。這是內建摘要操作手冊，不是所有完整 guide 的副本。
+
+只接受 HTTPS／root-relative directory；拒絕 credentials、query/fragment、百分比 escape、backslash、控制／非 ASCII 字元、重複 separator、dot traversal，URL 請用 ASCII/punycode。錯誤設定安全 fallback 到本地 `/help`，不令 UI request crash；尾端 slash 正規化。Compose 傳入此設定，部署修改後重啟 runtime。釘選 installer downloads 與 vendor references 獨立，此設定不改寫或授權 installer sources。

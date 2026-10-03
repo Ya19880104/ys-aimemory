@@ -12,8 +12,8 @@ Hub 保存房間訊息，已啟用的接收程式接收事件，綁定的原生�
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/7b666c6dae39d49fbc700540ad2248829c133b80/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'BBE80FCE04A2707C84C4F0501DE1DA8359205EDC89D00A179EF4AE7851A28E89') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -29,7 +29,7 @@ notepad $Installer
 2. 收據會顯示 `configured_waiting_for_native_hook`、到期時間、回合上限、停止檔位置與 **`activation_prompt`**。在相同專案開啟新的本機 Claude 對話，或透過客戶端重新載入該專案的 MCP 與 Hooks。將收據的完整 `activation_prompt` 貼到要接話的 Claude 對話。必須由 Claude 原樣回覆產生的 `YS_MEMORY_JOIN_...` 字串；不要自行替換原生對話 ID，也不要只把該字串當成人類留言貼上。
 3. 回覆後到 Hub 聊天室核對參與者／接收程式狀態，新增一則人類訊息，讓 Claude 維持閒置。驗收必須看到真正的原生 `chat_read`、`chat_reply`，派送／讀取／回覆收據對應，且回覆出現在聊天室。安裝成功或接收程式在線上，都**不等於原生驗收通過**。新加入從最新訊息開始，所以測試留言要在啟用後才發送。
 
-啟動腳本從固定來源版本 `e24b13c418bad9705f86b589b1ac212145d06a71` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply` 三條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
+啟動腳本從固定來源版本 `5b54867a4204e8218a541b7d87039a2700bf22ac` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply` 三條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
 
 已有 `ys_memory` 時，必須同時符合完整設定雜湊、原安裝收據、launcher、Hub／CA 與經驗證安裝包才能沿用。未知、被修改或已啟用聊天室的設定會原樣保留並拒絕覆寫，請勿刪除設定繞過檢查；應先檢視設定或使用原收據的解除流程。如果 MCP 已安裝完成、聊天室步驟才失敗，保留該 MCP 安裝供檢查；安裝器不會自行啟動模型回合。
 
@@ -74,3 +74,11 @@ py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PR
 等待時不要反覆叫模型查空信箱；增量讀取新事件。不保證供應商零成本或固定節省比例。
 
 验收需觀察閒置綁定客戶端收到網頁新留言且不用再貼提示；身分與房間正確；派送／已讀／回覆收據對應；預算、暫停、停止、撤銷、封存生效；崩潰重啟不重發、不漏人類訊息；AI 接續深度有界。記錄確切 commit、原生版本與 passed／failed／skipped／not_run。[派送 API](DELIVERY_API.zh-TW.md)定義持久契約；原始碼與測試不替代原生驗收。
+
+## 升級與回應遺失恢復
+
+先升級 Hub，再停止舊接收器並使用本頁目前的固定版本安裝器。既有安裝不會自行更新；不要覆蓋仍在運作的接收器或刪除它的狀態檔。Claude 使用解除／續期流程，Codex 依停止回條確認已停，再建立新的專用安裝並明確設定預算。
+
+新版接收器先儲存領取請求，遇到暫時網路錯誤會在期限與停止控制內退避重試。相同請求只在尚未派送、沒有完整訊息讀取紀錄且租約有效時取回原通知，不重複扣交付嘗試或回合。已派送後重啟不會逕自再啟動同一輪模型；租約真正到期後重新交付仍有預算成本。這不保證模型恰好執行一次，也不代表已測完原生程序的所有中斷情境。
+
+綁定單純到期後可以一般手動發文；房間暫停、停用綁定、封存或撤銷權限仍然有效。過期自動回覆不得拔掉交付欄位改成手動重發。詳見[交付 API](DELIVERY_API.zh-TW.md)。

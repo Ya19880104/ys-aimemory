@@ -25,7 +25,7 @@ def test_idle_pause_and_ready_never_read_or_write_message(tmp_path):
         requests.append((req.url.path, json.loads(req.content)))
         op = req.url.path.rsplit('/', 1)[-1]
         if op == 'join':
-            return httpx.Response(200, json={'binding_id': 'b'})
+            return httpx.Response(200, json={'binding_id': 'b', 'generation': 1})
         if op == 'claim':
             state = next(statuses)
             return httpx.Response(200, json={'status': state, 'delivery': delivery()})
@@ -65,7 +65,7 @@ def test_stop_and_expiry_make_zero_requests(tmp_path):
 
 def test_budget_exhausted_does_not_wake(tmp_path):
     def handle(req):
-        return httpx.Response(200, json={'binding_id':'b'} if req.url.path.endswith('join')
+        return httpx.Response(200, json={'binding_id':'b', 'generation':1} if req.url.path.endswith('join')
              else {'status':'budget_exhausted'})
     with httpx.Client(base_url='https://hub.test', transport=httpx.MockTransport(handle)) as client:
         assert watch(config(), {'hook_event_name':'Stop','session_id':'native'}, client,
@@ -115,7 +115,7 @@ def test_deploy_outage_recovers_without_model_or_cursor_advance(tmp_path):
                 return httpx.Response(503)
             if len(joins) == 2:
                 raise httpx.ConnectError('offline', request=req)
-            return httpx.Response(200, json={'binding_id':'b'})
+            return httpx.Response(200, json={'binding_id':'b', 'generation':1})
         if req.url.path.endswith('claim'):
             return httpx.Response(200, json={'status':'ready','delivery':delivery()})
         return httpx.Response(200, json={})
@@ -131,7 +131,7 @@ def test_pause_between_claim_and_dispatch_does_not_wake_with_stale_lease(tmp_pat
     claims, dispatches, clock = [0], [0], [100]
     def handle(req):
         if req.url.path.endswith('join'):
-            return httpx.Response(200,json={'binding_id':'b'})
+            return httpx.Response(200,json={'binding_id':'b', 'generation':1})
         if req.url.path.endswith('claim'):
             claims[0] += 1
             if claims[0] == 2:
@@ -247,3 +247,65 @@ def test_activation_diagnostic_does_not_swallow_non_filesystem_errors(tmp_path, 
             'cwd': str(tmp_path), 'last_assistant_message': 'YS_MEMORY_JOIN_wrong'},
             tmp_path / 'status.json')
     assert c == original
+
+
+
+def test_stale_claim_rotates_only_after_authoritative_fence(tmp_path):
+    claims = []
+    def handle(req):
+        if req.url.path.endswith('join'):
+            return httpx.Response(200, json={'binding_id': 'b', 'generation': 1})
+        if req.url.path.endswith('claim'):
+            value = json.loads(req.content)
+            persisted = json.loads((tmp_path / 'chat-claim.json').read_text())
+            assert persisted['request_id'] == value['request_id']
+            claims.append(value)
+            if len(claims) == 1:
+                return httpx.Response(409, json={'error': 'stale_claim'})
+            return httpx.Response(200, json={'status': 'ready', 'delivery': delivery()})
+        return httpx.Response(200, json={})
+    with httpx.Client(base_url='https://hub.test', transport=httpx.MockTransport(handle)) as client:
+        assert watch(config(), {'hook_event_name': 'Stop', 'session_id': 'native'}, client,
+            tmp_path / 'status.json', now=lambda:100, sleep=lambda _:pytest.fail('No busy stall'))
+    assert len(claims) == 2 and claims[0]['request_id'] != claims[1]['request_id']
+    assert claims[0]['generation'] == claims[1]['generation'] == 1
+
+
+def test_stale_binding_is_terminal_and_preserves_pending_request(tmp_path):
+    requests = []
+    def handle(req):
+        if req.url.path.endswith('join'):
+            return httpx.Response(200, json={'binding_id': 'b', 'generation': 1})
+        if req.url.path.endswith('claim'):
+            requests.append(json.loads(req.content))
+            return httpx.Response(409, json={'error': 'stale_binding'})
+        return httpx.Response(200, json={})
+    with httpx.Client(base_url='https://hub.test', transport=httpx.MockTransport(handle)) as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            watch(config(), {'hook_event_name': 'Stop', 'session_id': 'native'}, client,
+                tmp_path / 'status.json', now=lambda:100, sleep=lambda _:pytest.fail('Must not retry'))
+    assert len(requests) == 1
+    assert json.loads((tmp_path / 'chat-claim.json').read_text())['request_id'] == requests[0]['request_id']
+
+
+
+@pytest.mark.parametrize('stop_mode', ['STOP', 'expiry'])
+def test_stop_during_dispatch_never_returns_model_reminder(tmp_path, stop_mode):
+    clock = [100]
+    def handle(req):
+        if req.url.path.endswith('join'):
+            return httpx.Response(200, json={'binding_id': 'b', 'generation': 1})
+        if req.url.path.endswith('claim'):
+            return httpx.Response(200, json={'status': 'ready', 'delivery': delivery()})
+        if req.url.path.endswith('dispatched'):
+            if stop_mode == 'STOP':
+                (tmp_path / 'STOP').touch()
+            else:
+                clock[0] = config()['expires_at']
+        return httpx.Response(200, json={})
+    with httpx.Client(base_url='https://hub.test', transport=httpx.MockTransport(handle)) as client:
+        with pytest.raises(WatchStopped):
+            watch(config(), {'hook_event_name': 'Stop', 'session_id': 'native'}, client,
+                tmp_path / 'status.json', now=lambda:clock[0], sleep=lambda _:pytest.fail('No wait'))
+    assert not (tmp_path / 'chat-delivery.json').exists()
+    assert (tmp_path / 'chat-claim.json').exists()  # Recovery remains fenced by server dispatch state.

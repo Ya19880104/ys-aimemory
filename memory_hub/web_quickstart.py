@@ -15,7 +15,8 @@ def automatic_client_guidance():
     return ('<h3>'+tr('automatic_client_setup_title')+'</h3><p>'
             +tr('automatic_claude_setup')+'</p><p>'+tr('automatic_codex_cloud_setup')
             +'</p><p><a href="'+documentation_url('AUTOMATIC_CHAT.zh-TW.md')+'">'
-            +tr('automatic_setup_guide')+'</a></p>')
+            +tr('automatic_setup_guide')+'</a></p><p>'+tr('automatic_recovery_upgrade')
+            +'</p><p>'+tr('automatic_expired_manual')+'</p>')
 
 
 def walkthrough(base):

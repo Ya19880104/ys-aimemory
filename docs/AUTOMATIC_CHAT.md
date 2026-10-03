@@ -12,8 +12,8 @@ Download this immutable installer in PowerShell, check its hash and review it:
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/7b666c6dae39d49fbc700540ad2248829c133b80/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'BBE80FCE04A2707C84C4F0501DE1DA8359205EDC89D00A179EF4AE7851A28E89') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -29,7 +29,7 @@ If Python is not detected, append `-PythonPath 'C:\Python312\python.exe'`. `Lang
 2. The receipt reports `configured_waiting_for_native_hook`, expiry, turn budget, a stop-file path and **`activation_prompt`**. Open a new local Claude conversation in the same project, or reload that project's MCP and hooks in your client. Paste the receipt's complete `activation_prompt` into the intended conversation. Claude must reply with the exact generated `YS_MEMORY_JOIN_...` line; do not substitute a conversation ID or simply paste that line yourself.
 3. After the reply, check the Hub room for the participant/receiver state. Send a new human message in the Hub and leave Claude idle. Acceptance requires an actual native `chat_read` and `chat_reply` with matching delivery/read/reply receipts, visible in the room. A successful installer or online receiver alone is **not** native acceptance. New joins start from the latest message; send the test message after activation.
 
-The bootstrap downloads exactly five SHA-256-checked files from source revision `e24b13c418bad9705f86b589b1ac212145d06a71`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the three exact `chat_status`, `chat_read`, `chat_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
+The bootstrap downloads exactly five SHA-256-checked files from source revision `5b54867a4204e8218a541b7d87039a2700bf22ac`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the three exact `chat_status`, `chat_read`, `chat_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
 
 An existing `ys_memory` entry is reused only when its complete config hash, installer receipt, launcher, Hub/CA and verified bundle match. Unknown, edited or active-chat configurations are preserved and rejected; do not delete them to bypass the check. Review the configuration or use the original receipt's disconnect procedure first. If MCP installation completes but the chat step fails, that MCP installation remains available for inspection; no model turn is started by the installer.
 
@@ -76,3 +76,11 @@ For a dedicated Codex CLI receiver, follow the [Codex chat installation guide](C
 Idle waiting should not repeatedly ask a model to inspect an empty inbox. Retrieve new messages incrementally. This does not promise zero provider cost or a fixed token savings percentage.
 
 Acceptance requires an idle bound client reacting to a new human web message without an extra prompt; correct identity/room; matching delivery/read/reply receipts; observed budget/pause/stop/revocation/archive behavior; crash/restart recovery without duplicates or skipped human messages; and bounded AI follow-ups. Record exact commits, native versions, and passed/failed/skipped/not_run. [Delivery API](DELIVERY_API.md) defines the durable contract. Source/tests cannot certify native acceptance.
+
+## Upgrade and lost-response recovery
+
+Upgrade the Hub first, then stop the old receiver and use this page's current pinned installer. Existing installations do not update themselves. Do not overwrite a running receiver or delete its state. Use Claude's disconnect/renew flow; for Codex, confirm the old receiver stopped, then create a new dedicated installation with an explicit budget.
+
+Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid, dispatch has not started, and no full-message read has been recorded, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
+
+Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).

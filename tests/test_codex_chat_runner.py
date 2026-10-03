@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import io
+import httpx
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,186 @@ CONFIG = {'project_id': 'test-project', 'session_id': 'a'*32, 'worker_id': 'code
           'ttl_seconds': 60, 'expires_at': 160, 'turn_timeout': 60}
 DELIVERY = {'delivery_id': 'b'*32, 'lease_id': 'c'*32, 'after_sequence': 4, 'through_sequence': 6,
             'message_ids': ['d'*32, 'e'*32], 'reply_idempotency_key': 'delivery-' + 'b'*32}
+
+
+def fault_client(claim, dispatch=None):
+    def handle(request):
+        operation = request.url.path.rsplit('/', 1)[-1]
+        if operation == 'join':
+            return httpx.Response(200, json={k: CONFIG[k] for k in ('worker_id', 'project_id', 'session_id')} |
+                {'binding_id': '0'*32, 'version': 1, 'generation': 1})
+        if operation == 'claim':
+            return claim(request)
+        if operation == 'dispatched' and dispatch:
+            return dispatch(request)
+        return httpx.Response(200, json={'status': 'waiting'})
+    return httpx.Client(base_url='https://fixture.test', transport=httpx.MockTransport(handle))
+
+
+def test_committed_lost_claim_retries_same_persisted_request_without_duplicate_turn(tmp_path):
+    requests, turns = [], []
+    def claim(request):
+        payload = json.loads(request.content)
+        assert json.loads((tmp_path / 'receiver-claim.json').read_text()) == payload
+        requests.append(payload)
+        if len(requests) == 1:
+            raise httpx.ReadTimeout('committed response lost', request=request)
+        if len(requests) <= 2:
+            return httpx.Response(200, json={'status': 'ready', 'delivery': DELIVERY})
+        return httpx.Response(200, json={'status': 'busy' if len(requests) == 3 else 'budget_exhausted', 'delivery': None})
+    with fault_client(claim) as client:
+        result = runner.receiver(CONFIG, client, tmp_path, now=lambda: 100, sleep=lambda _: None,
+            turn=lambda *args: turns.append(args[1]) or {'status': 'passed'})
+    assert requests[0] == requests[1] == requests[2]
+    assert len(turns) == 1 and result['native_turns'] == 1
+
+
+def test_claim_response_loss_survives_restart_with_original_request(tmp_path):
+    requests = []
+    def crash(request):
+        requests.append(json.loads(request.content))
+        raise KeyboardInterrupt()
+    with fault_client(crash) as client, pytest.raises(KeyboardInterrupt):
+        runner.receiver(CONFIG, client, tmp_path, now=lambda: 100)
+    def recovered(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={'status': 'ready', 'delivery': DELIVERY})
+    turns = []
+    with fault_client(recovered) as client:
+        runner.receiver(CONFIG | {'max_turns': 1}, client, tmp_path, now=lambda: 100,
+            turn=lambda *args: turns.append(args[1]) or {'status': 'passed'})
+    assert requests[0] == requests[1] and len(turns) == 1
+
+
+def test_stop_during_claim_backoff_never_starts_model(tmp_path):
+    def unavailable(request):
+        return httpx.Response(503)
+    with fault_client(unavailable) as client:
+        result = runner.receiver(CONFIG, client, tmp_path, now=lambda: 100,
+            sleep=lambda _: (tmp_path / 'STOP').touch(), turn=lambda *args: pytest.fail('stopped'))
+    assert result['state'] == 'stopped' and result['native_turns'] == 0
+
+
+def test_lost_dispatch_response_requires_verified_retry_before_model(tmp_path):
+    dispatches, turns = [], []
+    def claim(request):
+        return httpx.Response(200, json={'status': 'ready', 'delivery': DELIVERY})
+    def dispatch(request):
+        dispatches.append(json.loads(request.content))
+        if len(dispatches) == 1:
+            raise httpx.ReadTimeout('committed dispatch lost', request=request)
+        return httpx.Response(200, json={'status': 'handed_to_client'})
+    with fault_client(claim, dispatch) as client:
+        runner.receiver(CONFIG | {'max_turns': 1}, client, tmp_path, now=lambda: 100, sleep=lambda _: None,
+            turn=lambda *args: turns.append(len(dispatches)) or {'status': 'passed'})
+    assert dispatches[0] == dispatches[1] and turns == [2]
+
+
+def test_restart_after_dispatch_does_not_resume_native_turn(tmp_path):
+    requests = []
+    def ready(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={'status': 'ready', 'delivery': DELIVERY})
+    def crash(*args):
+        raise KeyboardInterrupt()
+    with fault_client(ready) as client, pytest.raises(KeyboardInterrupt):
+        runner.receiver(CONFIG, client, tmp_path, now=lambda: 100, turn=crash)
+    def already_dispatched(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={'status': 'busy' if len(requests) == 2 else 'budget_exhausted', 'delivery': None})
+    with fault_client(already_dispatched) as client:
+        runner.receiver(CONFIG, client, tmp_path, now=lambda: 100, sleep=lambda _: None,
+            turn=lambda *args: pytest.fail('cannot resume an uncertain model'))
+    assert requests[0] == requests[1] == requests[2]
+
+
+@pytest.mark.parametrize('code,error', [(401, 'unauthorized'), (409, 'stale_binding')])
+def test_claim_terminal_auth_or_generation_failure_does_not_rotate(tmp_path, code, error):
+    requests = []
+    def reject(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(code, json={'error': error})
+    with fault_client(reject) as client, pytest.raises(httpx.HTTPStatusError):
+        runner.receiver(CONFIG, client, tmp_path, now=lambda: 100, sleep=lambda _: pytest.fail('terminal retry'))
+    assert len(requests) == 1
+
+
+def test_distinct_receivers_same_worker_do_not_share_claim_identity(tmp_path):
+    requests = []
+    def busy(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={'status': 'budget_exhausted', 'delivery': None})
+    for name in ('one', 'two'):
+        directory = tmp_path / name
+        directory.mkdir()
+        with fault_client(busy) as client:
+            runner.receiver(CONFIG, client, directory, now=lambda: 100,
+                turn=lambda *args: pytest.fail('no model'))
+    assert requests[0]['binding_id'] == requests[1]['binding_id']
+    assert requests[0]['request_id'] != requests[1]['request_id']
+
+
+def test_stale_claim_rotates_then_dispatch_pause_race_cannot_wake(tmp_path):
+    requests, dispatches, turns = [], [], []
+    def claim(request):
+        requests.append(json.loads(request.content))
+        if len(requests) in (1, 3):
+            return httpx.Response(409, json={'error': 'stale_claim'})
+        return httpx.Response(200, json={'status': 'ready', 'delivery': DELIVERY})
+    def dispatch(request):
+        dispatches.append(request)
+        return httpx.Response(409 if len(dispatches) == 1 else 200, json={'error': 'delivery_stopped'})
+    with fault_client(claim, dispatch) as client:
+        runner.receiver(CONFIG | {'max_turns': 1}, client, tmp_path, now=lambda: 100, sleep=lambda _: None,
+            turn=lambda *args: turns.append(args[1]) or {'status': 'passed'})
+    assert requests[0]['request_id'] != requests[1]['request_id']
+    assert requests[1] == requests[2]
+    assert requests[3]['request_id'] != requests[2]['request_id']
+    assert len(turns) == 1 and len(dispatches) == 2
+
+
+@pytest.mark.parametrize('response_kind', ['idle', 'stale_claim'])
+def test_removed_pending_claim_during_response_does_not_disable_receiver(tmp_path, response_kind):
+    requests, controls = [], []
+    def handle(request):
+        operation = request.url.path.rsplit('/', 1)[-1]
+        if operation == 'join':
+            return httpx.Response(200, json={k: CONFIG[k] for k in ('worker_id', 'project_id', 'session_id')} |
+                {'binding_id': '0'*32, 'version': 1, 'generation': 1})
+        if operation == 'control':
+            controls.append(request)
+        if operation == 'claim':
+            requests.append(json.loads(request.content))
+            if len(requests) == 1:
+                # Manual deletion can race the HTTP response despite the kernel
+                # lock excluding a second receiver in this directory.
+                (tmp_path / 'receiver-claim.json').unlink()
+                return httpx.Response(409 if response_kind == 'stale_claim' else 200,
+                    json={'error': 'stale_claim'} if response_kind == 'stale_claim' else
+                         {'status': 'idle', 'delivery': None})
+            return httpx.Response(200, json={'status': 'budget_exhausted', 'delivery': None})
+        return httpx.Response(200, json={'status': 'waiting'})
+    with httpx.Client(base_url='https://fixture.test', transport=httpx.MockTransport(handle)) as client:
+        result = runner.receiver(CONFIG, client, tmp_path, now=lambda: 100, sleep=lambda _: None,
+            turn=lambda *args: pytest.fail('No ready delivery'))
+    assert result['state'] == 'budget_exhausted'
+    assert len(requests) == 2 and requests[0]['request_id'] != requests[1]['request_id']
+    assert not controls
+
+
+def test_pending_claim_permission_error_still_fails_closed(tmp_path, monkeypatch):
+    original_unlink = Path.unlink
+    def denied(path, *args, **kwargs):
+        if path == tmp_path / 'receiver-claim.json':
+            raise PermissionError('Cannot remove pending state')
+        return original_unlink(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'unlink', denied)
+    client = FakeClient(['idle'])
+    with pytest.raises(PermissionError):
+        runner.receiver(CONFIG, client, tmp_path, now=lambda: 100, sleep=lambda _: None,
+            turn=lambda *args: pytest.fail('No model'))
+    assert client.calls[-1][0] == '/v1/chat/control'
+    assert client.calls[-1][1]['enabled'] is False
 
 
 def arguments(name, **changes):
@@ -178,13 +359,13 @@ class FakeClient:
         self.calls.append((path, json))
         operation = path.rsplit('/', 1)[-1]
         if operation == 'join':
-            value = {key: CONFIG[key] for key in ('worker_id', 'project_id', 'session_id')} | {'binding_id': '0'*32, 'version': 1}
+            value = {key: CONFIG[key] for key in ('worker_id', 'project_id', 'session_id')} | {'binding_id': '0'*32, 'version': 1, 'generation': 1}
         elif operation == 'claim':
             status = next(self.statuses)
             value = {'status': status, 'delivery': DELIVERY if status == 'ready' else None}
         else:
             value = {'status': 'waiting'}
-        return type('Response', (), {'raise_for_status': lambda self: None, 'json': lambda self: value})()
+        return type('Response', (), {'status_code': 200, 'raise_for_status': lambda self: None, 'json': lambda self: value})()
 
 
 def test_idle_paused_budget_polling_never_spawns_model(tmp_path):

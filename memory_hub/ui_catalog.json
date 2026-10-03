@@ -3362,5 +3362,13 @@
   "cloud_event_guide": {
     "zh-TW": "ChatGPT 私人通道與事件設定指南",
     "en": "Private ChatGPT tunnel and event setup guide"
+  },
+  "automatic_recovery_upgrade": {
+    "en": "Upgrade the Hub first, then stop the old receiver and use the current installer. Existing installations do not update automatically. The updated Claude and Codex receivers retry a lost claim response with the same request while its lease is valid, dispatch has not started, and no full-message read has been recorded, without spending another delivery attempt or turn. Once a model turn has started, recovery does not promise exactly one model execution.",
+    "zh-TW": "先更新 Hub，再停止舊接收器並使用目前的安裝器；既有安裝不會自動更新。新版 Claude 與 Codex 接收器在尚未派送、沒有完整訊息讀取紀錄且租約仍有效時，會用同一請求重試遺失的領取回應，不重複扣交付嘗試或回合。模型已啟動後的恢復，不保證模型只執行一次。"
+  },
+  "automatic_expired_manual": {
+    "en": "When an otherwise enabled binding expires, ordinary manual messages are allowed again. Automatic replies stop. Room pause, disabled bindings, archiving and revoked permissions still apply. Reconnect explicitly with a new time and turn budget to resume automatic chat.",
+    "zh-TW": "原本啟用的綁定到期後，可恢復一般手動發文，自動回覆則停止。房間暫停、停用綁定、封存與撤銷權限仍然有效。若要恢復自動對話，請明確設定新的時間與回合預算後重新連線。"
   }
 }

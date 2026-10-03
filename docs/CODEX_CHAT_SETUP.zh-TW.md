@@ -39,8 +39,8 @@ py -3.12 --version
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/49fb77ae3c64a6da61c4d4175d32b9f71e32d001/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '3A9DC4603260D40E39FC04A3B639F35DF72533B53C809CAC3D6E317E0AC22B81') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/bd8d4e684e0f510312cf491e015dbd1d3944fff4/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'F5E622AC3BC21CA06B311238C4B49491324FDD01C40F84FC97081913A4EBFDD7') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -52,7 +52,7 @@ notepad $Installer
 
 預設 `-Print` 會安裝並核對授權，不啟動模型。於隱藏提示輸入 Token 後，依下方「啟動專用接收器」複製收據的完整 `start_command`。明確使用 `-Run` 則會安裝後立即啟動有限額接收器，兩個開關不可同時使用。`-PythonPath` 可指定既有 Python 3.12；`-TurnTimeout` 預設 90 秒。不需要填本機專案資料夾：接收器會建立私有空白工作目錄進行對話回合。
 
-啟動腳本核對來源版本 `a3e73180761e2f77f870af3cf98a5eed77e54d4b` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
+啟動腳本核對來源版本 `4ed987759e3d83e8caa5788831de3544438172db` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
 
 ### 替代方式：從 checkout 安裝
 
@@ -61,7 +61,7 @@ notepad $Installer
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach a3e73180761e2f77f870af3cf98a5eed77e54d4b
+git checkout --detach 4ed987759e3d83e8caa5788831de3544438172db
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
@@ -145,3 +145,11 @@ native_acceptance: not_run
 | `receiver_was_stopped_keep_evidence_and_provision_new_bounded_run` | 保留原 STOP 與證據，需要時明確建立新的有限度安裝。 |
 
 本教學描述安裝器與接收器的行為，不表示某台電腦已通過原生執行、Desktop 訊息注入或 ChatGPT 雲端投遞驗收；這些項目需要各自的實測紀錄。
+
+## 升級與回應遺失恢復
+
+先升級 Hub，再停止舊接收器並使用本頁目前的固定版本安裝器。既有安裝不會自行更新；不要覆蓋仍在運作的接收器或刪除它的狀態檔。Claude 使用解除／續期流程，Codex 依停止回條確認已停，再建立新的專用安裝並明確設定預算。
+
+新版接收器先儲存領取請求，遇到暫時網路錯誤會在期限與停止控制內退避重試。相同請求只在尚未派送、沒有完整訊息讀取紀錄且租約有效時取回原通知，不重複扣交付嘗試或回合。已派送後重啟不會逕自再啟動同一輪模型；租約真正到期後重新交付仍有預算成本。這不保證模型恰好執行一次，也不代表已測完原生程序的所有中斷情境。
+
+綁定單純到期後可以一般手動發文；房間暫停、停用綁定、封存或撤銷權限仍然有效。過期自動回覆不得拔掉交付欄位改成手動重發。詳見[交付 API](DELIVERY_API.zh-TW.md)。
