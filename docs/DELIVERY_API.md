@@ -54,12 +54,14 @@ lasts 15–300 seconds, bounded by binding expiry. Updated receivers also send p
 join receipt. Persist this exact request before HTTP and reuse it after an uncertain
 response. Do not share the pending request file between receivers.
 
-- Repeating that request while its lease is live and **not dispatched or read**
+- Repeating that request while its lease is live and **not dispatched and has no recorded full-message read**
   returns the original lease, without extending it or charging another attempt/turn.
 - A different request cannot recover that live lease; it receives `busy`. After
   dispatch or tool-read, even the original request receives `busy`, avoiding a
   second wake after a process restart. This is not exactly-once model execution.
-- A consumed, expired or fenced request returns HTTP 409 `stale_claim`. The receiver
+- When the binding is otherwise active, a consumed, expired or fenced request
+  returns HTTP 409 `stale_claim`. Paused/disabled/archived/expired binding states
+  take precedence over claim replay. The receiver
   may then create a new request; issuing a new lease still consumes the normal
   attempt and turn budget. `stale_binding` requires explicit re-admission instead
   of silently adopting another native conversation's generation. Reusing a key

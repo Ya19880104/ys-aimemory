@@ -225,11 +225,14 @@ def test_automatic_setup_uses_configured_origin_and_public_ca(room, monkeypatch)
     import memory_hub.web_sessions as sessions
     client, _, _ = room
     monkeypatch.setenv('HUB_PUBLIC_BASE_URL', 'https://hub.example.com')
+    monkeypatch.setenv('HUB_DOCS_BASE_URL', '/offline/docs')
     monkeypatch.setattr(sessions, '_public_ca', lambda path: SimpleNamespace(fingerprint='AB:' * 31 + 'AB'))
     page = client.get('/ui/chat?project=shared&lang=en', headers={'X-Forwarded-Host': 'attacker.example'})
     assert page.status_code == 200
     assert 'Set up automatic replies' in page.text
     assert 'data-setup-base="https://hub.example.com"' in page.text
+    assert 'data-claude-guide="/offline/docs/AUTOMATIC_CHAT.md"' in page.text
+    assert 'data-codex-guide="/offline/docs/CODEX_CHAT_SETUP.md"' in page.text
     assert 'attacker.example' not in page.text
     assert 'synthetic-room-worker-token-1234' not in page.text
     assert page.text.count('id="auto-setup"') == 1
