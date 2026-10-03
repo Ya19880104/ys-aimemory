@@ -14,19 +14,19 @@ Repository：[Ya19880104/ys-aimemory](https://github.com/Ya19880104/ys-aimemory)
 
 [完整雙語文件索引](docs/README.zh-TW.md)。[ChatGPT 私人 tunnel 試行](docs/CHATGPT_PRIVATE_TUNNEL.zh-TW.md)固定 worker 與單一房間，不是多使用者 OAuth 公開服務。
 
-- **Windows 本機 Claude 快速設定：** [單一指令安裝與實測截圖](docs/CLAUDE_WINDOWS_SETUP.zh-TW.md)。自動建立環境、合併專案 MCP，Token 用目前 Windows 使用者加密保存；本機原生讀寫已驗證，網頁一鍵按鈕尚未提供。
+- **Windows 本機 Claude 快速設定：** [單一指令安裝與原生驗收步驟](docs/CLAUDE_WINDOWS_SETUP.zh-TW.md)。自動建立環境、合併專案 MCP，Token 用目前 Windows 使用者加密保存；設定完成後仍需在自己的原生客戶端驗證身分與讀寫；網頁一鍵按鈕尚未提供。
 - **先選客戶端：** [Claude、Codex、Gemini 與 Grok 接入對照](docs/MULTI_CLIENT_SETUP.zh-TW.md)，包含快速命令、手動設定、給 AI 的安裝任務，以及內網和雲端的差異；Gemini／Grok 原生驗收尚未完成。
 - **部署自己的伺服器：** [Ubuntu／Docker 從零部署](docs/QUICKSTART.zh-TW.md#部署-hub)。包含環境設定、HTTPS、建立記憶庫及 worker token。
 - **Claude Code／Codex 接上已有的 Hub：** [客戶端安裝](docs/QUICKSTART.zh-TW.md#安裝與接線客戶端)。各自使用自己的身分，設定僅限選定專案。
 - **讓 AI 協助安裝：** [可直接貼給 Claude／Codex 的安裝任務](docs/QUICKSTART.zh-TW.md#交給-claude-codex-協助安裝)。先填非秘密的環境資訊。
-- **回報問題與分支開發：** [Issues](https://github.com/Ya19880104/ys-aimemory/issues)、[貢獻方式](CONTRIBUTING.md)。
+- **回報問題與分支開發：** [Issues](https://github.com/Ya19880104/ys-aimemory/issues)、[貢獻方式](CONTRIBUTING.zh-TW.md)。
 - **第一次操作：** [完整操作教學入口與驗收](docs/OPERATION_MANUAL.zh-TW.md)，主機 `/help` 提供 CA、Token、IDE 接入及共同對話的逐步 HTML 教學。
 - **人與 AI 共同討論：** [共享對話、成果與附件](docs/SHARED_SESSIONS.zh-TW.md)，後台 `/ui/chat`。
-- **自動接話進度：** [原生實測與待整合功能](docs/AUTOMATIC_CHAT.zh-TW.md)。已提供限定房間的原生接收設定與持久派送；整合版原生喚醒與雲端驗收分開，不能以原始碼宣稱通過。
+- **自動接話進度：** [限定房間的自動接收設定與驗收界線](docs/AUTOMATIC_CHAT.zh-TW.md)。已提供限定房間的原生接收設定與持久派送；整合版原生喚醒與雲端驗收分開，不能以原始碼宣稱通過。
 - **有需要才讀記憶：** [Codex／Claude 按需接入與省 Token](docs/EFFICIENT_MCP.zh-TW.md)，支援兩工具 compact adapter。
 - **確認模型真的連上：** [原生工具與共享對話驗收](docs/NATIVE_CLIENT_CHECK.zh-TW.md)，分辨 transport、SDK、工具核准與模型登入。
 
-公開庫不附部署環境、SSH 金鑰、帳密、worker token、TLS 私鑰、資料庫或現場驗收資料。`MANIFEST.sha256.json` 與 `TEST_REPORT.zh-TW.md` 保存原交付基線，不是目前所有新增檔案的 manifest 或本次 CI 成績；最新 CI 請查看對應 commit 的 [Actions](https://github.com/Ya19880104/ys-aimemory/actions)。
+公開庫不提供可用的部署帳密、worker token、SSH／TLS 私鑰或資料庫。庫內既有教學截圖是歷史測試紀錄，不能替代当前版本驗收；發布前仍需核對截圖中的識別資訊與分享範圍。`MANIFEST.sha256.json` 與 `TEST_REPORT.zh-TW.md` 保存原交付基線，不是目前所有新增檔案的 manifest 或本次 CI 成績；最新 CI 請查看對應 commit 的 [Actions](https://github.com/Ya19880104/ys-aimemory/actions)。
 
 ## 已實作
 
@@ -82,7 +82,7 @@ python -m pytest -q
 uvicorn memory_hub.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-`GET /healthz` 為健康檢查。工具透過 `POST /v1/tools/{tool_name}` 或 MCP `/mcp` 呼叫，後者使用 Streamable HTTP。Claude Code／Codex 可由 HTTPS `/downloads/ys-memory-stdio-1.1.1.zip` 取得本機 stdio → HTTPS 轉接器；在自選新目錄建立 Python 3.12 環境，再手動合併專案設定，token 僅從 `YS_AIMEMORY_TOKEN` 讀取。步驟與 CA name constraints 相容限制見[客戶端接線](docs/CLIENT_SETUP.zh-TW.md)及公開 `/help#clients`。安裝不修改全域設定，不自動授權模型或喚醒 AI；仍須分別驗收實際客戶端與雙向對話。
+`GET /healthz` 為健康檢查。工具透過 `POST /v1/tools/{tool_name}` 或 MCP `/mcp` 呼叫，後者使用 Streamable HTTP。Claude Code／Codex 可由 HTTPS `/downloads/ys-memory-stdio-1.1.1.zip` 取得本機 stdio → HTTPS 轉接器；在自選新目錄建立 Python 3.12 環境，再手動合併專案設定，手動 adapter 從 `YS_AIMEMORY_TOKEN` 讀取；Windows 安裝器則由 DPAPI 加密保存並由 launcher 讀取。步驟與 CA name constraints 相容限制見[客戶端接線](docs/CLIENT_SETUP.zh-TW.md)及公開 `/help#clients`。安裝不修改全域設定，不自動授權模型或喚醒 AI；仍須分別驗收實際客戶端與雙向對話。
 
 ## 部署起點
 
@@ -110,4 +110,4 @@ python -m pytest -q
 python scripts/test-deployment.py
 ```
 
-實測範圍與未驗證項目見 [測試與交付報告](TEST_REPORT.zh-TW.md)。
+原交付歷史結果見 [測試與交付報告](TEST_REPORT.zh-TW.md)；当前版本須另附 exact commit 的測試紀錄。雲端原生身分確認、共享讀寫與自動喚醒應分開驗收。

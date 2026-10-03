@@ -48,7 +48,7 @@ Windows: replace `.venv/bin/python` with `.venv\Scripts\python.exe`; activation 
 After privately configuring `HUB_DATABASE_URL` and `HUB_AUTH_TOKENS`:
 
 ```sh
-python -m uvicorn memory_hub.app:create_app --factory --host 127.0.0.1 --port 8000
+.venv/bin/python -m uvicorn memory_hub.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
 There is no built-in administrator password or usable token. PostgreSQL is the deployment target; SQLite opt-in is for isolated demos/tests. `/healthz` is health, `/mcp` is MCP, `/v1/tools/{tool_name}` is REST.
@@ -58,5 +58,7 @@ There is no built-in administrator password or usable token. PostgreSQL is the d
 [Contributing](CONTRIBUTING.md) · [Issues](https://github.com/Ya19880104/ys-aimemory/issues) · [Actions](https://github.com/Ya19880104/ys-aimemory/actions)
 
 Read [AGENTS.md](AGENTS.md) and the relevant [Skills](skills/) before source work. Workers use separate clones/worktrees, identities, and branches. Task roles do not grant security permissions. Do not commit tokens, passwords, cookies, private keys, real databases/backups, personal client settings, or private acceptance evidence.
+
+Existing help screenshots preserve historical test material, not current native acceptance. Review their identifiers and sharing scope before redistribution.
 
 `MANIFEST.sha256.json` and [the original report](TEST_REPORT.zh-TW.md) preserve historical delivery evidence, not current CI results or a manifest of later additions. Record passed, failed, skipped, and not_run separately with the exact commit/environment. Distribution: `ys-ai-memory-hub`; import: `memory_hub`.
