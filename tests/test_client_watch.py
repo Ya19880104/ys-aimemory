@@ -167,3 +167,83 @@ def test_revoked_credentials_do_not_retry_or_wake(tmp_path):
             watch(config(), {'hook_event_name':'Stop','session_id':'native'},client,
                 tmp_path/'status.json',now=lambda:100,sleep=lambda _:pytest.fail('must not retry'))
     assert len(requests) == 1
+
+
+def test_activation_accepts_existing_nested_project_directory(tmp_path):
+    nested = tmp_path / 'src' / 'component'
+    nested.mkdir(parents=True)
+    c = config() | {'native_session_id': None, 'project_path': str(tmp_path),
+                    'activation_phrase': 'YS_MEMORY_JOIN_random'}
+    assert bind_activation(c, {'hook_event_name': 'Stop', 'session_id': 'new-native',
+        'cwd': str(nested), 'last_assistant_message': 'YS_MEMORY_JOIN_random'})
+    assert c['native_session_id'] == 'new-native'
+
+
+@pytest.mark.parametrize('change,reason', [
+    ({'last_assistant_message': 'YS_MEMORY_JOIN_wrong'}, 'phrase_mismatch'),
+    ({'session_id': ''}, 'invalid_native_session'),
+    ({'cwd': ''}, 'project_mismatch'),
+    ({'cwd': 'missing'}, 'project_mismatch'),
+])
+def test_explicit_activation_mismatch_is_diagnostic_without_binding(tmp_path, change, reason):
+    c = config() | {'native_session_id': None, 'project_path': str(tmp_path),
+                    'activation_phrase': 'YS_MEMORY_JOIN_random'}
+    original = c.copy()
+    event = {'hook_event_name': 'Stop', 'session_id': 'new-native',
+             'cwd': str(tmp_path), 'last_assistant_message': 'YS_MEMORY_JOIN_random'} | change
+    state = tmp_path / 'status.json'
+    assert not bind_activation(c, event, state)
+    assert c == original
+    record = json.loads(state.read_text())
+    assert record['state'] == 'activation_mismatch' and record['reason'] == reason
+    assert set(record) == {'state', 'reason', 'at'}
+
+
+def test_activation_rejects_existing_outside_project_and_quiet_unrelated_stop(tmp_path):
+    project, outside = tmp_path / 'project', tmp_path / 'project-other'
+    project.mkdir()
+    outside.mkdir()
+    c = config() | {'native_session_id': None, 'project_path': str(project),
+                    'activation_phrase': 'YS_MEMORY_JOIN_random'}
+    state = tmp_path / 'status.json'
+    event = {'hook_event_name': 'Stop', 'session_id': 'new-native', 'cwd': str(outside),
+             'last_assistant_message': 'ordinary assistant response'}
+    assert not bind_activation(c, event, state)
+    assert not state.exists()
+    assert not bind_activation(c, event | {'last_assistant_message': 'YS_MEMORY_JOIN_random'}, state)
+    assert json.loads(state.read_text())['reason'] == 'project_mismatch'
+    assert c['native_session_id'] is None
+
+
+@pytest.mark.parametrize('write_error', [PermissionError('read-only state'), OSError('disk full')])
+def test_activation_rejects_when_diagnostic_state_cannot_be_written(tmp_path, monkeypatch, write_error):
+    project, outside = tmp_path / 'project', tmp_path / 'outside'
+    project.mkdir()
+    outside.mkdir()
+    c = config() | {'native_session_id': None, 'project_path': str(project),
+                    'activation_phrase': 'YS_MEMORY_JOIN_random'}
+    original = c.copy()
+    state = tmp_path / 'status.json'
+    writes = []
+    def blocked_write(path, *args, **kwargs):
+        writes.append(path)
+        raise write_error
+    monkeypatch.setattr(Path, 'write_text', blocked_write)
+    assert not bind_activation(c, {'hook_event_name': 'Stop', 'session_id': 'new-native',
+        'cwd': str(outside), 'last_assistant_message': 'YS_MEMORY_JOIN_random'}, state)
+    assert writes == [state.with_suffix('.tmp')]
+    assert c == original and not state.exists()
+
+
+def test_activation_diagnostic_does_not_swallow_non_filesystem_errors(tmp_path, monkeypatch):
+    c = config() | {'native_session_id': None, 'project_path': str(tmp_path),
+                    'activation_phrase': 'YS_MEMORY_JOIN_random'}
+    original = c.copy()
+    def invalid_write(*args, **kwargs):
+        raise ValueError('unexpected programming error')
+    monkeypatch.setattr(Path, 'write_text', invalid_write)
+    with pytest.raises(ValueError, match='unexpected programming error'):
+        bind_activation(c, {'hook_event_name': 'Stop', 'session_id': 'new-native',
+            'cwd': str(tmp_path), 'last_assistant_message': 'YS_MEMORY_JOIN_wrong'},
+            tmp_path / 'status.json')
+    assert c == original

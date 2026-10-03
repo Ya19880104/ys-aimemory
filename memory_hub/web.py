@@ -9,10 +9,11 @@ from datetime import datetime, timezone
 from html import escape
 import hmac
 import os
+import re
 import secrets
 import time
 from uuid import UUID
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -23,6 +24,38 @@ from .web_password import valid_hash
 
 COOKIE = 'hub_web_session'
 LOGIN_COOKIE = 'hub_web_login'
+
+
+def safe_chat_return(value):
+    """Canonical room navigation only; never retain arbitrary URLs or queries."""
+    fallback = '/ui/chat'
+    if not isinstance(value, str) or len(value) > 2048 or any(ord(c) < 32 for c in value):
+        return fallback
+    try:
+        target = urlsplit(value)
+        if target.scheme or target.netloc or target.path != fallback or target.fragment:
+            return fallback
+        values = parse_qs(target.query, keep_blank_values=True, max_num_fields=20)
+    except ValueError:
+        return fallback
+    query = {}
+    patterns = {'project': r'[a-zA-Z0-9_.-]{1,128}', 'session': r'[0-9a-f]{32}',
+                'lang': r'en|zh-TW'}
+    for key, pattern in patterns.items():
+        entries = values.get(key)
+        if entries is not None:
+            if len(entries) != 1 or re.fullmatch(pattern, entries[0]) is None:
+                return fallback
+            query[key] = entries[0]
+    return fallback + ('?' + urlencode(query) if query else '')
+
+
+def chat_login_redirect(request):
+    target = safe_chat_return(request.url.path + '?' + request.url.query)
+    path = '/login' + ('?' + urlencode({'return_to': target}) if target != '/ui/chat' else '')
+    return RedirectResponse(path, status_code=303,
+                            headers={'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer'})
+
 
 @dataclass
 class WebConfig:
@@ -281,9 +314,9 @@ def install_web(app, hub, config=None, clock=time.time):
     app.state.web_session = session
     def redirect(path):
         return RedirectResponse(path, status_code=303, headers={'Cache-Control':'no-store'})
-    def login_form(message='', status=200):
+    def login_form(message='', status=200, return_to='/ui/chat'):
         token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
-        if not auth.start_login(token,csrf):
+        if not auth.start_login(token,csrf,safe_chat_return(return_to)):
             return page(('<main><h1>' + tr('ui_b9131bbe4b2a') + '</h1><p>' + tr('ui_da04f5a9c47c') + '</p></main>'),503)
         response = page(('<div class="login"><div class="brand">ys-aimemory<small>PROJECT MEMORY / MCP</small></div><div class="panel"><span class="eyebrow">WELCOME BACK</span><h1>' + tr('ui_edddb8024b8e') + '</h1><p class="muted">' + tr('ui_3748eca7a2c5') + '</p>')+('<div class="alert" role="alert">'+e(message)+'</div>' if message else '')+'<form method="post" action="/login"><input type="hidden" name="csrf" value="'+e(csrf)+('"><label for="username">' + tr('ui_107ab4b575a7') + '</label><input id="username" name="username" autocomplete="username" maxlength="128" required><label for="password">' + tr('ui_ef8b49458c14') + '</label><input id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" required><button type="submit">' + tr('ui_c52651f85eb3') + '</button></form></div><p class="foot">' + tr('ui_9f24df40e911') + '<br>' + tr('ui_8e10a90fe1bc') + '</p></div>'),status)
         response.set_cookie(LOGIN_COOKIE,token,httponly=True,secure=config.secure,samesite='strict',max_age=600,path='/')
@@ -305,8 +338,9 @@ def install_web(app, hub, config=None, clock=time.time):
     @app.get('/login')
     def login_get(request: Request):
         if not auth.enabled: return page(('<main><h1>' + tr('ui_bdc16457fa28') + '</h1><p>' + tr('ui_737f338f13f8') + '</p></main>'),503)
-        if session(request): return redirect('/ui/chat')
-        return login_form()
+        return_to = safe_chat_return(request.query_params.get('return_to', '/ui/chat'))
+        if session(request): return redirect(return_to)
+        return login_form(return_to=return_to)
 
     @app.post('/login')
     async def login_post(request: Request):
@@ -315,17 +349,18 @@ def install_web(app, hub, config=None, clock=time.time):
         pre=auth.consume_login(request.cookies.get(LOGIN_COOKIE,''))
         if not pre or not hmac.compare_digest(values.get('csrf','').encode(),pre['csrf'].encode()):
             return login_form((tr('ui_0e2f411d7412')),403)
+        return_to = safe_chat_return(pre.get('return_to', '/ui/chat'))
         ip=request.client.host if request.client else 'unknown'
         if not auth.allow_attempt(ip):
-            response=login_form((tr('ui_deb482bd764c')),429)
+            response=login_form((tr('ui_deb482bd764c')),429,return_to)
             response.headers['Retry-After']='300'
             return response
         identity = await run_in_threadpool(auth.users.authenticate, values.get('username',''), values.get('password',''))
-        if identity is None: return login_form((tr('ui_35ddab0fb11b')),401)
+        if identity is None: return login_form((tr('ui_35ddab0fb11b')),401,return_to)
         token,csrf=secrets.token_urlsafe(32),secrets.token_urlsafe(32)
         if not auth.start_session(token,csrf,request.cookies.get(COOKIE,''),identity):
             return page(('<main>' + tr('ui_1cff9523a11f') + '</main>'),503)
-        response=redirect('/ui/chat')
+        response=redirect(return_to)
         response.set_cookie(COOKIE,token,httponly=True,secure=config.secure,samesite='strict',max_age=config.ttl,path='/')
         response.delete_cookie(LOGIN_COOKIE,path='/',secure=config.secure,httponly=True,samesite='strict')
         return response

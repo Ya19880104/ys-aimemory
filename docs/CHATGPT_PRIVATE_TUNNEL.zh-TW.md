@@ -6,6 +6,33 @@
 
 程式測試不能代替 ChatGPT 驗收。請分別記錄工具探索、實際雲端工具呼叫、訂閱驗證、webhook 接收、模型啟動與 Hub 寫回。webhook `2xx` 只代表 **received**，不代表 **replied**。
 
+
+
+## 最終 runtime promotion：台北 2026-10-04
+
+Runtime 維持 `af53efb1309f2527cbd9548a5a19f0dc57325825`，image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`，於 **2026-10-03T16:01:18Z–16:01:40Z**（台北 2026-10-04 00:01）自 `24f3173` promotion。429 runtime checks 全 passed，schema v6／26 tables 保留。主機獨立 PostgreSQL 回歸：785 passed、56 skipped、3 warnings，181.81 秒；archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`。af53 GitHub Windows-installer／SQLite／PostgreSQL push/PR jobs 全 passed。結果由執行者提供，私人來源日誌保留。
+
+後續本文件 commit 不是部署版本；先前原生／installer 證據仍依各自 c4／24／installer 版本解讀。此文件截止時最終 runtime en/zh 瀏覽器 help smoke 尚在執行，不推論結果。保留下方歷史失敗、skip、生命週期缺口與 token 限制。
+
+
+## 原生事件監聽：單事件實測通過
+
+Hub `24f3173` 單事件 native ChatGPT 驗收 passed：原生 event-triggered Automation 訂閱、signed challenge 通過、收到人類事件後無額外 Work prompt 即完整讀取／回覆 Hub，之後 unsubscribe 與 task paused。不是 cron 或 polling Automation；完整 lifecycle/expiry/offline/revocation 仍 pending。見[最新驗證](VALIDATION_2026-10-03.zh-TW.md)。
+
+1. 啟動 fixed-worker gateway/private tunnel，refresh plugin，確認 identity 與 message.created discovery。
+2. Work chat 明確要求 **event-triggered Automation** 監聽此固定房 message.created，以 notification_id 完整 read、單次 reply，處理指定事件後停止。events/subscribe 是協定方法，沒有同名一般 model tool 不足以判定失敗。
+3. 確認真正 subscription、callback challenge、持久保存。泛用 task creation failure 時，只檢查 gateway 去秘密 hostname-only denial。callback_host_not_allowed：驗證觀察 hostname，只加入該精確 hostname、restart、明確 retry。本 pilot 觀察為 connectors.api.openai.com；不猜測、不用 wildcard、不關閉 TLS/public-DNS/IP-pin/no-redirect/challenge。
+4. 只在 Hub 建 matching 人類事件，不追加 Work prompt；核對 signed webhook acknowledgement、native full read/reply、Hub receipt/cursor 與要求的 unsubscribe/task pause。Discovery／建立 task 訊息本身不是 action 證據。
+
+首次空 allowlist 的 callback refusal 與泛用 task-service failure 保留；精確 hostname 修正只解決此拒絕，不保證所有環境相同 hostname。憑證與真 callback URL 保持私人。
+
+
+原生 unsubscribe 後負向測試：後續人類訊息於觀察的 54.466 秒內沒有額外回覆；subscription 維持 unsubscribed、delivered=1、outbox 只有原事件。原生 task UI 已 paused，未由 operator 手動切換。這是有限觀察，不代表永久停止或完整生命週期證明。
+
+
+最終公開 Claude installer 實測：`97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`，SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`，內嵌五個來源版本 `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`。實際 download/hash/execution passed；既有 owned Claude 重裝／renew，budget 一輪。23:43:24 native reply 從保留 cursor 讀到尚未讀訊息與 artifact metadata，明確確認只有 metadata、未讀 artifact 全文。這是 renew/unread-cursor 證據，不是全新人類 marker 或 no-history-replay 驗收。保留原 `75a50bf` 雙客戶端證據。執行者隨後 disconnect Claude、停止 cloud runtime；未宣稱後續 final deployment。
+
+
 ## 功能與前置條件
 
 - `identity` 驗證固定 worker／專案／房間、最新序號與共同暫停狀態。

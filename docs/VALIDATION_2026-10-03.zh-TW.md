@@ -2,6 +2,73 @@
 
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
+
+## 最新 runtime 與瀏覽器語系驗證
+
+Runtime `9c0b1ac59bde180bd1567fa349d775a8d3237a74` 取代 `af53efb`，於 **2026-10-03T16:12:30Z–16:12:52Z**（台北 2026-10-04 00:12）promotion。Image：`sha256:759776279eaac21212778d58ae984840a20a95a22386929da6438fd943d0c608`。429 promotion checks 全 passed。PostgreSQL stage：800 passed、56 skipped、3 warnings，185.86 秒；archive SHA-256 `3e496be9ee296d5f10a185e197994eb9a8e96befce662acedcd1991763e492c0`。9c GitHub 三個 push/PR jobs 全 passed。CodeRabbit rate-limited，不代表新完整審查。
+
+真實已登入 Chrome passed：help zh→en→zh 保留 help route；指定 room zh→en 保留選定 project/conversation，英文 heading 已顯示。首次非同步 snapshot 還是舊 DOM，後續完成畫面確認成功。人類 UI 操作取得完整 client-specific shared guide；這是人類 UI artifact retrieval，不是 native AI artifact-full-fetch 驗收。未登入 public help 僅 unit tests 覆蓋，本次登入瀏覽器沒有驗該情境。
+
+af53 後發現的 help 語系流程缺陷已由 i18n.py／UI-i18n tests 修正。以上部署／browser 結果由執行者提供，沒有重跑先前 Claude/Codex/cloud native 證據，仍保留各自版本界線。下方 af53 是歷史區段；本文件 commit 本身不是部署版本。
+
+
+## 歷史 af53 runtime promotion：台北 2026-10-04
+
+當時 runtime 為 `af53efb1309f2527cbd9548a5a19f0dc57325825`，image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`，於 **2026-10-03T16:01:18Z–16:01:40Z**（台北 2026-10-04 00:01）自 `24f3173` promotion。429 runtime checks 全 passed，schema v6／26 tables 保留。主機獨立 PostgreSQL 回歸：785 passed、56 skipped、3 warnings，181.81 秒；archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`。af53 GitHub Windows-installer／SQLite／PostgreSQL push/PR jobs 全 passed。結果由執行者提供，私人來源日誌保留。
+
+後續本文件 commit 不是部署版本；先前原生／installer 證據仍依各自 c4／24／installer 版本解讀。此文件截止時最終 runtime en/zh 瀏覽器 help smoke 尚在執行，不推論結果。保留下方歷史失敗、skip、生命週期缺口與 token 限制。
+
+
+## Runtime 24 雙原生客戶端與雲端驗收
+
+執行者提供的 live Hub `24f317310ea6fdd66ca78da8cea3003a413d226c` 證據；保留下方歷史失敗。不公開私人房間 ID、訊息、截圖或證據路徑。
+
+| 關卡 | 結果 | 界線 |
+| --- | --- | --- |
+| 公開 Claude installer | passed | `75a50bf` connect-chat.ps1 實際 download/hash/execution；SHA-256 `492da745ab0629c1dd5fcceb318d22dbe31f349ec99b6b98f28ab9fb3c8099cc`。明確 stdio type 修正 reuse；保留先前 eddf 失敗。重用 owned credential，未再次索取 token |
+| Claude＋Codex 即時對話 | 本次序列 passed | 人類事件→雙 depth-1 reply→雙 depth-2 follow-up；新人類事件再次開始 depth-1。兩者 3/3 budget exhausted，之後 disconnect |
+| Native Codex CLI 0.160.0 | 三份 proof receipts passed | 每次三個 native MCP calls：identity/full-read/post；operator helper 重用自己 DPAPI credential，不代表全新 interactive Codex install UX 驗收 |
+| Native Claude Sonnet 5.5 Medium | passed | 真公開 installer 與 native dialogue；watcher sources 維持 e24 |
+| GUI 語系／composer | passed | en/zh-TW toggle、Shift+Enter newline 不送出、Enter 人類發文 |
+| ChatGPT native event action | 單一事件 passed | 原生 event-triggered Automation，無 cron/polling task；Hub-only 人類事件 23:30:49→ChatGPT Cloud reply 23:31:24，無額外 Work prompt／SDK action |
+| Cloud protocol/write-back | 單一事件 passed | Active subscription、signed callback challenge；一次 outbox attempt、一次 delivered callback、replied receipt/cursor。回覆後 native unsubscribe、task paused |
+
+首次 cloud task creation 泛用錯誤保留；gateway hostname-only 診斷指出空 callback_hosts 拒絕 callback hostname。僅加入實際觀察精確 hostname，保留 TLS/public DNS/validated-IP pin/no-redirect/challenge 防護，未廣泛放行。
+
+原生 subscription/action/write-back 現已單事件 passed；完整 lifecycle/expiry/offline/revocation/duplicate/burst 仍待驗收。下方未訂閱／根因未明是先前嘗試，不代表當前單事件結果。Token counters 不代表單一 prompt、帳單或低 token 最佳化。
+
+
+原生 unsubscribe 後負向測試：後續人類訊息於觀察的 54.466 秒內沒有額外回覆；subscription 維持 unsubscribed、delivered=1、outbox 只有原事件。原生 task UI 已 paused，未由 operator 手動切換。這是有限觀察，不代表永久停止或完整生命週期證明。
+
+
+最終公開 Claude installer 實測：`97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`，SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`，內嵌五個來源版本 `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`。實際 download/hash/execution passed；既有 owned Claude 重裝／renew，budget 一輪。23:43:24 native reply 從保留 cursor 讀到尚未讀訊息與 artifact metadata，明確確認只有 metadata、未讀 artifact 全文。這是 renew/unread-cursor 證據，不是全新人類 marker 或 no-history-replay 驗收。保留原 `75a50bf` 雙客戶端證據。執行者隨後 disconnect Claude、停止 cloud runtime；該 installer checkpoint 當時未宣稱後續 final deployment。
+
+
+## 歷史 24 runtime 驗證
+
+執行版本：`24f317310ea6fdd66ca78da8cea3003a413d226c`，於 **2026-10-03T15:16:07Z** promotion，image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`。以下為執行者提供的去秘密結果，文件審查者未獨立重跑。原生證據使用 watcher `e24b13c418bad9705f86b589b1ac212145d06a71` 搭配 promotion 前的 `c4fe0f1` Hub，不能轉稱新 runtime 原生驗收。
+
+| 關卡 | 結果 | 範圍 |
+| --- | --- | --- |
+| PostgreSQL VM stage | passed：779 tests、56 skipped、3 warnings，180.82 秒 | Skip 不算通過 |
+| Windows focused checks | passed：104 tests | 限定來源檢查，不是完整候選 CI |
+| Promotion | passed：427 checks，22.332 秒 | 僅此版本／環境 |
+| 公開 bootstrap | passed：六個 URL HTTP 200，hash 與 Git blob 相符 | 檔案完整性，不代表所有客戶端安裝 |
+| Claude idle 自動 exchange | passed：約 16.646 秒 | 精確 activation、idle listener、人類瀏覽器訊息；ToolSearch＋native chat_read/chat_reply，無額外 Claude prompt |
+| Claude pause/resume | 本次序列 passed | 人類訊息 paused 期間未獲回覆；resume 後約 6.808 秒 native read/reply |
+| Claude controlled app outage | 本次序列 passed | App 約停止 12 秒；watcher reconnecting→idle，保留同 binding/expiry；下一人類訊息約 6.119 秒獲 native reply |
+| Claude 三輪 budget | 本次觀察 passed | 3/3 exhausted 後，新人類訊息至少 37 秒沒有第四輪 |
+| 明確 disconnect | passed | Owned watcher 停止、無殘留 owned Python watcher 或全域設定變更；budget 已耗盡，未獨立驗收 STOP-case |
+| 新 runtime Chrome logout/deep-link/login | passed | 保留選定專案與對話，不代表所有 GUI |
+| GUI 語言切換 | pending / not_run | HTTP 語系檢查仍是先前獨立關卡 |
+| ChatGPT event discovery | passed | Tunnel 復原、plugin refreshed、新 notification schema/message.created 可見；新 Work identity passed |
+| ChatGPT 原生訂閱／idle 自動動作 | not_run，未建立 subscription | 模型回報無法訂閱，根因未明；缺少 deferred tool 名稱不證明平台功能不存在，events/subscribe 是協定方法 |
+
+ChatGPT 需觀察真正 subscription request、callback verification／保存 subscription、webhook 2xx 與 native action，參閱[官方 MCP Events testing](https://developers.openai.com/plugins/build/mcp-events#test-in-chatgpt)。Discovery 與 prompted identity/read/write 不能替代。
+
+Source/automatic expiry、完整 crash/restart、parent/orphan、load、revocation 仍待驗收。觀察的 fresh join 未見舊歷史重播，其他 cursor/rejoin 案例未驗證。下方 OAuth 過期、Chrome 離線與 stale metadata 皆屬當時 snapshot，僅在上述明確範圍內被新證據更新。不公開私人 ID、訊息、host、證據路徑或截圖。
+
+
 ## 最新已部署候選版：`c4fe0f1`
 
 候選來源：`c4fe0f1ecedbe186cc4b80f195e47dc606fe9470`。Promotion 於 **2026-10-03T09:45:32Z** 完成。結果僅對所述版本／環境有效，不代表所有客戶端均已驗收。部署／HTTP 結果由執行者提供；本輪文件更新另外核對 CI 總數與原生回條的去秘密欄位。不公開私人 ID、憑證、主機地址或證據路徑。
@@ -25,13 +92,13 @@
 
 ### 已觀測 token 用量；最佳化仍在調查
 
-| 單回合觀察 | Input tokens | Cached input tokens（已含於 input） | Output tokens |
+| 觀察交換的已報告累計 counters | Input tokens | Cached input tokens（已含於 input） | Output tokens |
 | --- | ---: | ---: | ---: |
 | 初始安裝器 pilot | 71,711 | 58,880 | 436 |
 | `ab1f20a` 限定 scope 的 `skills.max_context_tokens=1` 實驗 | 59,287 | 49,024 | 410 |
 | 最終候選版原生交換 | 59,520 | 51,584 | 467 |
 
-每列只有一個已觀測回合，不是受控 benchmark 或保證節省。限定 skills override 後觀測 input 較低，但小樣本不足以證明因果、帳單節省或低 token 最佳化全面完成。本次檢查的 inbox 僅 126 bytes，不是此交換的大成本原因；新增聊天限定 identity projection 用來限制未來無關任務 inbox 膨脹。成本調查仍繼續。
+各列為已報告的累計 session/tool-exchange counters，不代表單一 prompt 或帳單用量，也不是受控 benchmark 或保證節省。限定 skills override 後觀測 input 較低，但小樣本不足以證明因果、帳單節省或低 token 最佳化全面完成。本次檢查的 inbox 僅 126 bytes，不是此交換的大成本原因；新增聊天限定 identity projection 用來限制未來無關任務 inbox 膨脹。成本調查仍繼續。
 
 複製安裝指引安全修正有來源 scoped 驗收：28 tests passed、兩項既有 warnings，包含英／繁、兩用戶端與含 `;`／`$()` worker 值的真 PowerShell parser。貼上完整指引只下載／驗 hash／開啟審閱；安裝命令保持註解，審閱後才明確選取執行。Fresh HTTP 面板檢查證明部署後的呈現，parser 檢查涵蓋產生命令的安全性；兩者均不取代 GUI 點擊或雲端自動驗收。
 

@@ -23,7 +23,7 @@ ORIGIN = 'https://hub.example.test'
 
 def test_bootstrap_pins_exact_required_files_and_preserves_layout(tmp_path):
     revision = re.search(r"\$SourceRevision = '([0-9a-f]{40})'", SOURCE).group(1)
-    assert revision == '38f9be5ec796be52cf0f8814ea2eb8fdb81d08d0'
+    assert revision == '86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea'
     entries = re.findall(r"Source = '([^']+)'; Sha256 = '([0-9a-f]{64})'", SOURCE)
     assert len(entries) == 5
     assert {name for name, _ in entries} == {
@@ -277,3 +277,45 @@ def test_powershell_rejects_invalid_inputs_before_any_download(tmp_path, argumen
     assert result.returncode == 1
     assert b'must-not-print' not in result.stdout + result.stderr
     assert not (tmp_path / '.mcp.json').exists()
+
+
+@pytest.mark.parametrize('with_type', [False, True])
+def test_legitimate_disconnect_restoration_retains_exact_full_config_custody(owned, with_type):
+    # The adapter-generated stdio entry is merged at installation. Disconnect
+    # restores it with the same JSON serializer without losing other servers.
+    config = json.loads(owned.original)
+    if with_type:
+        config['mcpServers']['ys_memory']['type'] = 'stdio'
+    installed = (json.dumps(config, ensure_ascii=True, indent=2) + '\n').encode()
+    receipt = owned.receipt | {'config_sha256': hashlib.sha256(installed).hexdigest()}
+    (owned.client / 'install-receipt.json').write_text(json.dumps(receipt))
+    chat_config = json.loads(installed)
+    chat_config['mcpServers']['ys_memory'] = {'command': config['mcpServers']['ys_memory']['command'],
+        'args': [str(owned.client / 'chat-bridge.py')]}
+    # Model setup-chat.disconnect's exact entry restoration and serialization.
+    chat_config['mcpServers']['ys_memory'] = config['mcpServers']['ys_memory']
+    restored = (json.dumps(chat_config, ensure_ascii=True, indent=2) + '\n').encode()
+    assert restored == installed
+    (owned.project / '.mcp.json').write_bytes(restored)
+    (owned.client / 'chat-binding.json').write_text('{"disconnected_at":100}')
+    assert bootstrap.existing_install(owned.project, owned.source, ORIGIN, PIN) == owned.client
+    assert (owned.project / '.mcp.json').read_bytes() == restored
+
+    chat_config['mcpServers']['unrelated']['command'] = 'changed-by-another-owner'
+    changed = (json.dumps(chat_config, ensure_ascii=True, indent=2) + '\n').encode()
+    (owned.project / '.mcp.json').write_bytes(changed)
+    with pytest.raises(bootstrap.BootstrapError, match='existing_mcp_ownership_verification_failed'):
+        bootstrap.existing_install(owned.project, owned.source, ORIGIN, PIN)
+    assert (owned.project / '.mcp.json').read_bytes() == changed
+
+
+def test_owned_receipt_cannot_authorize_wrong_stdio_type(owned):
+    config = json.loads(owned.original)
+    config['mcpServers']['ys_memory']['type'] = 'http'
+    raw = json.dumps(config).encode()
+    (owned.project / '.mcp.json').write_bytes(raw)
+    (owned.client / 'install-receipt.json').write_text(json.dumps(
+        owned.receipt | {'config_sha256': hashlib.sha256(raw).hexdigest()}))
+    with pytest.raises(bootstrap.BootstrapError, match='existing_mcp_ownership_verification_failed'):
+        bootstrap.existing_install(owned.project, owned.source, ORIGIN, PIN)
+    assert (owned.project / '.mcp.json').read_bytes() == raw

@@ -222,3 +222,35 @@ def test_composer_identity_is_a_complete_sentence_and_escapes_names(localized, m
     assert '<img' not in identity
     assert 'Use Administrator' not in identity
     assert set(re.findall(r'{([^}]+)}', CATALOG['composer_posting_as'][lang])) == {'role', 'name'}
+
+
+@pytest.mark.parametrize('path,expected', [
+    ('/help', '/help'),
+    ('/ui/chat?project=visible&session=abc&filter=a%26b&filter=c&blank=&lang=en',
+     '/ui/chat?project=visible&session=abc&filter=a%26b&filter=c&blank='),
+])
+def test_language_form_returns_to_rendered_page_without_referer(localized, path, expected):
+    client, _, _ = localized
+    if path == '/help':
+        client.cookies.delete('hub_web_session')  # Public help must work without sign-in.
+    page = client.get(path)
+    assert page.headers['referrer-policy'] == 'no-referrer'
+    target = unescape(re.search('name="return_to" value="([^"]+)"', page.text)[1])
+    assert target == expected
+    response = client.get('/ui/language', params={'lang': 'zh-TW', 'return_to': target},
+                          follow_redirects=False)
+    assert response.status_code == 303 and response.headers['location'] == expected
+    assert client.get(response.headers['location']).headers['content-language'] == 'zh-TW'
+
+
+@pytest.mark.parametrize('target', [
+    'https://evil.invalid/help', '//evil.invalid/help', '/\\evil.invalid/help',
+    '/%2f%2fevil.invalid', '/ui/%2f%2fevil.invalid', '/ui/%252f%252fevil.invalid',
+    '/ui/../help', '/ui/%2e%2e/help', '/ui//evil.invalid', '/uievil',
+    '/ui/chat%0d%0aLocation:evil', '/help\r\nLocation:evil', '/ui/language',
+])
+def test_language_form_rejects_external_and_encoded_destinations(localized, target):
+    client, _, _ = localized
+    response = client.get('/ui/language', params={'lang': 'en', 'return_to': target},
+        headers={'referer': 'http://testserver/help'}, follow_redirects=False)
+    assert response.status_code == 303 and response.headers['location'] == '/login'

@@ -32,20 +32,44 @@ def save(path, value):
     pending.replace(path)
 
 
-def bind_activation(config, event):
+def bind_activation(config, event, state_path=None):
     """Only the explicit one-time join response binds a previously unbound hook."""
     if event.get('hook_event_name') != 'Stop':
         return False
     if config.get('native_session_id'):
         return event.get('session_id') == config['native_session_id']
-    expected = config.get('activation_phrase')
-    if not expected or event.get('last_assistant_message', '').strip() != expected:
+    message = event.get('last_assistant_message', '')
+    message = message.strip() if isinstance(message, str) else ''
+
+    def reject(reason):
+        # Ordinary Stop events remain quiet. Never store the phrase, native ID,
+        # message body or local path in the diagnostic.
+        if state_path is not None and message.startswith('YS_MEMORY_JOIN_'):
+            try:
+                save(state_path, {'state': 'activation_mismatch', 'reason': reason,
+                                  'at': time.time()})
+            except OSError:
+                # Diagnostics are best effort; failed writes must still reject
+                # activation without changing its identity or path checks.
+                pass
         return False
+
+    expected = config.get('activation_phrase')
+    if not expected or message != expected:
+        return reject('phrase_mismatch')
     native = event.get('session_id')
     if not isinstance(native, str) or not native or len(native) > 256:
-        return False
-    if Path(event.get('cwd', '')).resolve() != Path(config['project_path']).resolve():
-        return False
+        return reject('invalid_native_session')
+    cwd = event.get('cwd')
+    if not isinstance(cwd, str) or not cwd or not Path(cwd).is_absolute():
+        return reject('project_mismatch')
+    try:
+        project = Path(config['project_path']).resolve(strict=True)
+        current = Path(cwd).resolve(strict=True)
+        if not project.is_dir() or not current.is_dir() or not current.is_relative_to(project):
+            return reject('project_mismatch')
+    except (OSError, RuntimeError, ValueError):
+        return reject('project_mismatch')
     config['native_session_id'] = native
     config.pop('activation_phrase', None)
     return True
@@ -163,7 +187,7 @@ def main():
         with exclusive(here / 'chat-listener.lock') as acquired:
             if not acquired:
                 return 0
-            if not bind_activation(config, event):
+            if not bind_activation(config, event, state_path):
                 return 0
             save(here / 'chat-binding.json', config)
             bridge = load_module('chat_bridge', here / 'bridge.py')

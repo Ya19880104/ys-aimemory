@@ -2,7 +2,74 @@
 
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
-## Latest deployed candidate: `c4fe0f1`
+
+## Latest runtime and browser language verification
+
+Runtime `9c0b1ac59bde180bd1567fa349d775a8d3237a74` replaced `af53efb`, promoted **2026-10-03T16:12:30Z–16:12:52Z** (2026-10-04 00:12 Taipei). Image: `sha256:759776279eaac21212778d58ae984840a20a95a22386929da6438fd943d0c608`. All 429 promotion checks passed. PostgreSQL stage: 800 passed, 56 skipped, 3 warnings in 185.86 seconds; archive SHA-256 `3e496be9ee296d5f10a185e197994eb9a8e96befce662acedcd1991763e492c0`. All three GitHub push/PR jobs passed for 9c. CodeRabbit was rate-limited; this is not a fresh complete review.
+
+Actual logged-in Chrome checks passed: help language switching zh→en→zh preserved the help route; room zh→en preserved selected project/conversation and displayed the English heading. The first asynchronous snapshot retained old DOM; a later completed snapshot confirmed the heading. A human UI action fetched the full client-specific shared guide. This is human UI artifact retrieval, not native AI artifact-full-fetch acceptance. Unauthenticated public-help behavior was covered only by unit tests, not this logged-in browser run.
+
+The help language-flow defect found after af53 was corrected in i18n.py with UI-i18n tests. These executor-supplied deployment/browser results do not rerun earlier native Claude/Codex/cloud evidence, which retains its original version boundaries. The following af53 section is historical; this documentation commit itself is not the deployed runtime.
+
+
+## Historical af53 runtime promotion: 2026-10-04 Taipei
+
+Runtime was `af53efb1309f2527cbd9548a5a19f0dc57325825`, image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`, promoted from `24f3173` during **2026-10-03T16:01:18Z–16:01:40Z** (2026-10-04 00:01 Taipei). All 429 runtime checks passed; schema v6 and 26 tables were preserved. Independent host PostgreSQL regression: 785 passed, 56 skipped, 3 warnings in 181.81 seconds; archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`. GitHub Windows-installer, SQLite and PostgreSQL push/PR jobs passed for af53. Executor-supplied results retain private source logs.
+
+This subsequent documentation commit is not the deployed runtime. Earlier native/client evidence retains its original c4/24/installer version boundaries. Final-runtime English/Traditional Chinese browser help smoke was still in progress at this documentation cutoff; no result is inferred. Historical failures, skips, lifecycle gaps and token limitations remain below.
+
+
+## Native dual-client and cloud acceptance at runtime 24
+
+Executor-supplied evidence against live Hub `24f317310ea6fdd66ca78da8cea3003a413d226c`; prior failures remain historical below. No private room identifiers, messages, screenshots or evidence paths are published.
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Public Claude installer | passed | Download/hash/execution of `75a50bf` connect-chat.ps1; SHA-256 `492da745ab0629c1dd5fcceb318d22dbe31f349ec99b6b98f28ab9fb3c8099cc`. Explicit stdio type fixed reuse; earlier eddf failure preserved. Existing owned credential reused, no token reprompt |
+| Live Claude + Codex dialogue | passed for observed sequence | Human event triggered both depth-1 replies, then both depth-2 follow-ups; new human event started another depth-1 exchange. Both exhausted 3/3 budgets and were disconnected |
+| Native Codex CLI 0.160.0 | passed: three proof receipts | Each identity/full-read/post sequence used three native MCP calls. Operator helper reused its own DPAPI credential; this is not new interactive Codex installation UX acceptance |
+| Native Claude Sonnet 5.5 Medium | passed | Actual public installer and native dialogue; watcher sources remain e24 |
+| GUI language/composer | passed | English/Traditional Chinese toggles; Shift+Enter inserted newline without sending; Enter posted human message |
+| ChatGPT native event action | passed: one event | Native event-triggered Automation, no cron/polling task; Hub-only human event at 23:30:49 produced ChatGPT Cloud reply at 23:31:24, without another Work prompt or SDK action |
+| Cloud protocol/write-back | passed for one event | Active subscription and signed callback challenge; one outbox attempt, one delivered callback, replied receipt and processed cursor. Native unsubscribe and task paused after reply |
+
+Initial cloud task creation failed with a generic task-service error; hostname-only gateway diagnostics identified callback_host_not_allowed while callback_hosts was empty. Only the observed exact callback hostname was added; TLS, public-DNS checks, validated-IP pinning, redirect refusal and challenge protections remained enabled. This resolved the observed refusal; it is not authority to allow arbitrary callback domains.
+
+Cloud subscription, native action and write-back now passed for one event. Full lifecycle/expiry/offline/revocation/duplicate/burst acceptance remains pending. Earlier no-subscription/root-unresolved statements describe earlier attempts, not the current single-event result. Token counters still do not establish one prompt, billed usage or low-token optimization.
+
+
+Negative control after native unsubscribe: a later human message produced no additional reply for the observed 54.466 seconds; the subscription remained unsubscribed, delivered count stayed 1 and the outbox retained only the original event. The native task UI was paused without an operator toggle. This is a bounded observation, not indefinite stop/lifecycle proof.
+
+
+Final public Claude installer check: `97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`, SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`, embeds five sources at `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`. Actual download, hash verification and execution passed. The existing owned Claude installation was reinstalled/renewed with a one-turn budget. A native reply at 23:43:24 read pending unread messages and artifact metadata from the preserved cursor; it explicitly confirmed metadata only, without reading artifact full text. This is renewal/unread-cursor evidence, not a fresh human-marker or no-history-replay test. Earlier `75a50bf` dual-client evidence remains unchanged. The executor then disconnected Claude and stopped the cloud runtime. At that installer checkpoint, no later final deployment was asserted.
+
+
+## Historical 24 runtime verification
+
+Runtime source: `24f317310ea6fdd66ca78da8cea3003a413d226c`, promoted **2026-10-03T15:16:07Z**, image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`. This section records sanitized executor-supplied results, not an independent rerun by the documentation reviewer. Native evidence below used watcher `e24b13c418bad9705f86b589b1ac212145d06a71` with the earlier `c4fe0f1` Hub, before promotion; do not assign that native evidence to the new runtime.
+
+| Gate | Result | Scope |
+| --- | --- | --- |
+| PostgreSQL VM stage | passed: 779 tests, 56 skipped, 3 warnings; 180.82 seconds | Skips are not passes |
+| Focused Windows checks | passed: 104 tests | Scoped source checks, not full candidate CI |
+| Promotion | passed: 427 checks in 22.332 seconds | Applies to this runtime/environment |
+| Public bootstrap | passed: all six URLs HTTP 200, declared hashes and Git blobs matched | Artifact integrity, not every client installation |
+| Claude idle automatic exchange | passed: approximately 16.646 seconds | Exact activation, idle listener, human browser message; ToolSearch plus native chat_read/chat_reply; no extra Claude prompt |
+| Claude pause/resume | passed for observed sequence | Queued human message remained unanswered while paused; resume produced native read/reply after approximately 6.808 seconds |
+| Claude controlled application outage | passed for observed sequence | About 12 seconds stopped; watcher reconnecting then idle with same binding/expiry; next human message produced native reply after approximately 6.119 seconds |
+| Claude three-turn budget | passed for observed interval | Exhausted at 3/3; later human message caused no fourth turn for at least 37 seconds |
+| Explicit disconnect | passed | Owned watcher stopped; no remaining owned Python watcher process or global configuration change. Independent STOP-case not tested because budget was already exhausted |
+| New-runtime Chrome logout/deep-link/login | passed | Selected project and conversation preserved; this does not certify all GUI surfaces |
+| GUI language switching | pending / not_run | HTTP language checks remain a separate earlier gate |
+| ChatGPT event discovery | passed | Tunnel restored, plugin refreshed, updated notification schemas and message.created visible; fresh Work identity passed |
+| ChatGPT native subscription / idle automatic action | not_run; no subscription established | Model reported unable to subscribe; root cause unresolved. Missing deferred tool names do not prove platform feature absence; events/subscribe is a protocol method |
+
+ChatGPT acceptance requires observing the real subscription request, callback verification and stored subscription, webhook 2xx acknowledgement and native action. See [official MCP Events testing](https://developers.openai.com/plugins/build/mcp-events#test-in-chatgpt). Discovery and prompted identity/read/write cannot substitute for these steps.
+
+Source/automatic expiry, full crash/restart, parent/orphan handling, load and revocation acceptance remain pending. No old-history replay was seen after the observed fresh join; other cursor/rejoin cases remain unverified. Earlier OAuth-expired, Chrome-offline and stale-metadata statements below describe their original snapshots and are superseded only within the scoped evidence above. Private identifiers, message bodies, hosts, evidence paths and screenshots are omitted.
+
+
+## Historical deployed candidate: `c4fe0f1`
 
 Candidate source: `c4fe0f1ecedbe186cc4b80f195e47dc606fe9470`. Promotion completed at **2026-10-03T09:45:32Z**. These are version- and environment-specific results, not acceptance for every client. The executor supplied deployment/HTTP results; this document update independently checked the CI totals and sanitized native receipt fields. No private IDs, credentials, host addresses, or evidence paths are published.
 
@@ -25,13 +92,13 @@ The earlier `e1d71f8` CI run had one failure: the bootstrap source pin was stale
 
 ### Observed token usage; optimization remains under investigation
 
-| Single-turn observation | Input tokens | Cached input tokens (included in input) | Output tokens |
+| Reported counters for observed exchange | Input tokens | Cached input tokens (included in input) | Output tokens |
 | --- | ---: | ---: | ---: |
 | Initial installer pilot | 71,711 | 58,880 | 436 |
 | Scoped `skills.max_context_tokens=1` experiment at `ab1f20a` | 59,287 | 49,024 | 410 |
 | Final candidate native exchange | 59,520 | 51,584 | 467 |
 
-Each row is one observed turn, not a controlled benchmark or a guaranteed saving. The scoped skills override was followed by lower observed input, but these small samples do not establish causality, billing savings, or complete low-token optimization. The inspected inbox was only 126 bytes and was not the large-cost cause in this exchange; the new chat-scoped identity projection limits future inflation from unrelated task inboxes. Cost investigation continues.
+These are reported cumulative session/tool-exchange counters, not one prompt or billed usage; they are not a controlled benchmark or a guaranteed saving. The scoped skills override was followed by lower observed input, but these small samples do not establish causality, billing savings, or complete low-token optimization. The inspected inbox was only 126 bytes and was not the large-cost cause in this exchange; the new chat-scoped identity projection limits future inflation from unrelated task inboxes. Cost investigation continues.
 
 The copied-installation guidance safety fix has source-scoped acceptance: 28 tests passed with two existing warnings, including real PowerShell parser coverage for both languages/clients and hostile `;` / `$()` worker values. Complete-guide paste performs download/hash verification/review only; installation stays commented until explicitly selected after review. The fresh HTTP panel check confirms rendered deployment behavior, while the parser check covers generated command safety. Neither substitutes for GUI clicks or cloud automatic acceptance.
 

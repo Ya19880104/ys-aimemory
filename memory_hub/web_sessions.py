@@ -14,7 +14,7 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from .store import HubError
-from .web import e, page
+from .web import e, page, chat_login_redirect
 from .web_chat_assets import CHAT_CSS, chat_script
 from .web_help import public_base_url, _public_ca
 
@@ -103,7 +103,7 @@ def install_sessions(app, hub, auth, session, redirect):
             return page(body, script=chat_script(), css=CHAT_CSS, connect=True)
         except HubError as exc:
             if exc.status == 401:
-                return redirect('/login')
+                return chat_login_redirect(request)
             return page('<main><h1>' + e(exc.message) + ('</h1><a href="/ui">' + tr('ui_34c6fb9e6b18') + '</a></main>'), exc.status)
         except SQLAlchemyError as exc:
             return failure(exc)

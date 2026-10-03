@@ -257,7 +257,7 @@ let copied=''; const navigator={clipboard:{writeText:async text=>{copied=text;}}
 (async()=>{ $('auto-client').onchange(); if(!$('auto-project-hint').hidden)throw Error('Codex path hint'); await $('copy-auto-setup').onclick();
 if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('3A9DC4603260D40E39FC04A3B639F35DF72533B53C809CAC3D6E317E0AC22B81'))throw Error('Codex command');
 fields['auto-client'].value='claude';$('auto-client').onchange();if($('auto-project-hint').hidden)throw Error('Claude path hint');await $('copy-auto-setup').onclick();
-if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('85337175B42B566797F7523F510086FE2D70AC653132B734A7846EBB35BD9876'))throw Error('Claude command');
+if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E'))throw Error('Claude command');
 copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if(copied)throw Error('invalid budget copied');
 })().catch(e=>{console.error(e);process.exitCode=1});
 """
@@ -311,3 +311,51 @@ foreach ($item in $items) {
 """
     checked = subprocess.run([powershell, '-NoProfile', '-NonInteractive', '-Command', parser], input=generated.stdout, capture_output=True, text=True, encoding='utf-8')
     assert checked.returncode == 0, checked.stderr
+
+
+def test_room_invite_survives_login_and_wrong_password_without_secret_queries(room):
+    client, _, _ = room
+    client.cookies.clear()
+    target = '/ui/chat?project=shared&session=' + '1' * 32 + '&lang=en'
+    response = client.get(target + '&token=DO_NOT_RETAIN&password=DO_NOT_RETAIN', follow_redirects=False)
+    assert response.status_code == 303
+    assert 'DO_NOT_RETAIN' not in response.headers['location']
+    page = client.get(response.headers['location'])
+    assert 'DO_NOT_RETAIN' not in page.text
+    token = re.search('name="csrf" value="([^"]+)"', page.text)[1]
+    failed = client.post('/login', data={'csrf': token, 'username': 'human-room-admin',
+        'password': 'wrong', 'return_to': 'https://evil.test'}, follow_redirects=False)
+    assert failed.status_code == 401
+    token = re.search('name="csrf" value="([^"]+)"', failed.text)[1]
+    success = client.post('/login', data={'csrf': token, 'username': 'human-room-admin',
+        'password': 'synthetic-room-password', 'return_to': '/ui/chat?project=private'},
+        follow_redirects=False)
+    assert success.status_code == 303 and success.headers['location'] == target
+    assert client.get(success.headers['location']).status_code == 200
+
+
+@pytest.mark.parametrize('target', [
+    'https://evil.test/ui/chat', '//evil.test/ui/chat', '/\\evil.test/ui/chat',
+    '/ui/chat/../action', '/ui/chat%2f..%2faction', '/logout',
+    '/ui/chat?project=shared&project=private', '/ui/chat?session=invalid',
+    '/ui/chat?project=shared%0d%0aLocation%3Aevil', '/ui/chat#secret',
+])
+def test_login_rejects_unsafe_return_targets(room, target):
+    client, _, _ = room
+    client.cookies.clear()
+    page = client.get('/login', params={'return_to': target})
+    token = re.search('name="csrf" value="([^"]+)"', page.text)[1]
+    response = client.post('/login', data={'csrf': token, 'username': 'human-room-admin',
+        'password': 'synthetic-room-password'}, follow_redirects=False)
+    assert response.status_code == 303 and response.headers['location'] == '/ui/chat'
+
+
+def test_room_return_does_not_grant_project_access(room):
+    client, _, _ = room
+    client.cookies.clear()
+    response = client.get('/ui/chat?project=private&session=' + '1' * 32, follow_redirects=False)
+    page = client.get(response.headers['location'])
+    token = re.search('name="csrf" value="([^"]+)"', page.text)[1]
+    response = client.post('/login', data={'csrf': token, 'username': 'human-room-admin',
+        'password': 'synthetic-room-password'}, follow_redirects=False)
+    assert client.get(response.headers['location']).status_code == 404

@@ -6,6 +6,33 @@ This pilot connects **one dedicated Hub worker to one project and one shared roo
 
 Source tests are not ChatGPT acceptance. Record tool discovery, actual cloud tool calls, subscription verification, webhook receipt, model response and Hub write-back separately. A webhook `2xx` is only **received**, not **replied**.
 
+
+
+## Final runtime promotion: 2026-10-04 Taipei
+
+Runtime remains `af53efb1309f2527cbd9548a5a19f0dc57325825`, image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`, promoted from `24f3173` during **2026-10-03T16:01:18Z–16:01:40Z** (2026-10-04 00:01 Taipei). All 429 runtime checks passed; schema v6 and 26 tables were preserved. Independent host PostgreSQL regression: 785 passed, 56 skipped, 3 warnings in 181.81 seconds; archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`. GitHub Windows-installer, SQLite and PostgreSQL push/PR jobs passed for af53. Executor-supplied results retain private source logs.
+
+This subsequent documentation commit is not the deployed runtime. Earlier native/client evidence retains its original c4/24/installer version boundaries. Final-runtime English/Traditional Chinese browser help smoke was still in progress at this documentation cutoff; no result is inferred. Historical failures, skips, lifecycle gaps and token limitations remain below.
+
+
+## Native event monitoring: observed single-event pass
+
+Native ChatGPT event acceptance passed for one event against Hub `24f3173`: a native event-triggered Automation subscribed, verified its signed callback challenge, received one matching human event and posted the Hub reply without an additional Work prompt. It then unsubscribed and paused the task. This is neither a cron task nor a polling Automation. Full lifecycle/expiry/offline/revocation acceptance remains pending. See [latest validation](VALIDATION_2026-10-03.md).
+
+1. Start the fixed-worker gateway and private tunnel; load/refresh the plugin and confirm identity plus message.created discovery.
+2. In a Work chat, explicitly ask for an **event-triggered Automation** monitoring message.created in this fixed room. Instruct it to use notification_id for full read and one reply, then stop after the requested event. events/subscribe is a protocol method, so absence of a regular model tool named subscribe is insufficient evidence of failure.
+3. Verify actual subscription creation, callback challenge and persisted subscription. If task creation fails generically, inspect only the gateway's sanitized hostname-only denial. For callback_host_not_allowed, verify the observed hostname and add only that exact hostname to callback_hosts; restart and explicitly retry. The observed pilot used connectors.api.openai.com. Do not guess, use wildcards or disable TLS/public-DNS/IP-pinning/no-redirect/challenge safeguards.
+4. Create a matching human event in the Hub only; send no further Work prompt. Verify signed webhook acknowledgement, native full read/reply, matching Hub receipt/cursor, and requested unsubscribe/task pause. Discovery or a task-creation message alone is not action proof.
+
+The first native task creation failed with the callback allowlist empty; the refusal and generic task-service failure remain preserved. Adding the observed exact hostname resolved this particular refusal. This hostname is an observed pilot value, not a universal callback-host guarantee. Credentials and real callback URLs remain private.
+
+
+Negative control after native unsubscribe: a later human message produced no additional reply for the observed 54.466 seconds; the subscription remained unsubscribed, delivered count stayed 1 and the outbox retained only the original event. The native task UI was paused without an operator toggle. This is a bounded observation, not indefinite stop/lifecycle proof.
+
+
+Final public Claude installer check: `97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`, SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`, embeds five sources at `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`. Actual download, hash verification and execution passed. The existing owned Claude installation was reinstalled/renewed with a one-turn budget. A native reply at 23:43:24 read pending unread messages and artifact metadata from the preserved cursor; it explicitly confirmed metadata only, without reading artifact full text. This is renewal/unread-cursor evidence, not a fresh human-marker or no-history-replay test. Earlier `75a50bf` dual-client evidence remains unchanged. The executor then disconnected Claude and stopped the cloud runtime. No later final deployment is asserted.
+
+
 ## What is included
 
 - `identity`: verifies the configured worker and room; returns the latest sequence and shared pause state.

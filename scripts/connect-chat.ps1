@@ -20,12 +20,12 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Publish this immutable revision and these LF source digests as one unit.
-$SourceRevision = '38f9be5ec796be52cf0f8814ea2eb8fdb81d08d0'
+$SourceRevision = '86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea'
 $SourceRoot = 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/' + $SourceRevision + '/'
 $SourceFiles = @(
     @{ Source = 'scripts/setup-chat.py'; Sha256 = '0f99d983bf9eee3ff67d19ea6965e4d8d86a46bdc1cbd54a8d92076d0fc7011b' },
     @{ Source = 'scripts/setup-claude.py'; Sha256 = '19c46cdf351f7427124743a208f3517975a540325f912ff7d79bd4d86cc8fd24' },
-    @{ Source = 'memory_hub/client_watch.py'; Sha256 = '6c193f2ba3edba2238dd72f3eb965cb5ca3b30dabec8fc92f33d7e07e6ccb7b0' },
+    @{ Source = 'memory_hub/client_watch.py'; Sha256 = '005ff75afd37bed501d1ea4e5979bbf49a9b4610b6a22a635c442f80b4e14b2c' },
     @{ Source = 'memory_hub/client_chat_bridge.py'; Sha256 = '1a323a7b343c4dfb359d281882eb9420af183053fd1a450ddfe52418ec24b3e2' },
     @{ Source = 'memory_hub/client_secret.py'; Sha256 = '11f2312b254a1c17761d2adb402f4ed6fc73eaa344a98994c695a6175ea1d469' }
 )
@@ -80,6 +80,10 @@ def existing_install(project, source, origin, pin):
     expected_entry = {'command': str(directory / '.venv' / 'Scripts' / 'python.exe'),
                       'args': ['-B', str(directory / 'launcher.py'), '--config',
                                str(directory / 'connection.json'), '--compact']}
+    # Current adapter emits type=stdio; older owned receipts omit it. Both
+    # exact shapes still require the original complete configuration digest.
+    if 'type' in entry:
+        expected_entry['type'] = 'stdio'
     if (entry != expected_entry
             or receipt.get('status') != 'installed_not_native_verified'
             or Path(receipt.get('project', '')).resolve() != project
