@@ -1,10 +1,13 @@
 import importlib.util
 import json
 import os
+import hashlib
 from pathlib import Path
 from io import BytesIO
 import ssl
 import subprocess
+import re
+import shutil
 from types import SimpleNamespace
 from zipfile import ZipFile, ZipInfo
 import pytest
@@ -185,6 +188,31 @@ def test_cli_bad_arguments_do_not_echo_secrets(monkeypatch, capsys):
     monkeypatch.setattr('sys.argv', ['setup-claude.py', '--token', 'secret-must-not-print'])
     assert setup.main() == 1
     assert 'secret-must-not-print' not in str(capsys.readouterr())
+
+
+def test_bootstrap_source_digests_match_the_reviewed_installer():
+    root = Path(__file__).parents[1]
+    bootstrap = (root / 'scripts/connect-claude.ps1').read_text(encoding='utf-8')
+    assert re.search(r"\$SourceRevision = '[0-9a-f]{40}'", bootstrap)
+    entries = re.findall(r"Source = '([^']+)'; Name = '[^']+'; Sha256 = '([0-9a-f]{64})'", bootstrap)
+    assert {source for source, _ in entries} == {'scripts/setup-claude.py', 'memory_hub/client_secret.py'}
+    for source, digest in entries:
+        # Git's public raw files use LF; Windows checkout conversion is harmless.
+        assert hashlib.sha256((root / source).read_bytes().replace(b'\r\n', b'\n')).hexdigest() == digest
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='PowerShell bootstrap runs on Windows')
+def test_bootstrap_rejects_secret_url_before_download_or_install(tmp_path):
+    shell = shutil.which('pwsh') or shutil.which('powershell')
+    if not shell:
+        pytest.skip('PowerShell unavailable')
+    script = Path(__file__).parents[1] / 'scripts/connect-claude.ps1'
+    result = subprocess.run([shell, '-NoProfile', '-File', str(script),
+        '-Url', 'https://user:do-not-print-this-secret@example.test', '-ExpectedCa', '1' * 64,
+        '-Project', str(tmp_path)], capture_output=True, timeout=20)
+    assert result.returncode == 1
+    assert b'do-not-print-this-secret' not in result.stdout + result.stderr
+    assert not (tmp_path / '.mcp.json').exists()
 
 
 def test_cli_does_not_echo_secret_exception_or_token(monkeypatch, capsys):
