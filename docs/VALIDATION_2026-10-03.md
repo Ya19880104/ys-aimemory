@@ -26,6 +26,9 @@ Cloud subscription, native action and write-back now passed for one event. Full 
 Negative control after native unsubscribe: a later human message produced no additional reply for the observed 54.466 seconds; the subscription remained unsubscribed, delivered count stayed 1 and the outbox retained only the original event. The native task UI was paused without an operator toggle. This is a bounded observation, not indefinite stop/lifecycle proof.
 
 
+Final public Claude installer check: `97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`, SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`, embeds five sources at `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`. Actual download, hash verification and execution passed. The existing owned Claude installation was reinstalled/renewed with a one-turn budget. A native reply at 23:43:24 read pending unread messages and artifact metadata from the preserved cursor; it explicitly confirmed metadata only, without reading artifact full text. This is renewal/unread-cursor evidence, not a fresh human-marker or no-history-replay test. Earlier `75a50bf` dual-client evidence remains unchanged. The executor then disconnected Claude and stopped the cloud runtime. No later final deployment is asserted.
+
+
 ## Latest round-two verification
 
 Runtime source: `24f317310ea6fdd66ca78da8cea3003a413d226c`, promoted **2026-10-03T15:16:07Z**, image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`. This section records sanitized executor-supplied results, not an independent rerun by the documentation reviewer. Native evidence below used watcher `e24b13c418bad9705f86b589b1ac212145d06a71` with the earlier `c4fe0f1` Hub, before promotion; do not assign that native evidence to the new runtime.

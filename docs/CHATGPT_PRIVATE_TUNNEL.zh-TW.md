@@ -22,6 +22,9 @@ Hub `24f3173` 單事件 native ChatGPT 驗收 passed：原生 event-triggered Au
 原生 unsubscribe 後負向測試：後續人類訊息於觀察的 54.466 秒內沒有額外回覆；subscription 維持 unsubscribed、delivered=1、outbox 只有原事件。原生 task UI 已 paused，未由 operator 手動切換。這是有限觀察，不代表永久停止或完整生命週期證明。
 
 
+最終公開 Claude installer 實測：`97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`，SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`，內嵌五個來源版本 `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`。實際 download/hash/execution passed；既有 owned Claude 重裝／renew，budget 一輪。23:43:24 native reply 從保留 cursor 讀到尚未讀訊息與 artifact metadata，明確確認只有 metadata、未讀 artifact 全文。這是 renew/unread-cursor 證據，不是全新人類 marker 或 no-history-replay 驗收。保留原 `75a50bf` 雙客戶端證據。執行者隨後 disconnect Claude、停止 cloud runtime；未宣稱後續 final deployment。
+
+
 ## 功能與前置條件
 
 - `identity` 驗證固定 worker／專案／房間、最新序號與共同暫停狀態。

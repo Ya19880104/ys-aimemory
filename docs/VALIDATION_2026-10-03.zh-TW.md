@@ -26,6 +26,9 @@
 原生 unsubscribe 後負向測試：後續人類訊息於觀察的 54.466 秒內沒有額外回覆；subscription 維持 unsubscribed、delivered=1、outbox 只有原事件。原生 task UI 已 paused，未由 operator 手動切換。這是有限觀察，不代表永久停止或完整生命週期證明。
 
 
+最終公開 Claude installer 實測：`97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`，SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`，內嵌五個來源版本 `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`。實際 download/hash/execution passed；既有 owned Claude 重裝／renew，budget 一輪。23:43:24 native reply 從保留 cursor 讀到尚未讀訊息與 artifact metadata，明確確認只有 metadata、未讀 artifact 全文。這是 renew/unread-cursor 證據，不是全新人類 marker 或 no-history-replay 驗收。保留原 `75a50bf` 雙客戶端證據。執行者隨後 disconnect Claude、停止 cloud runtime；未宣稱後續 final deployment。
+
+
 ## 最新第二輪驗證
 
 執行版本：`24f317310ea6fdd66ca78da8cea3003a413d226c`，於 **2026-10-03T15:16:07Z** promotion，image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`。以下為執行者提供的去秘密結果，文件審查者未獨立重跑。原生證據使用 watcher `e24b13c418bad9705f86b589b1ac212145d06a71` 搭配 promotion 前的 `c4fe0f1` Hub，不能轉稱新 runtime 原生驗收。
