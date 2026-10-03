@@ -3262,5 +3262,9 @@
   "composer_member": {
     "en": "Member",
     "zh-TW": "成員"
+  },
+  "tutorial_workflow_illustration_caption": {
+    "en": "Workflow illustration with synthetic labels; not a native verification screenshot.",
+    "zh-TW": "操作流程示意，使用合成標籤；不是原生驗證截圖。"
   }
 }

@@ -237,17 +237,31 @@ def test_bundled_tutorial_images_are_public_only_on_the_exact_allowlist(tmp_path
         assert help_page.status_code == 200
         assert "img-src 'self' https://example.test" in help_page.headers['content-security-policy']
         assert 'id="automatic-chat"' in help_page.text
+        assert set(IMAGES) == {'workflow-illustration.en.svg', 'workflow-illustration.zh-TW.svg'}
+        for language in ('en', 'zh-TW'):
+            localized = browser.get('/help?lang=' + language)
+            assert '/help/images/workflow-illustration.' + language + '.svg' in localized.text
+            assert '.jpg' not in localized.text
         for name, mime in IMAGES.items():
             response = browser.get('/help/images/' + name)
             assert response.status_code == 200
-            assert response.content.startswith(b'\xff\xd8\xff' if mime == 'image/jpeg' else b'\x89PNG\r\n\x1a\n')
+            from xml.etree import ElementTree
+            svg = ElementTree.fromstring(response.content)
+            assert svg.tag == '{http://www.w3.org/2000/svg}svg'
+            assert 'not acceptance evidence' in response.text or '不是驗收證據' in response.text
+            assert all(element.tag.rsplit('}', 1)[-1] not in {'script', 'foreignObject', 'image', 'use'} for element in svg.iter())
+            assert all(not attribute.endswith('href') and not attribute.startswith('on') for element in svg.iter() for attribute in element.attrib)
+            assert response.headers['content-security-policy'] == "default-src 'none'; sandbox"
             assert response.headers['content-type'] == mime
             assert response.headers['x-content-type-options'] == 'nosniff'
             head = browser.head('/help/images/' + name)
             assert head.status_code == 200 and head.content == b''
             assert head.headers['content-length'] == str(len(response.content))
             assert browser.post('/help/images/' + name).status_code == 401
-        for path in ('/help/images/connection.json', '/help/images/.mcp.json', '/help/images/missing.png'):
+        for path in ('/help/images/connection.json', '/help/images/.mcp.json', '/help/images/missing.png',
+            '/help/images/claude-local-native-receipt-20261003.jpg',
+            '/help/images/claude-automatic-reply-20261003.jpg',
+            '/help/images/hub-automatic-conversation-20261003.jpg'):
             assert browser.get(path).status_code == 401
         assert browser.get('/v1/tools/read_session').status_code == 401
 

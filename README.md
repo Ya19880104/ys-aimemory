@@ -59,8 +59,8 @@ There is no built-in administrator password or usable token. PostgreSQL is the d
 
 Read [AGENTS.md](AGENTS.md) and the relevant [Skills](skills/) before source work. Workers use separate clones/worktrees, identities, and branches. Task roles do not grant security permissions. Do not commit tokens, passwords, cookies, private keys, real databases/backups, personal client settings, or private acceptance evidence.
 
-Existing help screenshots preserve historical test material, not current native acceptance. Review their identifiers and sharing scope before redistribution.
+Public help uses synthetic English/Traditional Chinese SVG workflow illustrations, not native verification screenshots. Historical field screenshots were removed from the current package; private originals were preserved, and Git history was not rewritten.
 
 `MANIFEST.sha256.json` and [the original report](TEST_REPORT.zh-TW.md) preserve historical delivery evidence, not current CI results or a manifest of later additions. Record passed, failed, skipped, and not_run separately with the exact commit/environment. Distribution: `ys-ai-memory-hub`; import: `memory_hub`.
 
-Latest scoped evidence: [2026-10-03 validation](docs/VALIDATION_2026-10-03.md). Prompted ChatGPT identity/read/write and browser synchronization are distinct from event subscription and idle automatic wake.
+Latest scoped evidence: [2026-10-03 validation](docs/VALIDATION_2026-10-03.md). Prompted ChatGPT identity/read/write and browser synchronization are distinct from ChatGPT event subscription/idle wake. A dedicated native Codex CLI receiver passed one bounded automatic exchange; its observed pause/resume sequence passed, while crash/restart lifecycle acceptance remains incomplete.

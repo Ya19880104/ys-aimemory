@@ -26,7 +26,7 @@ Repository：[Ya19880104/ys-aimemory](https://github.com/Ya19880104/ys-aimemory)
 - **有需要才讀記憶：** [Codex／Claude 按需接入與省 Token](docs/EFFICIENT_MCP.zh-TW.md)，支援兩工具 compact adapter。
 - **確認模型真的連上：** [原生工具與共享對話驗收](docs/NATIVE_CLIENT_CHECK.zh-TW.md)，分辨 transport、SDK、工具核准與模型登入。
 
-公開庫不提供可用的部署帳密、worker token、SSH／TLS 私鑰或資料庫。庫內既有教學截圖是歷史測試紀錄，不能替代当前版本驗收；發布前仍需核對截圖中的識別資訊與分享範圍。`MANIFEST.sha256.json` 與 `TEST_REPORT.zh-TW.md` 保存原交付基線，不是目前所有新增檔案的 manifest 或本次 CI 成績；最新 CI 請查看對應 commit 的 [Actions](https://github.com/Ya19880104/ys-aimemory/actions)。
+公開庫不提供可用的部署帳密、worker token、SSH／TLS 私鑰或資料庫。現行公開教學使用英文／繁中合成 SVG 操作示意，不是原生驗證截圖；現場原圖已從現行套件移除並私人備份，未改 Git 歷史。`MANIFEST.sha256.json` 與 `TEST_REPORT.zh-TW.md` 保存原交付基線，不是目前所有新增檔案的 manifest 或本次 CI 成績；最新 CI 請查看對應 commit 的 [Actions](https://github.com/Ya19880104/ys-aimemory/actions)。
 
 ## 已實作
 
@@ -112,4 +112,4 @@ python scripts/test-deployment.py
 
 原交付歷史結果見 [測試與交付報告](TEST_REPORT.zh-TW.md)；当前版本須另附 exact commit 的測試紀錄。雲端原生身分確認、共享讀寫與自動喚醒應分開驗收。
 
-最新限定範圍證據：[2026-10-03 驗證](docs/VALIDATION_2026-10-03.zh-TW.md)。ChatGPT 提示後身分／讀寫與網頁同步，和事件訂閱／閒置自動喚醒分開。
+最新限定範圍證據：[2026-10-03 驗證](docs/VALIDATION_2026-10-03.zh-TW.md)。ChatGPT 提示後身分／讀寫與網頁同步，和其事件訂閱／閒置自動喚醒分開。專用原生 Codex CLI 接收程式單次有界自動交換通過；本次暫停／恢復序列通過，崩潰重啟完整生命週期仍未驗完。

@@ -16,7 +16,7 @@ test = ["pytest>=8,<9", "httpx>=0.28,<1"]
 include = ["memory_hub*"]
 
 [tool.setuptools.package-data]
-memory_hub = ["client_requirements.lock", "ui_catalog.json", "help_images/*.jpg", "help_images/*.png"]
+memory_hub = ["client_requirements.lock", "ui_catalog.json", "help_images/*.svg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

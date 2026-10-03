@@ -16,10 +16,17 @@ runtime／來源基底：`be876d2bc0aa9d824b0218872c3d787dea365db3`。公開摘�
 | ChatGPT 提示後原生寫回 | passed | post_message 寫回序號 177 |
 | Hub 瀏覽器增量顯示 | 本次交換 passed | 未 reload 即同步；網頁更新不是模型喚醒 |
 | 事件訂閱 | not_run | 尚無此關卡驗收回報 |
-| 閒置自動喚醒／回覆 | not_run | 本次由直接提示啟動 |
-| 原生 Codex／events | 本紀錄 not_run | 等待獨立確切版本證據 |
+| ChatGPT 閒置自動喚醒／回覆 | not_run | 本次 ChatGPT 由直接提示啟動 |
+| 專用原生 Codex CLI 自動回覆 | 單次有界交換 passed | 人類 HTTP UI action 觸發接收程式，未向 CLI 送提示 |
+| Codex 房間暫停／恢復 | 本次序列 passed | 暫停保留 queued 訊息，恢復後第二次原生回覆 |
 
 首次失敗涉及 test mount，執行者保留了原始證據；後續通過不抹去首次失敗。此摘要不捏造缺少的時間、命令、錯誤細節或日誌路徑。作正式 release 驗收前仍需保留完整去秘密 test packet。
+
+## 專用 Codex CLI 接收程式
+
+客戶端來源 81cd260、原生 Codex CLI 0.160.0，Hub runtime 維持 be876d2（image sha256:5e42935de091d8917acaad9b276552bccf1c8dfccff5c1ee42ad8eb62b7babb0）。scripts/run-codex-chat.py 使用 Codex npm 安裝的實際 vendor executable 與專用私人 worker。預算 TTL 1800 秒／6 回合／turn timeout 180 秒。人類 HTTP UI action 在 2026-10-03T08:06:17Z 建立 #180，接收程式自動啟動模型，原生 MCP identity／read／post 三次呼叫於 08:06:44Z 寫回 #181。私人收據為 passed，完整 full-text read、depth 1；沒有向 CLI 送提示。
+
+當時 Chrome 無法連線，所以這是 HTTP UI action 證據，不是 browser click，不代表注入既有 Codex Desktop 對話。cookie-authenticated /ui/chat/action 約 08:07:14Z 暫停（control v2），人類 #183 queued；至少 160 秒 native_turns 維持 1／paused。恢復（control v3）後自動原生 read／post，寫回 #185，第二份私人收據 passed／三次工具呼叫。兩次都是新的限定 scope CLI threads。本次暫停／恢復序列通過；崩潰重啟與完整生命週期仍未驗完。app follow-up accepted 不證明 ChatGPT 已訂閱事件，雲端自動關卡仍未驗證。
 
 ## 只讀發布檢查
 
@@ -30,11 +37,11 @@ runtime／來源基底：`be876d2bc0aa9d824b0218872c3d787dea365db3`。公開摘�
 
 pattern 掃描不保證任意秘密、二進位／圖片秘密、不可達物件、本機缺少的遠端 branches 或未來變更無秘密；本次沒有改寫歷史。
 
-## 截圖公開 HOLD
+## 公開截圖清理完成
 
-7 張 tracked memory_hub/help_images/*.jpg 全部目視核對，未見 bearer／私鑰，但有實際歷史測試與客戶端帳號畫面。建議改成清楚標示的合成教學圖，再宣稱套件不含私人驗收資料。
+7 張歷史 memory_hub/help_images/*.jpg 全部目視核對，原樣私人備份並驗證 SHA-256 一致，再從現行產品、allowlist 與 package data 移除。公開教學改用獨立繪製的英文／繁中靜態 SVG，明確標示操作示意，不是原生驗證截圖。原圖保留為私人證據；沒有改 Git 歷史，舊 commits 仍含原圖。
 
-| 圖片 | 應替換／遮除內容 |
+| 已移除圖片 | 替換原因 |
 | --- | --- |
 | claude-local-native-receipt-20261003.jpg | 真實 worker／room／message 識別、原生收據、帳號用量與模型控制 |
 | claude-automatic-reply-20261003.jpg | 真實 room／message、啟用及測試文案、branch、用量、permission mode 與桌面 |
@@ -44,4 +51,6 @@ pattern 掃描不保證任意秘密、二進位／圖片秘密、不可達物件
 | hub-automatic-conversation-20261003.jpg | 實際對話主題、測試討論、別名、序號 |
 | hub-create-conversation-20261003.jpg | 實際主題、人類／AI 發言、別名、序號 |
 
-7 張都列在 memory_hub/web_quickstart.py allowlist；其中 local receipt、automatic conversation、native tool result、create conversation 四張由 walkthrough 直接顯示。pyproject.toml 打包整個 image glob，只移除 Markdown 引用不會移除套件／公開 help 路由中的圖。此輪不改圖片、產品路由或歷史；應與產品 writer 協調替換並另保留私人原證據。
+公開 allowlist／package data 現在只含 workflow-illustration.en.svg 與 workflow-illustration.zh-TW.svg。安裝步驟與原生驗收界線保留。現行樹的截圖公開 HOLD 已解除，但不回溯移除 Git 歷史原圖，也不代表所有客戶端自動验收通過。此清理沒有部署或推送。
+
+清理驗證：Windows／Python 3.12.13，pytest tests/test_web_help.py tests/test_ui_i18n.py -q：60 passed、2 warnings（Starlette TestClient deprecated、lifespan annotation 未完整解析）。SVG XML／靜態內容與語言選擇通過。隔離 build 成功，wheel 圖片只有兩張 SVG 且位元與來源一致，沒有現場照片。首次 no-build-isolation 因共用測試環境缺 setuptools 而失敗；後續使用隔離 build dependencies 通過，未改該測試環境。這些檢查不代表部署或原生模型驗收。

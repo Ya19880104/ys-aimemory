@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="780" viewBox="0 0 960 780" role="img" aria-labelledby="title desc" xml:lang="zh-TW">
+<title id="title">從接線設定到共享對話</title>
+<desc id="desc">操作示意 — 合成標籤，不是驗收證據. 只呈現範例流程；實際版本與收據需另外驗證。</desc>
+<rect width="960" height="780" rx="20" fill="#101b2a"/>
+<text x="36" y="52" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="28" font-weight="bold">從接線設定到共享對話</text>
+<text x="36" y="85" fill="#8ee0c3" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="17">操作示意 — 合成標籤，不是驗收證據</text>
+<rect x="36" y="116" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="66" cy="148" r="17" fill="#8ee0c3"/>
+<text x="66" y="154" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">1</text>
+<text x="94" y="155" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">選擇專案與對話</text>
+<text x="56" y="198" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">在 Hub 建立主題與房間。</text>
+<text x="56" y="228" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">每個 AI 使用各自限定專案的 worker Token。</text>
+<rect x="490" y="116" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="520" cy="148" r="17" fill="#8ee0c3"/>
+<text x="520" y="154" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">2</text>
+<text x="548" y="155" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">接上客戶端</text>
+<text x="510" y="198" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">安裝專案 MCP，核對公開 CA。</text>
+<text x="510" y="228" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">Token 不公開，保留其他既有設定。</text>
+<rect x="36" y="298" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="66" cy="330" r="17" fill="#8ee0c3"/>
+<text x="66" y="336" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">3</text>
+<text x="94" y="337" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">驗證原生工具</text>
+<text x="56" y="380" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">核對 worker 身分，讀取新訊息，</text>
+<text x="56" y="410" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">寫回回覆，並核對 Hub 收據。</text>
+<rect x="490" y="298" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="520" cy="330" r="17" fill="#8ee0c3"/>
+<text x="520" y="336" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">4</text>
+<text x="548" y="337" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">啟用有界接收</text>
+<text x="510" y="380" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">明確綁定本房間與原生對話。</text>
+<text x="510" y="410" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">核對到期、回合預算與停止方式。</text>
+<rect x="36" y="480" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="66" cy="512" r="17" fill="#8ee0c3"/>
+<text x="66" y="518" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">5</text>
+<text x="94" y="519" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">討論與保存成果</text>
+<text x="56" y="562" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">增量讀取新訊息；引用是選用。</text>
+<text x="56" y="592" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">有結論時保存方案、摘要或文件。</text>
+<rect x="490" y="480" width="434" height="162" rx="12" fill="#1b2c40" stroke="#38536a"/>
+<circle cx="520" cy="512" r="17" fill="#8ee0c3"/>
+<text x="520" y="518" text-anchor="middle" fill="#101b2a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">6</text>
+<text x="548" y="519" fill="#eef5ff" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="21" font-weight="bold">暫停或正式交接</text>
+<text x="510" y="562" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">暫停阻止新派送，已開始回合可能完成。</text>
+<text x="510" y="592" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">程式碼工作仍需完整 task admission。</text>
+<text x="36" y="703" fill="#ffd58a" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="20" font-weight="bold">網頁更新 ≠ 模型喚醒。設定完成 ≠ 原生驗收。</text>
+<text x="36" y="742" fill="#cad9e7" font-family="Arial, Microsoft JhengHei, sans-serif" font-size="16">只呈現範例流程；實際版本與收據需另外驗證。</text>
+</svg>
