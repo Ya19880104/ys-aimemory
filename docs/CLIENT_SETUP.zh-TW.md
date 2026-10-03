@@ -1,5 +1,7 @@
 # 官方客戶端接線與訂閱使用
 
+[English](CLIENT_SETUP.md) | [繁體中文](CLIENT_SETUP.zh-TW.md)
+
 文件更新：2026-10-03。版本與帳號可用功能可能不同，安裝前以實際官方客戶端的 help、設定畫面和以下官方文件核對。設定範例與實際連線驗收分開記錄。Gemini CLI、Grok / xAI API 的接入界線、快速安裝命令與手動範例見[多客戶端安裝入口](MULTI_CLIENT_SETUP.zh-TW.md)。
 
 ## 已登入 Claude Desktop，為什麼貼設定仍連不上？

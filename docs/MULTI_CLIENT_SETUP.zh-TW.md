@@ -1,5 +1,7 @@
 # Claude、Codex、Gemini 與 Grok 安裝入口
 
+[English](MULTI_CLIENT_SETUP.md) | [繁體中文](MULTI_CLIENT_SETUP.zh-TW.md)
+
 查核日期：2026-10-03。先辨認「模型」與「執行 MCP 的客戶端」：同一模型可以由不同程式使用，不能只看模型名稱就判定可連線。下列相容方式和原生實測分開記錄。
 
 ## 選擇接入方式
@@ -86,7 +88,7 @@ try { gemini } finally { Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction Silently
 
 若未來另行部署 xAI 雲端可達的 MCP，先用官方 `server_url` / `server_label` 設定，Token 透過秘密配置轉為 Authorization header。先 allowlist `get_worker_inbox`、`get_project_summary` 等必要的唯讀工具；驗證後再按工作增加範圍。xAI 官方提醒：未指定 `allowed_tools` 時，會把服務提供的所有工具定義加入模型上下文。[Remote MCP 工具篩選](https://docs.x.ai/developers/tools/remote-mcp)
 
-現有 `/mcp` 是 38 個完整工具；**兩工具 compact 是本機 stdio adapter，不是另一個已實作的 HTTP `/compact` 端點**。不能把 `memory_tools`、`memory_call` 直接填成目前遠端 `/mcp` 的工具清單。若要讓 Grok 也用 compact，需要能在本機執行它的 host，或另外實作與驗收 HTTP gateway；本次沒有安裝或開放 gateway。
+現有 `/mcp` 提供隨版本更新的完整工具；**兩工具 compact 是本機 stdio adapter，不是另一個已實作的 HTTP `/compact` 端點**。不能把 `memory_tools`、`memory_call` 直接填成目前遠端 `/mcp` 的工具清單。若要讓 Grok 也用 compact，需要能在本機執行它的 host，或另外實作與驗收 HTTP gateway；本次沒有安裝或開放 gateway。
 
 本專案的省 Token 原則：
 

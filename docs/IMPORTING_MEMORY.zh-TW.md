@@ -1,5 +1,7 @@
 # 安全匯入與更新記憶
 
+[English](IMPORTING_MEMORY.md) | [繁體中文](IMPORTING_MEMORY.zh-TW.md)
+
 ## 匯入的資料
 
 每份來源使用明確 source_id、原始 content、uri 與 commit。服務不會自行抓取 URI，也不會依 URI 讀伺服器檔案；這些欄位用於追溯。請先挑選需要共享的規格、架構決策與交接文件，排除密碼、token、私鑰、客戶個資與不需共享的資料。

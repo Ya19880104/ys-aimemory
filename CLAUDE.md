@@ -1,7 +1,9 @@
-# Claude Code 專案入口
+# Claude Code project entry point
 
-請先讀本 repository 的 `AGENTS.md`，適用相同工作流程與限制。
+[English](CLAUDE.md) | [繁體中文](CLAUDE.zh-TW.md)
 
-本專案的 portable Skills 在 `skills/`：開工讀 hub-task-start、交接讀 hub-task-handoff、審查與測試讀 hub-review-accept。若客戶端未自動發現，請依檔案路徑明確讀取；不要假設已自動安裝或載入。
+Read [AGENTS.md](AGENTS.md) first; the same workflow and boundaries apply.
 
-MCP 設定需人類在自己的客戶端完成。使用連線驗證的 worker 身分；不要把 coordinator、reviewer 等工作角色當成管理權限。遵循 `docs/FOUR_AGENT_RUNBOOK.zh-TW.md`，並以實際工具 schema 為準。
+Portable Skills are in `skills/`: hub-task-start for admission, hub-task-handoff for delivery, hub-review-accept for review/testing. If discovery is unavailable, read them explicitly by path. Do not assume they were installed or loaded.
+
+The user configures MCP in their own client. Use the authenticated worker identity; coordinator/reviewer roles are not administrator permissions. Follow [the task runbook](docs/FOUR_AGENT_RUNBOOK.md) and the actual tool schemas.

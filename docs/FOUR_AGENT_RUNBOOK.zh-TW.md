@@ -1,5 +1,7 @@
 # 四 AI 開工、交接、驗收手冊
 
+[English](FOUR_AGENT_RUNBOOK.md) | [繁體中文](FOUR_AGENT_RUNBOOK.zh-TW.md)
+
 ## 首次分配
 
 人類確認四個固定 worker ID、各自允許的 project、使用的客戶端、clone 目錄與 branch。不要共享登入憑證或共用一枚 worker token。設定安全權限時需人類另行核准；分配工作角色不變更安全權限。

@@ -1,5 +1,7 @@
 # 從零部署與 Claude／Codex 接線
 
+[English](QUICKSTART.md) | [繁體中文](QUICKSTART.zh-TW.md)
+
 這份指南供新的部署者使用，沒有預設密碼、SSH key 或可用 token。只要使用已部署的 Hub，可直接跳到「安裝與接線客戶端」。公開 GitHub 原始碼與對 Internet 開放服務是兩件事；預設部署仍是內網 HTTPS。
 
 Gemini CLI 與 Grok / xAI API 的相容方式、快速安裝命令、手動範例及原生驗收界線，見[多客戶端安裝入口](MULTI_CLIENT_SETUP.zh-TW.md)。

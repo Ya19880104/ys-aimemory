@@ -1,5 +1,7 @@
 # 按需連線與較少的對話上下文
 
+[English](EFFICIENT_MCP.md) | [繁體中文](EFFICIENT_MCP.zh-TW.md)
+
 文件核對：2026-10-02。本文的「Hermes」指 [NousResearch／hermes-agent](https://github.com/NousResearch/hermes-agent)。本專案參考它的按需工具發現與分開保存會話的做法，沒有安裝或嵌入 Hermes，也不會自行呼叫模型 API。
 
 ## 三件不同的事

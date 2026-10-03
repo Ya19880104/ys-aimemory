@@ -1,5 +1,7 @@
 # 記憶庫與 MCP 產生器
 
+[English](MCP_GENERATOR.md) | [繁體中文](MCP_GENERATOR.zh-TW.md)
+
 公開操作手冊為 `/help`，公開 CA 下載為
 `/downloads/ys-ai-memory-ca.crt`；登入後的 `/ui/mcp` 提供建立記憶庫、
 簽發 worker token、輪替、撤銷，以及 Codex／Claude Code 設定範本。
