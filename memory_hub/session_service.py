@@ -104,7 +104,7 @@ class SessionService:
                 require(room['status'] == 'open', 'session_archived', 'Session is archived')
             if name == 'post_session_message' and a.get('delivery_id') is not None:
                 require(self.delivery is not None, 'delivery_unavailable', 'Delivery service unavailable', 503)
-                a['_automatic_reply_depth'] = self.delivery.validate_tool_reply(conn, a, actor)
+                a['_automatic_reply_depth'], actor = self.delivery.validate_tool_reply(conn, a, actor)
             elif name == 'post_session_message' and self.delivery is not None:
                 self.delivery.guard_unbound_post(conn, a, actor)
             result = self._write(name, a, actor, conn, state, room, self.clock())

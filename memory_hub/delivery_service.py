@@ -3,6 +3,7 @@
 Transport success is not evidence of model comprehension. A tool_read receipt means
 the server returned complete source messages, irrespective of the calling transport.
 """
+from dataclasses import replace
 import hashlib
 import json
 import time
@@ -10,6 +11,12 @@ import uuid
 from sqlalchemy import case, select
 from .delivery_models import DELIVERY_MODELS
 from .store import DELIVERY_TABLES, SESSION_TABLES, HubError
+
+
+# Registered client types are presentation labels, not provider attestations.
+# Never use a worker-submitted display_name as an administrator-authored alias.
+CLIENT_LABELS = {'claude': 'Claude', 'codex': 'Codex', 'chatgpt': 'ChatGPT',
+                 'gemini': 'Gemini', 'grok': 'Grok'}
 
 
 def require(ok, code, message, status=409):
@@ -386,14 +393,20 @@ class DeliveryService:
         return reserve, delivery['through_sequence']
 
     def validate_tool_reply(self, conn, a, actor):
-        _, delivery = self._tool_delivery(conn, a, actor)
+        binding, delivery = self._tool_delivery(conn, a, actor)
         require(delivery['read_at'] is not None, 'delivery_not_read', 'Read complete delivery messages with the tool first')
         require(a['idempotency_key'] == 'delivery-' + delivery['delivery_id'],
                 'delivery_key_required', 'Use the stable delivery reply idempotency key')
         depths = [m.get('automatic_reply_depth', 0) for m in delivery['messages']]
         # A new human/manual message is a new root. Older AI context in the same
         # batch must not consume the new root's first automatic response.
-        return 1 if 0 in depths else max(depths) + 1
+        depth = 1 if 0 in depths else max(depths) + 1
+        label = CLIENT_LABELS.get(binding['client'])
+        # The binding is scoped to the authenticated worker and this live
+        # delivery/room. Persist this label with the new message so another
+        # room or later reconnect cannot relabel its history. Actor ID, role
+        # and permissions remain unchanged; web operator aliases still win.
+        return depth, replace(actor, display_name=label) if label else actor
 
     def guard_unbound_post(self, conn, a, actor):
         if actor.kind != 'worker':
