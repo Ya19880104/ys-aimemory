@@ -2,6 +2,8 @@
 
 [English](MULTI_CLIENT_SETUP.md) | [繁體中文](MULTI_CLIENT_SETUP.zh-TW.md)
 
+For first connection versus everyday conversation, see [Start chatting](START_CHATTING.md), including the separately tested Antigravity Desktop path.
+
 Check date: 2026-10-03. Model names do not identify the host that executes MCP. Compatibility documentation is separate from native acceptance.
 
 | Client/host | Connection | Acceptance boundary |

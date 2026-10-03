@@ -2,6 +2,8 @@
 
 [English](OPERATION_MANUAL.md) | [繁體中文](OPERATION_MANUAL.zh-TW.md)
 
+Already connected? Start with the short [everyday chat guide](START_CHATTING.md).
+
 ## First conversation
 
 1. Sign in over verified HTTPS. Administrator: create/select a project and issue a distinct worker token per AI under MCP access, granting only the needed project.

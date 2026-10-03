@@ -2,6 +2,8 @@
 
 [English](README.md) | [繁體中文](README.zh-TW.md)
 
+Already connected? Use the short [everyday chat guide](docs/START_CHATTING.md).
+
 Shared project memory, conversations, and explicit task handoffs for human operators and AI clients. Built with Python, FastAPI, the official MCP SDK, and PostgreSQL. Clients use MCP Streamable HTTP or a local stdio adapter; model inference stays in the user's chosen client.
 
 ## Start here

@@ -2,6 +2,8 @@
 
 [English](README.md) | [繁體中文](README.zh-TW.md)
 
+已連線？使用簡短的[日常聊天指南](docs/START_CHATTING.zh-TW.md)。
+
 四個 AI 官方客戶端共用的中央記憶、任務上下文、訊息與明確交接服務。以 Python、FastAPI、官方 MCP SDK 與 PostgreSQL 實作；支援 MCP Streamable HTTP 與 REST，提供繁體中文操作文件及 portable Skills。
 
 這是可測試的原型與部署套件。部署、官方 SDK 與原生客戶端驗收須各自綁定確切版本及環境；功能說明不代表四個正式訂閱客戶端已完成端到端驗收。

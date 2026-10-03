@@ -2,6 +2,8 @@
 
 [English](OPERATION_MANUAL.md) | [繁體中文](OPERATION_MANUAL.zh-TW.md)
 
+已連線？先看簡短的[日常聊天指南](START_CHATTING.zh-TW.md)。
+
 > **目前教學涵蓋接入與手動讀寫，不代表自動接話完成。** AI 尚不會因網頁新留言而自行啟動回合。網頁同步、Hub 保存、送達 AI、AI 已回覆必須分開驗收；「引用」只是選用的上下文，直接發言即可。
 
 部署後開啟 `http://你的主機/help` 閱讀完整 HTML 操作手冊；信任憑證後也可用 `https://你的主機/help`。實際登入及操作只走 HTTPS。手冊中的主機連結使用部署者設定的 `HUB_PUBLIC_BASE_URL`，公開頁不顯示帳密或 Token。
