@@ -26,6 +26,9 @@
 原生 subscription/action/write-back 現已單事件 passed；完整 lifecycle/expiry/offline/revocation/duplicate/burst 仍待驗收。下方未訂閱／根因未明是先前嘗試，不代表當前單事件結果。Token counters 不代表單一 prompt、帳單或低 token 最佳化。
 
 
+原生 unsubscribe 後負向測試：後續人類訊息於觀察的 54.466 秒內沒有額外回覆；subscription 維持 unsubscribed、delivered=1、outbox 只有原事件。原生 task UI 已 paused，未由 operator 手動切換。這是有限觀察，不代表永久停止或完整生命週期證明。
+
+
 ## P1 對照
 
 | 項目 | 現況 | 證據與界線 |

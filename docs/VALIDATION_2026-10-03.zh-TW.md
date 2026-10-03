@@ -23,6 +23,9 @@
 原生 subscription/action/write-back 現已單事件 passed；完整 lifecycle/expiry/offline/revocation/duplicate/burst 仍待驗收。下方未訂閱／根因未明是先前嘗試，不代表當前單事件結果。Token counters 不代表單一 prompt、帳單或低 token 最佳化。
 
 
+原生 unsubscribe 後負向測試：後續人類訊息於觀察的 54.466 秒內沒有額外回覆；subscription 維持 unsubscribed、delivered=1、outbox 只有原事件。原生 task UI 已 paused，未由 operator 手動切換。這是有限觀察，不代表永久停止或完整生命週期證明。
+
+
 ## 最新第二輪驗證
 
 執行版本：`24f317310ea6fdd66ca78da8cea3003a413d226c`，於 **2026-10-03T15:16:07Z** promotion，image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`。以下為執行者提供的去秘密結果，文件審查者未獨立重跑。原生證據使用 watcher `e24b13c418bad9705f86b589b1ac212145d06a71` 搭配 promotion 前的 `c4fe0f1` Hub，不能轉稱新 runtime 原生驗收。
@@ -71,7 +74,7 @@ Source/automatic expiry、完整 crash/restart、parent/orphan、load、revocati
 
 ### 已觀測 token 用量；最佳化仍在調查
 
-| 單回合觀察 | Input tokens | Cached input tokens（已含於 input） | Output tokens |
+| 觀察交換的已報告累計 counters | Input tokens | Cached input tokens（已含於 input） | Output tokens |
 | --- | ---: | ---: | ---: |
 | 初始安裝器 pilot | 71,711 | 58,880 | 436 |
 | `ab1f20a` 限定 scope 的 `skills.max_context_tokens=1` 實驗 | 59,287 | 49,024 | 410 |

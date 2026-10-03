@@ -19,6 +19,9 @@ Hub `24f3173` 單事件 native ChatGPT 驗收 passed：原生 event-triggered Au
 首次空 allowlist 的 callback refusal 與泛用 task-service failure 保留；精確 hostname 修正只解決此拒絕，不保證所有環境相同 hostname。憑證與真 callback URL 保持私人。
 
 
+原生 unsubscribe 後負向測試：後續人類訊息於觀察的 54.466 秒內沒有額外回覆；subscription 維持 unsubscribed、delivered=1、outbox 只有原事件。原生 task UI 已 paused，未由 operator 手動切換。這是有限觀察，不代表永久停止或完整生命週期證明。
+
+
 ## 功能與前置條件
 
 - `identity` 驗證固定 worker／專案／房間、最新序號與共同暫停狀態。

@@ -26,6 +26,9 @@ Initial cloud task creation failed with a generic task-service error; hostname-o
 Cloud subscription, native action and write-back now passed for one event. Full lifecycle/expiry/offline/revocation/duplicate/burst acceptance remains pending. Earlier no-subscription/root-unresolved statements describe earlier attempts, not the current single-event result. Token counters still do not establish one prompt, billed usage or low-token optimization.
 
 
+Negative control after native unsubscribe: a later human message produced no additional reply for the observed 54.466 seconds; the subscription remained unsubscribed, delivered count stayed 1 and the outbox retained only the original event. The native task UI was paused without an operator toggle. This is a bounded observation, not indefinite stop/lifecycle proof.
+
+
 ## P1 mapping
 
 | Finding | Current disposition | Source and acceptance boundary |

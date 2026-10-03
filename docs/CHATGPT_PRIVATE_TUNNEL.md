@@ -19,6 +19,9 @@ Native ChatGPT event acceptance passed for one event against Hub `24f3173`: a na
 The first native task creation failed with the callback allowlist empty; the refusal and generic task-service failure remain preserved. Adding the observed exact hostname resolved this particular refusal. This hostname is an observed pilot value, not a universal callback-host guarantee. Credentials and real callback URLs remain private.
 
 
+Negative control after native unsubscribe: a later human message produced no additional reply for the observed 54.466 seconds; the subscription remained unsubscribed, delivered count stayed 1 and the outbox retained only the original event. The native task UI was paused without an operator toggle. This is a bounded observation, not indefinite stop/lifecycle proof.
+
+
 ## What is included
 
 - `identity`: verifies the configured worker and room; returns the latest sequence and shared pause state.
