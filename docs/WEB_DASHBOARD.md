@@ -25,3 +25,12 @@ Admin performs allowed project/task operations; member participates in chat; rea
 DB sessions, CSRF, operation nonces, flash messages, and throttling coordinate across instances. Only hashed cookie keys are stored. Sessions expire at a fixed time. Security-policy changes revoke prior sessions/nonces and require coordinated worker updates. Login limits use direct peer IP; proxy users may share limits, and arbitrary forwarded headers are not trusted.
 
 Configured MCP identities/recent activity are observations, not permanent online/model-running status. Automatic receiver states are separate from MCP activity. No OAuth/SSO or forgotten-password email flow is supplied. Preserve a second trusted account manager and protected recovery process. See [deployment](DEPLOYMENT.md) and [shared chat](SHARED_SESSIONS.md).
+
+
+## Documentation mirrors and offline help
+
+`HUB_DOCS_BASE_URL` controls server-rendered Hub guide links. Unset or empty keeps `https://github.com/Ya19880104/ys-aimemory/blob/main/docs`. Set an HTTPS directory such as `https://docs.example.com/ys-memory`, or a root-relative directory such as `/mirror/docs`; links append the selected English or Traditional Chinese Markdown filename. Supply the mirror files and web-server mapping yourself; the Hub does not download, host or validate mirror contents. Wheels do not bundle the Markdown guides.
+
+For a disconnected LAN, set `HUB_DOCS_BASE_URL=/help`: links open the existing localized built-in help landing page (`/help?lang=en` or `/help?lang=zh-TW`), rather than nonexistent per-guide routes. This is a summarized local manual, not a copy of every full guide.
+
+Only HTTPS or root-relative directory URLs are accepted. Credentials, query/fragment, percent escapes, backslashes, control/non-ASCII characters, repeated path separators and dot traversal are rejected; use ASCII/punycode URLs. Invalid values safely fall back to local `/help` without breaking UI requests. Trailing slashes are normalized. Compose passes this setting to the app. Restart the configured runtime after changing deployment settings. Pinned installer downloads and upstream vendor references remain independent; this setting neither rewrites nor trusts installer sources.

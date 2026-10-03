@@ -3,6 +3,7 @@ from contextvars import ContextVar
 from html import escape
 import json
 import os
+import re
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
@@ -14,7 +15,7 @@ _return_path = ContextVar('hub_ui_return_path', default='/login')
 # wheels do not include the repository's docs directory.
 ENGLISH_GUIDES = frozenset({
     'ACCEPTANCE_TESTS', 'API_EXAMPLES', 'ARCHITECTURE', 'AUTOMATIC_CHAT',
-    'CLAUDE_WINDOWS_SETUP', 'CODEX_CHAT_SETUP', 'CLIENT_SETUP', 'DELIVERY_API', 'DEPLOYMENT',
+    'CHATGPT_PRIVATE_TUNNEL', 'CLAUDE_WINDOWS_SETUP', 'CODEX_CHAT_SETUP', 'CLIENT_SETUP', 'DELIVERY_API', 'DEPLOYMENT',
     'EFFICIENT_MCP', 'FOUR_AGENT_RUNBOOK', 'IMPORTING_MEMORY', 'KNOWLEDGE_INDEX',
     'MCP_GENERATOR', 'MCP_MESSAGES', 'MULTI_CLIENT_SETUP', 'NATIVE_CLIENT_CHECK',
     'OPERATION_MANUAL', 'QUICKSTART', 'SHARED_SESSIONS', 'V02_ACCEPTANCE', 'WEB_DASHBOARD',
@@ -32,14 +33,56 @@ def locale():
     return _locale.get() or default_language()
 
 
+DEFAULT_DOCS_BASE_URL = 'https://github.com/Ya19880104/ys-aimemory/blob/main/docs'
+
+
+def _validated_documentation_base_url():
+    """A trusted directory URL, or the built-in /help landing-page fallback."""
+    value = os.getenv('HUB_DOCS_BASE_URL') or DEFAULT_DOCS_BASE_URL
+    error = 'HUB_DOCS_BASE_URL must be an HTTPS or root-relative directory without escapes, credentials, query, fragment or traversal'
+    if (len(value) > 2048 or any(ord(c) < 33 or ord(c) > 126 for c in value)
+            or any(c in value for c in '%\\?#')):
+        raise ValueError(error)
+    try:
+        target = urlsplit(value)
+        if target.scheme:
+            if (target.scheme != 'https' or not target.hostname or target.username is not None
+                    or target.password is not None or not target.netloc
+                    or not re.fullmatch(r'[A-Za-z0-9.\-:\[\]]+', target.netloc)):
+                raise ValueError(error)
+            target.port  # Validate malformed/out-of-range ports, including IPv6.
+        elif target.netloc or not value.startswith('/') or value.startswith('//'):
+            raise ValueError(error)
+        path = target.path
+        if ('//' in path or any(part in {'.', '..'} for part in path.split('/'))
+                or not re.fullmatch(r'[A-Za-z0-9_./~-]*', path)):
+            raise ValueError(error)
+    except ValueError:
+        raise ValueError(error) from None
+    return value.rstrip('/') or '/'
+
+
+def documentation_base_url():
+    """Misconfigured mirrors fall back locally without breaking UI requests."""
+    try:
+        return _validated_documentation_base_url()
+    except ValueError:
+        return '/help'
+
+
 def documentation_url(name):
-    """Select a published sibling without requiring repository files at runtime."""
+    """Select a guide sibling; /help is a real landing page, not a docs mount."""
+    if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_-]+(?:\.zh-TW)?\.md', name):
+        raise ValueError('Documentation name must be a plain Markdown guide filename')
     selected = name
     if locale() == 'en' and name.endswith('.zh-TW.md'):
         basename = name[:-len('.zh-TW.md')]
         if basename in ENGLISH_GUIDES:
             selected = basename+'.md'
-    return 'https://github.com/Ya19880104/ys-aimemory/blob/main/docs/'+selected
+    base = documentation_base_url()
+    if base == '/help':
+        return '/help?'+urlencode({'lang': locale()})
+    return base.rstrip('/')+'/'+selected
 
 
 def tr(key):
@@ -100,6 +143,7 @@ class LanguageMiddleware:
     def __init__(self, app):
         self.app = app
         default_language()
+        documentation_base_url()
 
     async def __call__(self, scope, receive, send):
         if scope['type'] != 'http':

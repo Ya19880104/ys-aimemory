@@ -67,3 +67,12 @@ bash scripts/restore-check.sh /path/to/trusted.dump restore_check_YYYYMMDD
 Compose／Dockerfile 預設單 application worker。網頁 session、login CSRF、操作 nonce、flash、登入節流與設定版本保存在資料庫，以鎖定交易協調；共用同一資料庫與相同配置的 application instance 可共用這些狀態。資料庫與配置不變時，尚未到期的 session 不會只因應用程序重啟而失效；設定變更會永久撤銷舊登入，舊配置 instance 無法繼續使用舊 session。PostgreSQL 下多程序與正式多 worker 部署仍為 not_run，尚未驗收，不能由此宣稱已證明可生產水平擴展。
 
 資料寫入集中 PostgreSQL，但讀取封包和稽核資料目前未設完整保留政策。實際容量、長期壓力、Windows 客戶端與 PVE 還原仍須在目標環境驗收。未來公網需額外身份管理、邊界防護與安全審查，不只是把綁定位址改為 0.0.0.0。
+
+
+## 文件鏡像與離線 help
+
+`HUB_DOCS_BASE_URL` 控制 Hub server-rendered guide links。未設定／空值保留 `https://github.com/Ya19880104/ys-aimemory/blob/main/docs`。可設 HTTPS directory（如 `https://docs.example.com/ys-memory`）或 root-relative directory（如 `/mirror/docs`）；連結追加選定英文／繁中 Markdown filename。鏡像檔案與 web-server mapping 由 operator 提供，Hub 不下載、代管或驗證內容；wheel 未包 Markdown guides。
+
+離線 LAN 設 `HUB_DOCS_BASE_URL=/help`，連結使用既有語系 help landing page（`/help?lang=en`／`/help?lang=zh-TW`），不產生不存在的單份文件 route。這是內建摘要操作手冊，不是所有完整 guide 的副本。
+
+只接受 HTTPS／root-relative directory；拒絕 credentials、query/fragment、百分比 escape、backslash、控制／非 ASCII 字元、重複 separator、dot traversal，URL 請用 ASCII/punycode。錯誤設定安全 fallback 到本地 `/help`，不令 UI request crash；尾端 slash 正規化。Compose 傳入此設定，部署修改後重啟 runtime。釘選 installer downloads 與 vendor references 獨立，此設定不改寫或授權 installer sources。
