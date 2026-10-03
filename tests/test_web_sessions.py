@@ -241,29 +241,36 @@ def test_automatic_setup_uses_configured_origin_and_public_ca(room, monkeypatch)
     assert 'data-setup-base=""' in client.get('/ui/chat?project=shared').text
 
 
-def test_automatic_setup_commands_escape_values_and_do_not_activate():
+@pytest.mark.parametrize('language', ['en', 'zh-TW'])
+def test_automatic_setup_commands_escape_values_and_do_not_activate(language, monkeypatch):
     import shutil
     import subprocess
     from memory_hub.web_chat_assets import CHAT_JS
+    from memory_hub.i18n import CATALOG, script_catalog
+    monkeypatch.setenv('HUB_WEB_LANGUAGE', language)
     node = shutil.which('node')
     if not node:
         pytest.skip('Node.js unavailable for generated command execution')
     handler = CHAT_JS[CHAT_JS.index("  $('auto-client').onchange="):CHAT_JS.index("  $('copy-invite').onclick=")]
-    harness = r"""
+    harness = script_catalog(CHAT_JS) + 'const expected=' + json.dumps({
+        'claude': CATALOG['ui_aa001011'][language],
+        'codex': CATALOG['ui_aa001012'][language],
+    }) + ';' + r"""
 const fields = { 'auto-worker':{value:"worker'o"}, 'auto-hours':{value:'1'}, 'auto-turns':{value:'6'}, 'auto-client':{value:'codex'}, 'auto-instructions':{}, 'auto-setup-status':{} };
 const $=id=>fields[id]||(fields[id]={});
 const state={project:"project'o",room:{session_id:'a'.repeat(32)}};
 const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32),claudeGuide:'/help?lang=en',codexGuide:'https://docs.example.test/CODEX_CHAT_SETUP.md'}};
 const location={href:'https://hub.example.com/ui/chat'};
-const UI_LANGUAGE='en'; const uiText=key=>key;
 let copied=''; const navigator={clipboard:{writeText:async text=>{copied=text;}}};
 """ + handler + r"""
 (async()=>{ $('auto-client').onchange(); if(!$('auto-project-hint').hidden)throw Error('Codex path hint'); await $('copy-auto-setup').onclick();
 if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('FAC11173072834B6A5CBA9FC949C75F2E58385A6C8E04F439C1DFBB876058B72'))throw Error('Codex command');
 if(!copied.includes('# https://docs.example.test/CODEX_CHAT_SETUP.md'))throw Error('Codex guide');
+if(copied.includes('# undefined')||!copied.includes('# '+expected.codex))throw Error('Codex translated instructions');
 fields['auto-client'].value='claude';$('auto-client').onchange();if($('auto-project-hint').hidden)throw Error('Claude path hint');await $('copy-auto-setup').onclick();
 if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('BBE80FCE04A2707C84C4F0501DE1DA8359205EDC89D00A179EF4AE7851A28E89'))throw Error('Claude command');
 if(!copied.includes('# https://hub.example.com/help?lang=en'))throw Error('Claude offline guide');
+if(copied.includes('# undefined')||!copied.includes('# '+expected.claude))throw Error('Claude translated instructions');
 copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if(copied)throw Error('invalid budget copied');
 })().catch(e=>{console.error(e);process.exitCode=1});
 """
