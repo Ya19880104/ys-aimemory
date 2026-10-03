@@ -5,6 +5,8 @@ import io
 from pathlib import Path
 
 import pytest
+from test_sessions import collaboration, room, post, A, B
+from test_index import _migration_db
 
 spec = importlib.util.spec_from_file_location('codex_receiver', Path(__file__).parents[1] / 'scripts' / 'run-codex-chat.py')
 runner = importlib.util.module_from_spec(spec)
@@ -65,6 +67,7 @@ def completed_proof():
     ('read_session', {'lease_id': '9'*32}), ('read_session', {'after_sequence': 0}),
     ('read_session', {'after_sequence': 6}), ('read_session', {'full_text': False}),
     ('read_session', {'limit': True}), ('post_session_message', {'idempotency_key': 'changed'}),
+    ('read_session', {'max_bytes': [65536]}), ('read_session', {'max_bytes': True}),
     ('post_session_message', {'body': '字'*401}), ('post_session_message', {'attachment_ids': []}),
 ])
 def test_scoped_gate_rejects_cross_room_token_cost_and_retry_changes(name, changes):
@@ -197,3 +200,133 @@ def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_recei
     assert result['status'] == 'passed' and heartbeats
     assert sorted(p.name for p in tmp_path.iterdir()) == ['native-empty', 'native-scope.json']
     assert '這是原生對話回覆' not in (tmp_path / 'native-scope.json').read_text(encoding='utf-8')
+
+
+def budget_failed(ident='budget-error', **changes):
+    value = event('read_session', {}, ident, **changes)
+    value['item']['result'] = {'isError':True, 'content':[
+        {'type':'text','text':'Error executing tool read_session: response_budget_too_small: Increase max_bytes or request a compact event'}]}
+    return value
+
+
+def identified_proof():
+    proof=runner.NativeProof(CONFIG, DELIVERY)
+    proof.event(event('get_worker_inbox', {'worker_id':CONFIG['worker_id']}, 'identity'))
+    return proof
+
+
+def test_budget_retry_preserves_cursor_and_requires_full_read_before_post():
+    proof=identified_proof()
+    proof.event(budget_failed())
+    assert proof.cursor == 4 and proof.read_ids == set() and not proof.read_receipt
+    with pytest.raises(runner.ReceiverError,match='not_read'):
+        proof.event(event('post_session_message', reply(), 'premature'))
+    # An escaped single event can occupy more than the usual response budget.
+    page=reading(5,'d'*32)
+    page['items'][0]['body']='\\"\n'*2666
+    proof.event(event('read_session',page,'large-page',max_bytes=65536))
+    assert proof.cursor == 5 and not proof.read_receipt and proof.read_retry is None
+    # A later page returns to the normal budget, rather than enlarging the turn.
+    proof.event(event('read_session',reading(6,'e'*32,True),'last-page',after_sequence=5))
+    proof.event(event('post_session_message',reply(),'post'))
+    assert proof.finish(0)['status']=='passed'
+
+
+@pytest.mark.parametrize('changes', [
+    {'after_sequence':5}, {'project_id':'different'}, {'session_id':'9'*32},
+    {'delivery_id':'9'*32}, {'lease_id':'9'*32}, {'limit':1}, {'max_bytes':32768},
+    {'max_bytes':65537}, {'max_bytes':16384}, {'full_text':False},
+])
+def test_budget_retry_cannot_change_any_scope_or_read_option(changes):
+    proof=identified_proof(); proof.event(budget_failed())
+    with pytest.raises(runner.ReceiverError,match='scope_mismatch|cursor_mismatch'):
+        proof.event(event('read_session',reading(5,'d'*32),'retry',**({'max_bytes':65536}|changes)))
+    assert proof.cursor==4 and not proof.read_receipt
+
+
+def test_larger_budget_is_not_authorized_without_actual_budget_failure():
+    proof=identified_proof()
+    with pytest.raises(runner.ReceiverError,match='not_authorized'):
+        proof.event(event('read_session',reading(5,'d'*32),'initial',max_bytes=65536))
+    proof=identified_proof()
+    success=reading(5,'d'*32)
+    success['items'][0]['body']='response_budget_too_small: use a bigger budget'
+    proof.event(event('read_session',success,'normal'))
+    with pytest.raises(runner.ReceiverError,match='not_authorized'):
+        proof.event(event('read_session',reading(6,'e'*32,True),'next',after_sequence=5,max_bytes=65536))
+
+
+@pytest.mark.parametrize('result', [
+    {'isError':True,'content':[{'type':'text','text':'forbidden: response_budget_too_small'}]},
+    {'isError':True,'content':[{'type':'text','text':'not_response_budget_too_small'}]},
+    {'isError':False,'content':[{'type':'text','text':'response_budget_too_small'}]},
+    {'isError':True,'structuredContent':{'error':'unauthorized'}},
+])
+def test_other_errors_and_budget_mentions_fail_closed(result):
+    proof=identified_proof();failure=budget_failed();failure['item']['result']=result
+    failure['item']['status']='failed'
+    with pytest.raises(runner.ReceiverError,match='tool_failed'):
+        proof.event(failure)
+    assert proof.read_retry is None and proof.cursor==4
+
+
+def test_budget_retry_failure_stops_and_cannot_advance_beyond_delivery():
+    proof=identified_proof();proof.event(budget_failed())
+    with pytest.raises(runner.ReceiverError,match='tool_failed'):
+        proof.event(budget_failed('retry-failed',max_bytes=65536))
+    assert proof.cursor==4 and not proof.read_receipt
+    proof=identified_proof();proof.event(budget_failed())
+    with pytest.raises(runner.ReceiverError,match='cursor_stalled'):
+        proof.event(event('read_session',reading(7,'d'*32),'beyond',max_bytes=65536))
+    assert proof.cursor==4 and not proof.read_receipt
+
+
+def test_prompt_limits_budget_exception_to_one_identical_read_retry():
+    value=runner.prompt(CONFIG,DELIVERY)
+    assert 'response_budget_too_small' in value and 'retry that exact read once with max_bytes=65536' in value
+    assert 'Start each later page with max_bytes=16384' in value
+    assert 'through_sequence=6' in value and 'do not broaden through_sequence' in value
+
+
+def test_real_hub_escaped_single_message_needs_larger_budget_without_advancing_failed_read(collaboration):
+    from test_delivery import join, claim, delivery_args, reply as hub_reply
+    from memory_hub.store import HubError
+    hub, _, _=collaboration
+    session=room(hub); binding=join(hub,session)
+    body='x'+'\x01'*7999
+    post(hub,session,B,body=body)
+    delivery=claim(hub,binding)['delivery']
+    config=CONFIG | {'project_id':session['project_id'],'session_id':session['session_id'],'worker_id':A.worker_id}
+    proof=runner.NativeProof(config,delivery)
+    def native(name,args,value,ident):
+        return {'type':'item.completed','item':{'type':'mcp_tool_call','server':'ys_memory',
+            'tool':name,'id':ident,'arguments':{'arguments':args},'result':{'structuredContent':value}}}
+    proof.event(native('get_worker_inbox',{'project_id':session['project_id']},
+        hub.call('get_worker_inbox',{'project_id':session['project_id']},A),'identity'))
+    args=delivery_args(session,delivery,after_sequence=delivery['after_sequence'],limit=20,max_bytes=16384,full_text=True)
+    with pytest.raises(HubError) as failed:
+        hub.call('read_session',args,A)
+    assert failed.value.code=='response_budget_too_small'
+    failure=native('read_session',args,{},'budget')
+    failure['item']['result']={'isError':True,'structuredContent':{'error':failed.value.code}}
+    proof.event(failure)
+    assert proof.cursor==delivery['after_sequence'] and not proof.read_receipt
+    with pytest.raises(HubError) as premature:
+        hub_reply(hub,session,delivery)
+    assert premature.value.code=='delivery_not_read'
+    retry=args | {'max_bytes':65536}
+    page=hub.call('read_session',retry,A)
+    assert page['returned_bytes']>16384 and page['items'][0]['body']==body
+    proof.event(native('read_session',retry,page,'read'))
+    written=hub_reply(hub,session,delivery,body='Verified bounded reply')
+    send=delivery_args(session,delivery,body='Verified bounded reply',idempotency_key=delivery['reply_idempotency_key'])
+    proof.event(native('post_session_message',send,written,'post'))
+    assert proof.finish(0)['status']=='passed'
+
+
+@pytest.mark.parametrize('language,name', [('en','Codex Local'),('zh-TW','Codex 本機')])
+def test_receiver_join_display_name_follows_interface_language(tmp_path,language,name):
+    client=FakeClient(['budget_exhausted'])
+    runner.receiver(CONFIG | {'language':language},client,tmp_path,now=lambda:100)
+    assert client.calls[0][0]=='/v1/chat/join'
+    assert client.calls[0][1]['display_name']==name
