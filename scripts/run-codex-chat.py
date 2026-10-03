@@ -341,7 +341,11 @@ def command(config, scope_file, working):
     overrides = {'mcp_servers.ys_memory.command': config['python'],
         'mcp_servers.ys_memory.args': ['-B', str(Path(__file__).resolve()), '--serve-scope', str(scope_file)],
         'mcp_servers.ys_memory.enabled_tools': list(TOOLS), 'mcp_servers.ys_memory.startup_timeout_sec': 20,
-        'mcp_servers.ys_memory.tool_timeout_sec': 30, 'web_search': 'disabled', 'project_doc_max_bytes': 0}
+        'mcp_servers.ys_memory.tool_timeout_sec': 30, 'web_search': 'disabled', 'project_doc_max_bytes': 0,
+        # This dedicated chat turn needs only the three scoped tools, not the
+        # separately auto-discovered personal/system skill catalog. The CLI's
+        # documented positive minimum applies to this invocation only.
+        'skills.max_context_tokens': 1}
     for name in TOOLS:
         overrides['mcp_servers.ys_memory.tools.' + name + '.approval_mode'] = 'approve'
     for key, value in overrides.items():

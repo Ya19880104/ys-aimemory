@@ -163,6 +163,7 @@ def test_native_command_is_ephemeral_scoped_and_no_provider_secret_inheritance(m
     assert command[command.index('--sandbox') + 1] == 'read-only'
     assert '--dangerously-bypass-approvals-and-sandbox' not in command
     assert 'project_doc_max_bytes=0' in command
+    assert 'skills.max_context_tokens=1' in command
     assert not {'OPENAI_API_KEY', 'YS_AIMEMORY_TOKEN', 'CODEX_HOME'} & runner.environment().keys()
     assert 'get_worker_inbox' in command[-1] and 'through_sequence=6' in command[-1]
     assert 'provider-secret' not in json.dumps(command)
