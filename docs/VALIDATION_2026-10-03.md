@@ -3,9 +3,6 @@
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
 
-
-
-
 ## Latest runtime and browser language verification
 
 Runtime `9c0b1ac59bde180bd1567fa349d775a8d3237a74` replaced `af53efb`, promoted **2026-10-03T16:12:30Z–16:12:52Z** (2026-10-04 00:12 Taipei). Image: `sha256:759776279eaac21212778d58ae984840a20a95a22386929da6438fd943d0c608`. All 429 promotion checks passed. PostgreSQL stage: 800 passed, 56 skipped, 3 warnings in 185.86 seconds; archive SHA-256 `3e496be9ee296d5f10a185e197994eb9a8e96befce662acedcd1991763e492c0`. All three GitHub push/PR jobs passed for 9c. CodeRabbit was rate-limited; this is not a fresh complete review.
@@ -15,14 +12,14 @@ Actual logged-in Chrome checks passed: help language switching zh→en→zh pres
 The help language-flow defect found after af53 was corrected in i18n.py with UI-i18n tests. These executor-supplied deployment/browser results do not rerun earlier native Claude/Codex/cloud evidence, which retains its original version boundaries. The following af53 section is historical; this documentation commit itself is not the deployed runtime.
 
 
-## Final runtime promotion: 2026-10-04 Taipei
+## Historical af53 runtime promotion: 2026-10-04 Taipei
 
-Runtime remains `af53efb1309f2527cbd9548a5a19f0dc57325825`, image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`, promoted from `24f3173` during **2026-10-03T16:01:18Z–16:01:40Z** (2026-10-04 00:01 Taipei). All 429 runtime checks passed; schema v6 and 26 tables were preserved. Independent host PostgreSQL regression: 785 passed, 56 skipped, 3 warnings in 181.81 seconds; archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`. GitHub Windows-installer, SQLite and PostgreSQL push/PR jobs passed for af53. Executor-supplied results retain private source logs.
+Runtime was `af53efb1309f2527cbd9548a5a19f0dc57325825`, image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`, promoted from `24f3173` during **2026-10-03T16:01:18Z–16:01:40Z** (2026-10-04 00:01 Taipei). All 429 runtime checks passed; schema v6 and 26 tables were preserved. Independent host PostgreSQL regression: 785 passed, 56 skipped, 3 warnings in 181.81 seconds; archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`. GitHub Windows-installer, SQLite and PostgreSQL push/PR jobs passed for af53. Executor-supplied results retain private source logs.
 
 This subsequent documentation commit is not the deployed runtime. Earlier native/client evidence retains its original c4/24/installer version boundaries. Final-runtime English/Traditional Chinese browser help smoke was still in progress at this documentation cutoff; no result is inferred. Historical failures, skips, lifecycle gaps and token limitations remain below.
 
 
-## Latest native dual-client and cloud acceptance
+## Native dual-client and cloud acceptance at runtime 24
 
 Executor-supplied evidence against live Hub `24f317310ea6fdd66ca78da8cea3003a413d226c`; prior failures remain historical below. No private room identifiers, messages, screenshots or evidence paths are published.
 
@@ -44,10 +41,10 @@ Cloud subscription, native action and write-back now passed for one event. Full 
 Negative control after native unsubscribe: a later human message produced no additional reply for the observed 54.466 seconds; the subscription remained unsubscribed, delivered count stayed 1 and the outbox retained only the original event. The native task UI was paused without an operator toggle. This is a bounded observation, not indefinite stop/lifecycle proof.
 
 
-Final public Claude installer check: `97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`, SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`, embeds five sources at `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`. Actual download, hash verification and execution passed. The existing owned Claude installation was reinstalled/renewed with a one-turn budget. A native reply at 23:43:24 read pending unread messages and artifact metadata from the preserved cursor; it explicitly confirmed metadata only, without reading artifact full text. This is renewal/unread-cursor evidence, not a fresh human-marker or no-history-replay test. Earlier `75a50bf` dual-client evidence remains unchanged. The executor then disconnected Claude and stopped the cloud runtime. No later final deployment is asserted.
+Final public Claude installer check: `97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`, SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`, embeds five sources at `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`. Actual download, hash verification and execution passed. The existing owned Claude installation was reinstalled/renewed with a one-turn budget. A native reply at 23:43:24 read pending unread messages and artifact metadata from the preserved cursor; it explicitly confirmed metadata only, without reading artifact full text. This is renewal/unread-cursor evidence, not a fresh human-marker or no-history-replay test. Earlier `75a50bf` dual-client evidence remains unchanged. The executor then disconnected Claude and stopped the cloud runtime. At that installer checkpoint, no later final deployment was asserted.
 
 
-## Latest round-two verification
+## Historical 24 runtime verification
 
 Runtime source: `24f317310ea6fdd66ca78da8cea3003a413d226c`, promoted **2026-10-03T15:16:07Z**, image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`. This section records sanitized executor-supplied results, not an independent rerun by the documentation reviewer. Native evidence below used watcher `e24b13c418bad9705f86b589b1ac212145d06a71` with the earlier `c4fe0f1` Hub, before promotion; do not assign that native evidence to the new runtime.
 
@@ -72,7 +69,7 @@ ChatGPT acceptance requires observing the real subscription request, callback ve
 Source/automatic expiry, full crash/restart, parent/orphan handling, load and revocation acceptance remain pending. No old-history replay was seen after the observed fresh join; other cursor/rejoin cases remain unverified. Earlier OAuth-expired, Chrome-offline and stale-metadata statements below describe their original snapshots and are superseded only within the scoped evidence above. Private identifiers, message bodies, hosts, evidence paths and screenshots are omitted.
 
 
-## Latest deployed candidate: `c4fe0f1`
+## Historical deployed candidate: `c4fe0f1`
 
 Candidate source: `c4fe0f1ecedbe186cc4b80f195e47dc606fe9470`. Promotion completed at **2026-10-03T09:45:32Z**. These are version- and environment-specific results, not acceptance for every client. The executor supplied deployment/HTTP results; this document update independently checked the CI totals and sanitized native receipt fields. No private IDs, credentials, host addresses, or evidence paths are published.
 

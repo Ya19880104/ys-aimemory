@@ -3,9 +3,6 @@
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
 
-
-
-
 ## 最新 runtime 與瀏覽器語系驗證
 
 Runtime `9c0b1ac59bde180bd1567fa349d775a8d3237a74` 取代 `af53efb`，於 **2026-10-03T16:12:30Z–16:12:52Z**（台北 2026-10-04 00:12）promotion。Image：`sha256:759776279eaac21212778d58ae984840a20a95a22386929da6438fd943d0c608`。429 promotion checks 全 passed。PostgreSQL stage：800 passed、56 skipped、3 warnings，185.86 秒；archive SHA-256 `3e496be9ee296d5f10a185e197994eb9a8e96befce662acedcd1991763e492c0`。9c GitHub 三個 push/PR jobs 全 passed。CodeRabbit rate-limited，不代表新完整審查。
@@ -15,14 +12,14 @@ Runtime `9c0b1ac59bde180bd1567fa349d775a8d3237a74` 取代 `af53efb`，於 **2026
 af53 後發現的 help 語系流程缺陷已由 i18n.py／UI-i18n tests 修正。以上部署／browser 結果由執行者提供，沒有重跑先前 Claude/Codex/cloud native 證據，仍保留各自版本界線。下方 af53 是歷史區段；本文件 commit 本身不是部署版本。
 
 
-## 最終 runtime promotion：台北 2026-10-04
+## 歷史 af53 runtime promotion：台北 2026-10-04
 
-Runtime 維持 `af53efb1309f2527cbd9548a5a19f0dc57325825`，image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`，於 **2026-10-03T16:01:18Z–16:01:40Z**（台北 2026-10-04 00:01）自 `24f3173` promotion。429 runtime checks 全 passed，schema v6／26 tables 保留。主機獨立 PostgreSQL 回歸：785 passed、56 skipped、3 warnings，181.81 秒；archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`。af53 GitHub Windows-installer／SQLite／PostgreSQL push/PR jobs 全 passed。結果由執行者提供，私人來源日誌保留。
+當時 runtime 為 `af53efb1309f2527cbd9548a5a19f0dc57325825`，image `sha256:6c07839ba388c843c14414a960becde926b508add25ef17ff69ad6ae31652826`，於 **2026-10-03T16:01:18Z–16:01:40Z**（台北 2026-10-04 00:01）自 `24f3173` promotion。429 runtime checks 全 passed，schema v6／26 tables 保留。主機獨立 PostgreSQL 回歸：785 passed、56 skipped、3 warnings，181.81 秒；archive SHA-256 `eebe746742869a0589fe2c86378dea461d0fc59c0fa86929f70bb14cc48917f1`。af53 GitHub Windows-installer／SQLite／PostgreSQL push/PR jobs 全 passed。結果由執行者提供，私人來源日誌保留。
 
 後續本文件 commit 不是部署版本；先前原生／installer 證據仍依各自 c4／24／installer 版本解讀。此文件截止時最終 runtime en/zh 瀏覽器 help smoke 尚在執行，不推論結果。保留下方歷史失敗、skip、生命週期缺口與 token 限制。
 
 
-## 最新雙原生客戶端與雲端驗收
+## Runtime 24 雙原生客戶端與雲端驗收
 
 執行者提供的 live Hub `24f317310ea6fdd66ca78da8cea3003a413d226c` 證據；保留下方歷史失敗。不公開私人房間 ID、訊息、截圖或證據路徑。
 
@@ -44,10 +41,10 @@ Runtime 維持 `af53efb1309f2527cbd9548a5a19f0dc57325825`，image `sha256:6c0783
 原生 unsubscribe 後負向測試：後續人類訊息於觀察的 54.466 秒內沒有額外回覆；subscription 維持 unsubscribed、delivered=1、outbox 只有原事件。原生 task UI 已 paused，未由 operator 手動切換。這是有限觀察，不代表永久停止或完整生命週期證明。
 
 
-最終公開 Claude installer 實測：`97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`，SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`，內嵌五個來源版本 `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`。實際 download/hash/execution passed；既有 owned Claude 重裝／renew，budget 一輪。23:43:24 native reply 從保留 cursor 讀到尚未讀訊息與 artifact metadata，明確確認只有 metadata、未讀 artifact 全文。這是 renew/unread-cursor 證據，不是全新人類 marker 或 no-history-replay 驗收。保留原 `75a50bf` 雙客戶端證據。執行者隨後 disconnect Claude、停止 cloud runtime；未宣稱後續 final deployment。
+最終公開 Claude installer 實測：`97813588f2930fd7cfcf3f92fc67257a8f08cb98/scripts/connect-chat.ps1`，SHA-256 `F5416AE2F6278CF4BED48083DF6D4ECAB085AC5C5E80FE0A110DC39F8276748E`，內嵌五個來源版本 `86f16dcc18580892a0b0fe08ec53ac1c1d5de6ea`。實際 download/hash/execution passed；既有 owned Claude 重裝／renew，budget 一輪。23:43:24 native reply 從保留 cursor 讀到尚未讀訊息與 artifact metadata，明確確認只有 metadata、未讀 artifact 全文。這是 renew/unread-cursor 證據，不是全新人類 marker 或 no-history-replay 驗收。保留原 `75a50bf` 雙客戶端證據。執行者隨後 disconnect Claude、停止 cloud runtime；該 installer checkpoint 當時未宣稱後續 final deployment。
 
 
-## 最新第二輪驗證
+## 歷史 24 runtime 驗證
 
 執行版本：`24f317310ea6fdd66ca78da8cea3003a413d226c`，於 **2026-10-03T15:16:07Z** promotion，image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`。以下為執行者提供的去秘密結果，文件審查者未獨立重跑。原生證據使用 watcher `e24b13c418bad9705f86b589b1ac212145d06a71` 搭配 promotion 前的 `c4fe0f1` Hub，不能轉稱新 runtime 原生驗收。
 
