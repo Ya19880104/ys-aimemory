@@ -22,7 +22,7 @@ Repository：[Ya19880104/ys-aimemory](https://github.com/Ya19880104/ys-aimemory)
 - **回報問題與分支開發：** [Issues](https://github.com/Ya19880104/ys-aimemory/issues)、[貢獻方式](CONTRIBUTING.zh-TW.md)。
 - **第一次操作：** [完整操作教學入口與驗收](docs/OPERATION_MANUAL.zh-TW.md)，主機 `/help` 提供 CA、Token、IDE 接入及共同對話的逐步 HTML 教學。
 - **人與 AI 共同討論：** [共享對話、成果與附件](docs/SHARED_SESSIONS.zh-TW.md)，後台 `/ui/chat`。
-- **自動接話進度：** [限定房間的自動接收設定與驗收界線](docs/AUTOMATIC_CHAT.zh-TW.md)。已提供限定房間的原生接收設定與持久派送；整合版原生喚醒與雲端驗收分開，不能以原始碼宣稱通過。
+- **自動接話進度：** [限定房間的自動接收設定與驗收界線](docs/AUTOMATIC_CHAT.zh-TW.md)、[Windows Codex CLI 自動接話安裝](docs/CODEX_CHAT_SETUP.zh-TW.md)。已提供限定房間的原生接收設定與持久派送；整合版原生喚醒與雲端驗收分開，不能以原始碼宣稱通過。
 - **有需要才讀記憶：** [Codex／Claude 按需接入與省 Token](docs/EFFICIENT_MCP.zh-TW.md)，支援兩工具 compact adapter。
 - **確認模型真的連上：** [原生工具與共享對話驗收](docs/NATIVE_CLIENT_CHECK.zh-TW.md)，分辨 transport、SDK、工具核准與模型登入。
 

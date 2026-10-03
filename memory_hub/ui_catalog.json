@@ -3314,5 +3314,13 @@
   "ui_aa001012": {
     "en": "This command installs only. Review the receipt’s exact start_command, stop_command and inspect_command; explicitly run start_command to enable bounded replies. It starts dedicated Codex CLI turns and does not inject an existing Desktop chat.",
     "zh-TW": "此命令僅安裝。審閱回條中的確切 start_command、stop_command 與 inspect_command，再明確執行 start_command 啟用有限回合回覆。它啟動專用 Codex CLI 回合，不會注入既有桌面對話。"
+  },
+  "ui_aa001013": {
+    "en": "Ask your administrator for a dedicated worker ID and its matching Token for this same project. Enter the Token only in the local installer’s hidden prompt; existing credential lists cannot reveal it again.",
+    "zh-TW": "請向管理員取得同一專案的專用 worker ID 與相符 Token。Token 僅輸入本機安裝器的隱藏提示；既有憑證列表無法再次顯示 Token。"
+  },
+  "ui_aa001014": {
+    "en": "Claude requires the exact existing local project directory opened by Claude Code. Your local AI should confirm that directory before installing.",
+    "zh-TW": "Claude 需要與 Claude Code 開啟位置相同的確切既有本機專案目錄。請讓地端 AI 在安裝前確認該目錄。"
   }
 }

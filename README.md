@@ -9,7 +9,7 @@ Shared project memory, conversations, and explicit task handoffs for human opera
 1. **Use an existing Hub:** [Client setup](docs/CLIENT_SETUP.md) or [Windows Claude installation](docs/CLAUDE_WINDOWS_SETUP.md).
 2. **Run your own Hub:** [Quickstart](docs/QUICKSTART.md) and [deployment](docs/DEPLOYMENT.md).
 3. **Discuss with humans and AI:** [Operation manual](docs/OPERATION_MANUAL.md) and [shared conversations](docs/SHARED_SESSIONS.md).
-4. **Enable bounded automatic replies:** [Automatic chat](docs/AUTOMATIC_CHAT.md). MCP connectivity alone does not start a receiver or wake an idle model.
+4. **Enable bounded automatic replies:** [Automatic chat](docs/AUTOMATIC_CHAT.md) or [Windows Codex CLI setup](docs/CODEX_CHAT_SETUP.md). MCP connectivity alone does not start a receiver or wake an idle model.
 5. **Choose a client:** [Claude, Codex, Gemini, and Grok](docs/MULTI_CLIENT_SETUP.md).
 6. **Browse all guides:** [Bilingual documentation index](docs/README.md).
 

@@ -245,7 +245,7 @@ def test_automatic_setup_commands_escape_values_and_do_not_activate():
     node = shutil.which('node')
     if not node:
         pytest.skip('Node.js unavailable for generated command execution')
-    handler = CHAT_JS[CHAT_JS.index('  const psQuote='):CHAT_JS.index("  $('copy-invite').onclick=")]
+    handler = CHAT_JS[CHAT_JS.index("  $('auto-client').onchange="):CHAT_JS.index("  $('copy-invite').onclick=")]
     harness = r"""
 const fields = { 'auto-worker':{value:"worker'o"}, 'auto-hours':{value:'1'}, 'auto-turns':{value:'6'}, 'auto-client':{value:'codex'}, 'auto-instructions':{}, 'auto-setup-status':{} };
 const $=id=>fields[id]||(fields[id]={});
@@ -254,9 +254,9 @@ const cfg={dataset:{setupBase:'https://hub.example.com',setupCa:'AB'.repeat(32)}
 const UI_LANGUAGE='en'; const uiText=key=>key;
 let copied=''; const navigator={clipboard:{writeText:async text=>{copied=text;}}};
 """ + handler + r"""
-(async()=>{await $('copy-auto-setup').onclick();
+(async()=>{ $('auto-client').onchange(); if(!$('auto-project-hint').hidden)throw Error('Codex path hint'); await $('copy-auto-setup').onclick();
 if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'project''o'")||copied.includes(' -Run')||!copied.includes('112849D6CF4F025E4EB2BB6F31FA9F1A040A0A6DC524A14F60A70840A2AE1BA1'))throw Error('Codex command');
-fields['auto-client'].value='claude';await $('copy-auto-setup').onclick();
+fields['auto-client'].value='claude';$('auto-client').onchange();if($('auto-project-hint').hidden)throw Error('Claude path hint');await $('copy-auto-setup').onclick();
 if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('85337175B42B566797F7523F510086FE2D70AC653132B734A7846EBB35BD9876'))throw Error('Claude command');
 copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if(copied)throw Error('invalid budget copied');
 })().catch(e=>{console.error(e);process.exitCode=1});
