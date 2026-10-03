@@ -568,3 +568,158 @@ def test_receiver_join_display_name_follows_interface_language(tmp_path,language
     runner.receiver(CONFIG | {'language':language},client,tmp_path,now=lambda:100)
     assert client.calls[0][0]=='/v1/chat/join'
     assert client.calls[0][1]['display_name']==name
+
+
+OWNED = {k: CONFIG[k] for k in ('project_id', 'session_id', 'worker_id')} | {
+    'binding_id': '0'*32, 'generation': 3}
+
+
+def disconnect_state(directory):
+    (directory / 'STOP').touch()
+    runner.save(directory / 'receiver-binding.json', OWNED)
+
+
+@pytest.mark.parametrize('lost', [False, True])
+def test_disconnect_committed_response_loss_reconciles_without_replaying_cas(tmp_path, lost):
+    disconnect_state(tmp_path)
+    current = OWNED | {'version': 7, 'status': 'disabled'}
+    writes = []
+    def handle(request):
+        if request.method == 'GET':
+            return httpx.Response(200, json={'participants': [current.copy()]})
+        writes.append(json.loads(request.content))
+        current.update(generation=4, version=8, status='disconnected')
+        if lost:
+            raise httpx.ReadTimeout('committed response lost', request=request)
+        return httpx.Response(200, json=current)
+    with httpx.Client(base_url='https://fixture.test', transport=httpx.MockTransport(handle)) as client:
+        assert runner.disconnect(CONFIG, client, tmp_path)['state'] == 'disconnected'
+        assert runner.disconnect(CONFIG, client, tmp_path)['state'] == 'disconnected'
+    assert writes == [{'project_id': CONFIG['project_id'], 'binding_id': '0'*32, 'expected_version': 7}]
+
+
+@pytest.mark.parametrize('change', [
+    {'generation': 4, 'status': 'waiting'}, {'worker_id': 'another-worker'},
+    {'session_id': 'f'*32}, {'generation': 5, 'status': 'disconnected'}])
+def test_disconnect_never_releases_new_generation_or_other_owner(tmp_path, change):
+    disconnect_state(tmp_path)
+    def handle(request):
+        assert request.method == 'GET'
+        return httpx.Response(200, json={'participants': [OWNED | {'version': 7, 'status': 'disabled'} | change]})
+    with httpx.Client(base_url='https://fixture.test', transport=httpx.MockTransport(handle)) as client:
+        with pytest.raises(runner.ReceiverError):
+            runner.disconnect(CONFIG, client, tmp_path)
+
+
+@pytest.mark.parametrize('fault', ['cas', 'transport'])
+def test_disconnect_ambiguous_uncommitted_failure_is_not_success_or_retried(tmp_path, fault):
+    disconnect_state(tmp_path)
+    writes = []
+    def handle(request):
+        if request.method == 'GET':
+            return httpx.Response(200, json={'participants': [OWNED | {'version': 8, 'status': 'disabled'}]})
+        writes.append(request)
+        if fault == 'transport':
+            raise httpx.ReadTimeout('no commit', request=request)
+        return httpx.Response(409, json={'error': 'stale_binding'})
+    with httpx.Client(base_url='https://fixture.test', transport=httpx.MockTransport(handle)) as client:
+        with pytest.raises((httpx.TransportError, httpx.HTTPStatusError)):
+            runner.disconnect(CONFIG, client, tmp_path)
+    assert len(writes) == 1
+    assert not (tmp_path / 'receiver-status.json').exists()
+
+
+@pytest.mark.parametrize('missing', ['STOP', 'receiver-binding.json', 'native-active'])
+def test_disconnect_requires_stopped_and_proven_owned_lifecycle(tmp_path, missing):
+    disconnect_state(tmp_path)
+    if missing == 'native-active':
+        (tmp_path / 'native-active.json').write_text('{}')
+    else:
+        (tmp_path / missing).unlink()
+    with httpx.Client(base_url='https://fixture.test', transport=httpx.MockTransport(
+            lambda request: pytest.fail('No HTTP for unproven ownership/exit'))) as client:
+        with pytest.raises(runner.ReceiverError):
+            runner.disconnect(CONFIG, client, tmp_path)
+
+
+def test_disconnect_real_service_restores_manual_post_without_rejoining(collaboration, tmp_path):
+    from test_delivery import join, call
+    from memory_hub.store import HubError
+    hub, _, _ = collaboration
+    session = room(hub)
+    binding = join(hub, session)
+    call(hub, 'control', project_id=binding['project_id'], binding_id=binding['binding_id'],
+         expected_version=binding['version'], enabled=False)
+    config = {'project_id': session['project_id'], 'session_id': session['session_id'], 'worker_id': A.worker_id}
+    (tmp_path / 'STOP').touch()
+    runner.save(tmp_path / 'receiver-binding.json', {k: binding[k] for k in OWNED})
+    with pytest.raises(HubError):
+        post(hub, session, body='manual before disconnect')
+    operations = []
+    def handle(request):
+        operation = request.url.path.rsplit('/', 1)[-1]
+        operations.append(operation)
+        args = dict(request.url.params) if request.method == 'GET' else json.loads(request.content)
+        return httpx.Response(200, json=call(hub, operation, **args))
+    with httpx.Client(base_url='https://fixture.test', transport=httpx.MockTransport(handle)) as client:
+        assert runner.disconnect(config, client, tmp_path)['state'] == 'disconnected'
+    result = post(hub, session, body='manual after disconnect')
+    assert result['message_id']
+    assert operations == ['status', 'disconnect', 'status']
+
+
+def test_stopped_lock_timeout_never_enters_release_body(tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    @contextmanager
+    def busy(directory):
+        raise OSError('locked')
+        yield
+    monkeypatch.setattr(runner, 'exclusive', busy)
+    times = iter([0, 41])
+    with pytest.raises(runner.ReceiverError, match='receiver_still_stopping'):
+        with runner.stopped_exclusive(tmp_path, now=lambda: next(times), sleep=lambda _: None):
+            pytest.fail('Must not release while receiver owns lock')
+
+
+def test_terminate_waits_after_kill_and_retains_failure_proof(monkeypatch):
+    import subprocess
+    monkeypatch.setattr(runner.os, 'name', 'posix')
+    class Process:
+        def __init__(self): self.waits = 0; self.killed = False
+        def poll(self): return None
+        def terminate(self): pass
+        def kill(self): self.killed = True
+        def wait(self, timeout):
+            self.waits += 1
+            if self.waits == 1: raise subprocess.TimeoutExpired('fixture', timeout)
+    process = Process()
+    runner.terminate(process)
+    assert process.killed and process.waits == 2
+
+
+
+def test_windows_failed_tree_stop_does_not_claim_confirmed_exit(monkeypatch):
+    class Process:
+        pid = 42
+        def poll(self): return None
+        def wait(self, timeout): pytest.fail('Tree termination was not proved')
+    class Result: returncode = 1
+    monkeypatch.setattr(runner.subprocess, 'run', lambda *a, **k: Result())
+    monkeypatch.setattr(runner.os, 'name', 'nt')
+    monkeypatch.setattr(runner.subprocess, 'CREATE_NO_WINDOW', 0, raising=False)
+    with pytest.raises(runner.ReceiverError, match='native_tree_exit_unconfirmed'):
+        runner.terminate(Process())
+
+
+def test_stopped_exclusive_does_not_retry_oserror_inside_body(tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    entries = []
+    @contextmanager
+    def available(directory):
+        entries.append(directory)
+        yield
+    monkeypatch.setattr(runner, 'exclusive', available)
+    with pytest.raises(PermissionError):
+        with runner.stopped_exclusive(tmp_path):
+            raise PermissionError('status write denied')
+    assert entries == [tmp_path]

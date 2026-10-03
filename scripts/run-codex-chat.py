@@ -372,14 +372,17 @@ def terminate(proc):
     if proc.poll() is not None:
         return
     if os.name == 'nt':
-        subprocess.run(['taskkill.exe', '/PID', str(proc.pid), '/T', '/F'], capture_output=True,
+        result = subprocess.run(['taskkill.exe', '/PID', str(proc.pid), '/T', '/F'], capture_output=True,
                        timeout=10, creationflags=subprocess.CREATE_NO_WINDOW, check=False)
+        if result.returncode != 0:
+            raise ReceiverError('native_tree_exit_unconfirmed')
     else:
         proc.terminate()
     try:
         proc.wait(timeout=10)
     except subprocess.TimeoutExpired:
         proc.kill()
+        proc.wait(timeout=10)
 
 
 def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monotonic):
@@ -393,6 +396,10 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
     working = directory / 'native-empty'
     working.mkdir(exist_ok=True)
     args = command(scope, scope_file, working)
+    active = directory / 'native-active.json'
+    if active.exists():
+        raise ReceiverError('native_exit_unconfirmed_preserve_binding')
+    save(active, {'state': 'starting'})
     proc = subprocess.Popen(args, cwd=working, env=environment(), stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', errors='replace',
         shell=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
@@ -453,6 +460,7 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
     finally:
         finished.set()
         terminate(proc)
+        active.unlink(missing_ok=True)
         thread.join(timeout=1)
         proc.stdout.close()
 
@@ -492,6 +500,8 @@ def receiver(config, client, directory, *, turn=native_turn, now=time.time, slee
         raise ReceiverError('binding_identity_mismatch')
     if type(binding.get('generation')) is not int or binding['generation'] < 1:
         raise ReceiverError('invalid_binding_generation')
+    save(directory / 'receiver-binding.json', {k: binding[k] for k in
+        ('project_id', 'session_id', 'worker_id', 'binding_id', 'generation')})
     scope = {'project_id': config['project_id'], 'binding_id': binding['binding_id']}
     claim_path = directory / 'receiver-claim.json'
     if claim_path.is_symlink():
@@ -593,6 +603,62 @@ def receiver(config, client, directory, *, turn=native_turn, now=time.time, slee
         raise
 
 
+def disconnect(config, client, directory):
+    """Caller holds receiver.lock after STOP; never join or renew during release."""
+    if not (directory / 'STOP').exists():
+        raise ReceiverError('disconnect_stop_required')
+    if (directory / 'native-active.json').exists():
+        raise ReceiverError('native_exit_unconfirmed_preserve_binding')
+    path = directory / 'receiver-binding.json'
+    if path.is_symlink():
+        raise ReceiverError('linked_binding_state')
+    if not path.exists():
+        raise ReceiverError('binding_ownership_unavailable')
+    owned = json.loads(path.read_text(encoding='utf-8'))
+    if (not isinstance(owned, dict) or set(owned) !=
+            {'project_id', 'session_id', 'worker_id', 'binding_id', 'generation'}
+            or any(owned.get(k) != config[k] for k in ('project_id', 'session_id', 'worker_id'))
+            or not re.fullmatch('[0-9a-f]{32}', str(owned.get('binding_id', '')))
+            or type(owned.get('generation')) is not int or owned['generation'] < 1):
+        raise ReceiverError('binding_ownership_changed')
+
+    def status():
+        result = client.get('/v1/chat/status', params={k: config[k] for k in ('project_id', 'session_id')})
+        result.raise_for_status()
+        participant = next((p for p in result.json()['participants']
+                            if p.get('binding_id') == owned['binding_id']), None)
+        if participant is None or any(participant.get(k) != owned[k] for k in
+                                      ('project_id', 'session_id', 'worker_id')):
+            raise ReceiverError('binding_identity_mismatch')
+        return participant
+
+    def released(participant):
+        return (participant.get('status') == 'disconnected'
+                and participant.get('generation') == owned['generation'] + 1)
+
+    current = status()
+    if not released(current):
+        if current.get('generation') != owned['generation']:
+            raise ReceiverError('binding_generation_changed')
+        try:
+            result = client.post('/v1/chat/disconnect', json={
+                'project_id': config['project_id'], 'binding_id': owned['binding_id'],
+                'expected_version': current['version']})
+            result.raise_for_status()
+        except (httpx.TransportError, httpx.HTTPStatusError):
+            # Read back once: a committed response may be lost. Never replay CAS.
+            if not released(status()):
+                raise
+        else:
+            if not released(status()):
+                raise ReceiverError('disconnect_not_confirmed')
+    record = {'state': 'disconnected', 'binding_id': owned['binding_id'],
+              'generation': owned['generation'], 'receiver_lock_acquired': True,
+              'native_exit_unconfirmed': False}
+    save(directory / 'receiver-status.json', record)
+    return record
+
+
 def private_directory(directory):
     directory.mkdir(parents=True, exist_ok=True)
     if directory.is_symlink():
@@ -621,8 +687,28 @@ def exclusive(directory):
         stream.close()
 
 
+@contextmanager
+def stopped_exclusive(directory, *, now=time.monotonic, sleep=time.sleep):
+    deadline = now() + 40
+    while True:
+        lock = exclusive(directory)
+        try:
+            lock.__enter__()
+        except OSError:
+            if now() >= deadline:
+                raise ReceiverError('receiver_still_stopping_retry_disconnect')
+            sleep(0.2)
+        else:
+            break
+    try:
+        yield
+    finally:
+        lock.__exit__(None, None, None)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--disconnect', action='store_true')
     parser.add_argument('--serve-scope', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--client-dir', type=Path)
     parser.add_argument('--credential', type=Path)
@@ -670,7 +756,12 @@ def main():
             raise ReceiverError('dedicated_empty_directory_required')
         private_directory(directory)
         directory = directory.resolve(strict=True)
-        with exclusive(directory):
+        if args.disconnect:
+            stop_path = directory / 'STOP'
+            if stop_path.is_symlink():
+                raise ReceiverError('linked_stop_state')
+            stop_path.touch(exist_ok=True)
+        with (stopped_exclusive(directory) if args.disconnect else exclusive(directory)):
             path = directory / 'receiver-config.json'
             if path.exists():
                 saved = json.loads(path.read_text(encoding='utf-8'))
@@ -678,6 +769,8 @@ def main():
                     raise ReceiverError('receiver_scope_changed')
                 config = saved
             else:
+                if args.disconnect:
+                    raise ReceiverError('receiver_not_started')
                 config.update(native_session_id='codex-cli-receiver:' + uuid.uuid4().hex,
                     idempotency_key='codex-receiver-' + uuid.uuid4().hex,
                     expires_at=time.time() + config['ttl_seconds'])
@@ -688,7 +781,7 @@ def main():
             with httpx.Client(base_url=connection['endpoint'].removesuffix('/mcp'), verify=context,
                 trust_env=False, follow_redirects=False, timeout=10,
                 headers={'Authorization': 'Bearer ' + token}) as client:
-                value = receiver(config, client, directory)
+                value = disconnect(config, client, directory) if args.disconnect else receiver(config, client, directory)
             print(json.dumps(value, ensure_ascii=False))
         return 0
     except Exception as exc:
