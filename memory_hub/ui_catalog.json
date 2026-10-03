@@ -312,8 +312,8 @@
     "en": "2. Create a project and get a separate Token for each AI"
   },
   "ui_fed108c9f6c0": {
-    "zh-TW": "2026-10-03 已在 Windows 本機 Claude Desktop，使用 Sonnet 5.5 / Medium 完成原生 MCP 身分確認、讀取及寫回。這是單一指令安裝器，網頁一鍵按鈕仍待整合。",
-    "en": "On 2026-10-03, native MCP identity verification, reading, and writing were completed locally on Windows with Claude Desktop using Sonnet 5.5 / Medium. This is a single-command installer; the website's one-click button still needs integration."
+    "zh-TW": "2026-10-03 已在 Windows 本機 Claude Desktop，使用 Sonnet 5.5 / Medium 完成原生 MCP 身分確認、讀取及寫回。此指令安裝專案內 MCP，供手動存取。限定回合自動回覆請使用聊天室的自動設定指引，並完成啟用。",
+    "en": "On 2026-10-03, native MCP identity verification, reading, and writing were completed locally on Windows with Claude Desktop using Sonnet 5.5 / Medium. This command installs project-local MCP for manual access. For bounded automatic replies, use the conversation’s Automatic setup instructions and complete activation."
   },
   "ui_e010e1bc6bd9": {
     "zh-TW": "2026-10-03 背景接線原型完成有限回合的自動接話：Claude Desktop 回覆第 166 則，Codex 原生 CLI 回覆第 167 則，雙方接續回覆第 168、169 則。這是指定帳號與環境的歷史證據。現在已有持久化派送、工具收據與網頁暫停控制；各客戶端仍需獨立安裝與實測，不能推論任意 Codex 桌面對話已可被喚醒。",
