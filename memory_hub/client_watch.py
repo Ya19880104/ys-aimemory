@@ -45,8 +45,13 @@ def bind_activation(config, event, state_path=None):
         # Ordinary Stop events remain quiet. Never store the phrase, native ID,
         # message body or local path in the diagnostic.
         if state_path is not None and message.startswith('YS_MEMORY_JOIN_'):
-            save(state_path, {'state': 'activation_mismatch', 'reason': reason,
-                              'at': time.time()})
+            try:
+                save(state_path, {'state': 'activation_mismatch', 'reason': reason,
+                                  'at': time.time()})
+            except OSError:
+                # Diagnostics are best effort; failed writes must still reject
+                # activation without changing its identity or path checks.
+                pass
         return False
 
     expected = config.get('activation_phrase')

@@ -213,3 +213,37 @@ def test_activation_rejects_existing_outside_project_and_quiet_unrelated_stop(tm
     assert not bind_activation(c, event | {'last_assistant_message': 'YS_MEMORY_JOIN_random'}, state)
     assert json.loads(state.read_text())['reason'] == 'project_mismatch'
     assert c['native_session_id'] is None
+
+
+@pytest.mark.parametrize('write_error', [PermissionError('read-only state'), OSError('disk full')])
+def test_activation_rejects_when_diagnostic_state_cannot_be_written(tmp_path, monkeypatch, write_error):
+    project, outside = tmp_path / 'project', tmp_path / 'outside'
+    project.mkdir()
+    outside.mkdir()
+    c = config() | {'native_session_id': None, 'project_path': str(project),
+                    'activation_phrase': 'YS_MEMORY_JOIN_random'}
+    original = c.copy()
+    state = tmp_path / 'status.json'
+    writes = []
+    def blocked_write(path, *args, **kwargs):
+        writes.append(path)
+        raise write_error
+    monkeypatch.setattr(Path, 'write_text', blocked_write)
+    assert not bind_activation(c, {'hook_event_name': 'Stop', 'session_id': 'new-native',
+        'cwd': str(outside), 'last_assistant_message': 'YS_MEMORY_JOIN_random'}, state)
+    assert writes == [state.with_suffix('.tmp')]
+    assert c == original and not state.exists()
+
+
+def test_activation_diagnostic_does_not_swallow_non_filesystem_errors(tmp_path, monkeypatch):
+    c = config() | {'native_session_id': None, 'project_path': str(tmp_path),
+                    'activation_phrase': 'YS_MEMORY_JOIN_random'}
+    original = c.copy()
+    def invalid_write(*args, **kwargs):
+        raise ValueError('unexpected programming error')
+    monkeypatch.setattr(Path, 'write_text', invalid_write)
+    with pytest.raises(ValueError, match='unexpected programming error'):
+        bind_activation(c, {'hook_event_name': 'Stop', 'session_id': 'new-native',
+            'cwd': str(tmp_path), 'last_assistant_message': 'YS_MEMORY_JOIN_wrong'},
+            tmp_path / 'status.json')
+    assert c == original
