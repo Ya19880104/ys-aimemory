@@ -73,29 +73,32 @@ function deferred() { let resolve; const promise = new Promise(done => { resolve
 async function settle() { for (let i = 0; i < 6; i++) await new Promise(setImmediate); }
 
 function boot(handler, session = roomB.session_id, options = {}) {
-  const document = documentFrom(input.html), requests = [], navigation = [];
+  const document = documentFrom(input.html), requests = [], navigation = [], writes=[];
   const location = {search: options.search ?? ('?project=alpha&session=' + session)};
   const storage = new Map(Object.entries(options.storage || {}));
   const userKey = 'ys-memory:last-chat:' + document.getElementById('room-config').dataset.user;
   if(options.saved)storage.set(userKey,JSON.stringify(options.saved));
   const context = {
     document, location, URLSearchParams, TextEncoder,
+    crypto:{randomUUID:()=> 'synthetic-ui-request-id'},
     localStorage: {getItem: key=>storage.get(key)||null, setItem: (key,value)=>storage.set(key,value), removeItem:key=>storage.delete(key)},
     history: {replaceState(_state, _title, url) { navigation.push(url); location.search = new URL(url, 'http://example.test').search; }},
     setTimeout() { /* Polling is not part of these deterministic interactions. */ },
     fetch: async (path, fetchOptions) => {
       assert.equal(fetchOptions.credentials, 'same-origin');
       assert.equal(fetchOptions.cache, 'no-store');
+      if(fetchOptions.method==='POST'&&options.writeHandler){const body=JSON.parse(fetchOptions.body);writes.push(body);assert.equal(fetchOptions.headers['X-CSRF-Token'],document.getElementById('room-config').dataset.csrf);return {ok:true,status:200,json:async()=>options.writeHandler(body)};}
       assert.ok(!fetchOptions.method || fetchOptions.method === 'GET', 'Navigation must not write');
       const q = Object.fromEntries(new URL(path, 'http://example.test').searchParams);
       requests.push(q);
+      if(q.op==='delivery'&&!options.deliveryHandler)return {ok:true,status:200,json:async()=>({control:{paused:false,version:1},participants:[],has_more:false})};
       if(q.op==='artifacts'&&!options.artifactsHandler)return {ok:true,status:200,json:async()=>listing([])};
       const data = await handler(q);
       return {ok: true, status: 200, json: async () => data};
     },
   };
   vm.runInNewContext(input.script, context, {filename: 'CHAT_JS', timeout: 1000});
-  return {document, requests, navigation, location, storage, userKey, get: id => document.getElementById(id)};
+  return {document, requests, navigation, location, storage, userKey, writes, get: id => document.getElementById(id)};
 }
 
 async function deepLinkOutsideFirstPage() {
@@ -249,6 +252,41 @@ async function latestArtifactsOutsideMessageWindow() {
   assert.ok(!ui.requests.some(q=>q.op==='artifact'),'Index must not download document bodies');
 }
 
+async function overlappingRefreshIsCoalesced() {
+  const pending=deferred();let reads=0;
+  const ui=boot(q=>{if(q.op==='list')return listing([roomB]);assert.equal(q.op,'read');return ++reads>2?pending.promise:reading(roomB);});
+  await settle();assert.equal(reads,2);
+  const first=ui.get('sync-now').onclick(),second=ui.get('sync-now').onclick();
+  await settle();assert.equal(reads,3,'Timer, visibility and manual sync must share an active room read');
+  pending.resolve(reading(roomB));await Promise.all([first,second]);
+}
+
+async function deliveryStateAndPause() {
+  let paused=false,version=1;
+  const participants=[{worker_id:'worker-a',display_name:'Codex',status:'processing',relay_online:true,turns_used:2,max_turns:20,latest_delivery:{status:'dispatched',through_sequence:9}},
+    {worker_id:'worker-b',display_name:'Claude',status:'offline',relay_online:false,turns_used:1,max_turns:10,latest_delivery:{status:'replied',through_sequence:8,reply_sequence:10}}];
+  const ui=boot(q=>{if(q.op==='list')return listing([roomB]);if(q.op==='read')return reading(roomB);if(q.op==='nonce'){assert.equal(q.action,'set_session_delivery_paused');return {nonce:'single-use-browser-nonce'};}assert.equal(q.op,'delivery');return {control:{paused,version},participants,has_more:false};},roomB.session_id,
+    {deliveryHandler:true,writeHandler:body=>{assert.equal(body.action,'set_session_delivery_paused');assert.equal(body.nonce,'single-use-browser-nonce');assert.equal(body.arguments.expected_version,version);assert.equal(body.arguments.project_id,'alpha');assert.equal(body.arguments.session_id,roomB.session_id);assert.ok(body.arguments.idempotency_key);paused=body.arguments.paused;version++;return {paused,version,running_turns_cancelled:false};}});
+  await settle();assert.equal(ui.get('pause-delivery').hidden,false);assert.equal(ui.get('pause-delivery').disabled,false);
+  assert.ok(ui.get('delivery-participants').textContent.includes('已交給客戶端'));
+  assert.ok(!ui.get('delivery-participants').textContent.includes('AI 已收到'),'Transport receipt must not imply model read');
+  assert.ok(ui.get('delivery-participants').textContent.includes('回覆 #10'));
+  assert.ok(ui.get('delivery-participants').textContent.includes('接線離線'));
+  await ui.get('pause-delivery').onclick();
+  assert.equal(ui.writes.length,1);assert.equal(ui.get('delivery-title').textContent,'自動接話已暫停');
+  assert.ok(ui.get('delivery-explanation').textContent.includes('已開始的回合無法撤回'));
+  assert.equal(ui.get('send-message').disabled,false,'Pause does not delete or block human messages');
+  assert.equal(ui.get('pause-delivery').textContent,'恢復自動接話');
+  await ui.get('pause-delivery').onclick();assert.equal(ui.writes.length,2);assert.equal(paused,false);
+}
+
+async function deliveryReadOnly(){
+  const ui=boot(q=>q.op==='list'?listing([roomB]):reading(roomB));
+  await settle();assert.equal(ui.get('pause-delivery').hidden,true);
+  assert.equal(ui.get('delivery-title').textContent,'尚無 AI 加入自動接話');
+  await ui.get('pause-delivery').onclick();assert.equal(ui.writes.length,0);
+}
+
 const scenarios = {
   deep_link_outside_first_page: deepLinkOutsideFirstPage,
   project_change_during_deep_link: projectChangeDuringDeepLink,
@@ -258,6 +296,9 @@ const scenarios = {
   restore_last_room: restoreLastRoom,
   restore_authorization_and_explicit_url: restoreAuthorizationAndExplicitUrl,
   latest_artifacts_outside_message_window: latestArtifactsOutsideMessageWindow,
+  overlapping_refresh_is_coalesced: overlappingRefreshIsCoalesced,
+  delivery_state_and_pause: deliveryStateAndPause,
+  delivery_read_only: deliveryReadOnly,
 };
 (async () => {
   assert.ok(Object.hasOwn(scenarios, input.scenario), 'Unknown test scenario');

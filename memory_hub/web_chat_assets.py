@@ -28,8 +28,10 @@ html,body{overflow-x:clip}
 .room-heading button{background:transparent;color:var(--muted);border:1px solid var(--line);font-size:12px;padding:5px 10px;flex-shrink:0}
 .sync-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 28px;color:var(--muted);font-size:11px}
 .sync-bar button{padding:4px 0;font-size:12px;background:transparent;color:var(--accent);flex-shrink:0}
-.delivery-notice{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0 28px 8px;padding:8px 12px;border-left:2px solid var(--accent);background:var(--panel);font-size:12px;line-height:1.6}
-.delivery-notice span{color:var(--muted)}.delivery-notice a{font-size:11px}
+.delivery-notice{margin:0 28px 8px;padding:9px 12px;border-left:2px solid var(--accent);background:var(--panel);font-size:12px;line-height:1.6;max-height:230px;overflow:auto}
+.delivery-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.delivery-heading button{padding:5px 9px;font-size:11px}
+.delivery-notice p{margin:4px 0;color:var(--muted)}.delivery-notice a{font-size:11px}.delivery-notice summary{cursor:pointer;font-size:11px;color:var(--muted);margin-top:6px}
+.delivery-participant{display:flex;flex-wrap:wrap;gap:3px 9px;padding:5px 0;border-top:1px solid var(--line)}.delivery-participant small{color:var(--muted)}.delivery-participant .receipt{color:var(--accent)}
 #chat-error{margin:0 20px 8px;background:var(--chat-error-bg);padding:10px 13px;color:var(--chat-error-text);font-size:13px;border-radius:8px;overflow-wrap:anywhere}
 #chat-stream{overflow-y:auto;flex:1;min-height:180px;padding:8px 28px 24px;scroll-behavior:auto}
 .chat-empty{color:var(--muted);text-align:center;margin:60px auto;max-width:410px;font-size:15px}.chat-empty strong{display:block;color:var(--text);font-size:20px;margin-bottom:12px}.chat-empty p{font-size:13px;line-height:1.9}
@@ -80,12 +82,12 @@ CHAT_JS = r'''
 (() => {
   'use strict';
   const $ = id => document.getElementById(id), cfg = $('room-config');
-  const state = {project:$('chat-project').value, room:null, cursor:0, rooms:new Map(), events:new Map(), artifacts:new Map(), latestArtifacts:[], artifactsMore:false, artifactsLoaded:false, files:new Map(), generation:0, stopped:false, busy:false, pendingFiles:[], reply:null, drafts:new Map(), nextRooms:null, lastList:0, olderFloor:0, olderRange:null, loadingOlder:false, pendingWrites:new Map()};
+  const state = {project:$('chat-project').value, room:null, cursor:0, rooms:new Map(), events:new Map(), artifacts:new Map(), latestArtifacts:[], artifactsMore:false, artifactsLoaded:false, delivery:null, files:new Map(), generation:0, stopped:false, busy:false, pendingFiles:[], reply:null, drafts:new Map(), nextRooms:null, lastList:0, olderFloor:0, olderRange:null, loadingOlder:false, pendingWrites:new Map()};
   const kindNames = {document:'文件',plan:'方案',summary:'摘要',task_proposal:'任務提案',handoff_proposal:'交接提案'};
   function node(tag, text, cls) { const n=document.createElement(tag); if(text!==undefined)n.textContent=text; if(cls)n.className=cls; return n; }
   function fail(error) { $('chat-error').textContent=error.message||String(error); $('chat-error').hidden=false; }
   function clearError() { $('chat-error').hidden=true; }
-  function controls() { $('copy-invite').disabled=!state.room||state.stopped; $('sync-now').disabled=!state.room||state.stopped; const write=!!state.room&&!state.stopped&&state.room.status==='open'&&cfg.dataset.role!=='read_only'; $('send-message').disabled=!write||state.busy; $('message-body').disabled=!write||state.busy; for(const input of $('artifact-form').querySelectorAll('input,textarea,select,button'))input.disabled=!write||state.busy; $('message-file').disabled=!write||state.busy; $('artifact-editor').hidden=!write; $('create-room').hidden=cfg.dataset.role!=='admin'; $('archive-room').hidden=!state.room||cfg.dataset.role!=='admin'; $('archive-room').textContent=state.room&&state.room.status==='archived'?'重新開啟':'封存'; $('chat-project').disabled=state.busy; $('room-status').disabled=state.busy; $('archive-room').disabled=state.busy||state.stopped; for(const b of $('room-list').querySelectorAll('button'))b.disabled=state.busy; for(const b of $('create-room').querySelectorAll('button'))b.disabled=state.busy||state.stopped; }
+  function controls() { $('pause-delivery').disabled=!state.delivery||state.busy||state.stopped; $('copy-invite').disabled=!state.room||state.stopped; $('sync-now').disabled=!state.room||state.stopped; const write=!!state.room&&!state.stopped&&state.room.status==='open'&&cfg.dataset.role!=='read_only'; $('send-message').disabled=!write||state.busy; $('message-body').disabled=!write||state.busy; for(const input of $('artifact-form').querySelectorAll('input,textarea,select,button'))input.disabled=!write||state.busy; $('message-file').disabled=!write||state.busy; $('artifact-editor').hidden=!write; $('create-room').hidden=cfg.dataset.role!=='admin'; $('archive-room').hidden=!state.room||cfg.dataset.role!=='admin'; $('archive-room').textContent=state.room&&state.room.status==='archived'?'重新開啟':'封存'; $('chat-project').disabled=state.busy; $('room-status').disabled=state.busy; $('archive-room').disabled=state.busy||state.stopped; for(const b of $('room-list').querySelectorAll('button'))b.disabled=state.busy; for(const b of $('create-room').querySelectorAll('button'))b.disabled=state.busy||state.stopped; }
   async function request(path, options) {
     const r=await fetch(path,{credentials:'same-origin',cache:'no-store',...options});
     let data; try { data=await r.json(); } catch { throw new Error('服務回應中斷；寫入結果可能尚待確認，請先同步再重試。'); }
@@ -107,6 +109,23 @@ CHAT_JS = r'''
   function savedRoom(){try{const saved=JSON.parse(localStorage.getItem(lastRoomKey));return saved&&typeof saved.project==='string'&&/^[a-f0-9]{32}$/.test(saved.session)?saved:null;}catch{return null;}}
   function rememberRoom(){try{localStorage.setItem(lastRoomKey,JSON.stringify({project:state.project,session:state.room.session_id}));}catch{/* Disabled browser storage must not prevent chat. */}}
   function forgetRoom(){try{localStorage.removeItem(lastRoomKey);}catch{}}
+  const deliveryNames={waiting:'等待新訊息',offline:'接線離線',processing:'處理中',failed:'傳送失敗',budget_exhausted:'已達回合預算',paused:'已暫停',disabled:'已停用',expired:'接線已到期',archived:'對話已封存',revoked:'權限已撤銷'};
+  const receiptNames={leased:'等待派送',dispatched:'已交給客戶端',tool_read:'工具已讀',replied:'已回覆',failed:'傳送失敗',superseded:'已由新接線取代'};
+  let lastDeliveryView='';
+  function renderDelivery(error=''){
+    const button=$('pause-delivery'),panel=$('delivery-participants'),current=state.delivery;
+    button.hidden=!state.room||cfg.dataset.role!=='admin';button.disabled=!current||state.busy||state.stopped;button.textContent=current?.control.paused?'恢復自動接話':'暫停自動接話';
+    const signature=JSON.stringify([state.room?.session_id,current,error]);if(signature===lastDeliveryView)return;lastDeliveryView=signature;
+    panel.replaceChildren();
+    if(!state.room){$('delivery-title').textContent='選擇對話後查看 AI 連線';$('delivery-explanation').textContent='訊息保存與 AI 收到、讀取、回覆是不同狀態。';return;}
+    if(!current){$('delivery-title').textContent=error?'無法確認 AI 連線狀態':'正在確認 AI 連線…';$('delivery-explanation').textContent=error||'正在讀取接線與收據，不會呼叫模型。';return;}
+    const people=current.participants;
+    $('delivery-title').textContent=current.control.paused?'自動接話已暫停':people.length?'已加入 '+people.length+' 個 AI 接線':'尚無 AI 加入自動接話';
+    $('delivery-explanation').textContent=current.control.paused?'新訊息仍會保存；暫停新的自動派送，已開始的回合無法撤回。':people.length?'一般發言提供給已啟用的接線；以下分別顯示接收與回覆狀態。':'先替 AI 啟用接線並加入此對話。只有 MCP 連線，仍不會自動接話。';
+    for(const person of people){const row=node('div',undefined,'delivery-participant');row.append(node('strong',person.display_name||person.worker_id),node('small',person.worker_id),node('span',deliveryNames[person.status]||'狀態待確認'));row.append(node('small',person.relay_online?'接線在線':'接線未回報'));if(Number.isInteger(person.turns_used)&&Number.isInteger(person.max_turns))row.append(node('small','回合 '+person.turns_used+'/'+person.max_turns));const receipt=person.latest_delivery;if(receipt){row.append(node('span',(receiptNames[receipt.status]||'收據待確認')+' · 至 #'+receipt.through_sequence,'receipt'));if(receipt.status==='replied'&&receipt.reply_sequence)row.append(node('small','回覆 #'+receipt.reply_sequence));}else row.append(node('small','尚無送達收據'));panel.append(row);}
+    if(current.has_more)panel.append(node('small','僅顯示前 100 個接線。'));
+  }
+  async function refreshDelivery(){if(!state.room||state.stopped)return;const gen=state.generation,sid=state.room.session_id;try{const value=await data('delivery',{session:sid});if(gen!==state.generation)return;state.delivery=value;renderDelivery();}catch(error){if(gen!==state.generation)return;state.delivery=null;renderDelivery(error.message||'稍後再試');}}
   function linkFile(file){const a=node('a',file.filename);a.href='/ui/chat/file?'+new URLSearchParams({project:state.project,session:state.room.session_id,attachment:file.attachment_id});return a;}
   function setReply(message) {state.reply=message;const p=$('reply-preview');p.replaceChildren();p.hidden=!message;if(message){p.append(node('span','引用 #'+message.sequence+' · '+message.actor.display_name));const x=node('button','取消引用');x.type='button';x.onclick=()=>setReply(null);p.append(x);}}
   function appendEvent(item) {
@@ -143,9 +162,17 @@ CHAT_JS = r'''
     $('attachment-list').replaceChildren();for(const file of state.files.values()){const card=node('div',undefined,'attachment-card');card.append(linkFile(file),node('small',Math.ceil(file.size/1024)+' KiB'));$('attachment-list').append(card);}
     if(!$('artifact-list').childElementCount)$('artifact-list').append(node('p',state.artifactsLoaded?'這個對話尚未保存成果。':'正在讀取最新成果…','room-note'));if(!state.files.size)$('attachment-list').append(node('p','本次載入的訊息沒有附件。可載入較早訊息尋找檔案。','room-note'));$('older-messages').hidden=state.olderFloor<=0;
   }
+  let refreshInFlight=null;
   async function refreshRoom() {
+    const gen=state.generation;
+    if(refreshInFlight&&refreshInFlight.gen===gen)return refreshInFlight.promise;
+    const promise=refreshRoomData();refreshInFlight={gen,promise};
+    try{return await promise;}finally{if(refreshInFlight?.promise===promise)refreshInFlight=null;}
+  }
+  async function refreshRoomData() {
     if(!state.room||state.stopped)return;
     const gen=state.generation,sid=state.room.session_id;
+    await refreshDelivery();if(gen!==state.generation||state.stopped)return;
     let pages=0, more, updateArtifacts=!state.artifactsLoaded;
     do {const r=await data('read',{session:sid,after:state.cursor});if(gen!==state.generation)return;
       state.room=r.session;for(const item of r.items){state.events.set(item.sequence,item);if(item.type==='artifact')updateArtifacts=true;}state.cursor=Math.max(state.cursor,r.next_after_sequence);more=r.has_more;
@@ -156,14 +183,14 @@ CHAT_JS = r'''
   }
   function saveDraft(){if(state.room)state.drafts.set(state.room.session_id,{body:$('message-body').value,reply:state.reply,files:[...state.pendingFiles]});}
   async function selectRoom(room) {
-    saveDraft();const gen=++state.generation;state.room=room;updateLocation();$('copy-invite').textContent='複製加入指引';state.cursor=Math.max(0,room.latest_sequence-50);state.olderFloor=state.cursor;state.olderRange=null;state.loadingOlder=false;state.events.clear();state.artifacts.clear();state.latestArtifacts=[];state.artifactsLoaded=false;state.artifactsMore=false;state.files.clear();
+    saveDraft();const gen=++state.generation;state.room=room;state.delivery=null;renderDelivery();updateLocation();$('copy-invite').textContent='複製加入指引';state.cursor=Math.max(0,room.latest_sequence-50);state.olderFloor=state.cursor;state.olderRange=null;state.loadingOlder=false;state.events.clear();state.artifacts.clear();state.latestArtifacts=[];state.artifactsLoaded=false;state.artifactsMore=false;state.files.clear();
     const draft=state.drafts.get(room.session_id)||{body:'',reply:null,files:[]};$('message-body').value=draft.body;state.pendingFiles=draft.files;setReply(draft.reply);fileStatus();
     $('active-room').textContent=room.title;$('chat-stream').replaceChildren(node('div','正在讀取最近訊息…','chat-empty'));$('artifact-detail').hidden=true;
     renderRoomList();controls();clearError();await refreshRoom();if(gen!==state.generation)return;rememberRoom();renderEvents();$('chat-stream').scrollTop=$('chat-stream').scrollHeight;
   }
   function renderRoomList(){const list=$('room-list');list.replaceChildren();for(const room of [...(state.room&&!state.rooms.has(state.room.session_id)?[state.room]:[]),...state.rooms.values()]){const b=node('button',room.title,'room-choice'+(state.room&&room.session_id===state.room.session_id?' selected':''));b.type='button';b.setAttribute('aria-pressed',String(!!state.room&&room.session_id===state.room.session_id));b.append(node('small','#'+room.latest_sequence+' · '+(room.status==='archived'?'已封存':'進行中')));b.disabled=state.busy;b.onclick=()=>{if(!state.busy)selectRoom(room).catch(fail);};list.append(b);}if(!state.rooms.size&&!state.room)list.append(node('p','目前沒有對話。','room-note'));}
   async function loadRooms(more=false){const gen=state.generation,fields={status:$('room-status').value};if(more&&state.nextRooms)fields.after_id=state.nextRooms;const r=await data('list',fields);if(gen!==state.generation)return;if(!more)state.rooms.clear();for(const room of r.items)state.rooms.set(room.session_id,room);state.nextRooms=r.next_after_id;$('more-rooms').hidden=!r.has_more;renderRoomList();state.lastList=Date.now();}
-  async function resetRooms(){saveDraft();state.generation++;state.project=$('chat-project').value;state.room=null;state.rooms.clear();state.nextRooms=null;renderRoomList();$('more-rooms').hidden=true;updateLocation();state.events.clear();state.cursor=0;$('active-room').textContent='選擇一個對話';$('chat-stream').replaceChildren(emptyState());$('sync-status').textContent='尚未選擇對話';$('artifact-list').replaceChildren();$('attachment-list').replaceChildren();$('artifact-detail').hidden=true;$('search-results').replaceChildren();$('more-search').hidden=true;$('message-body').value='';setReply(null);state.pendingFiles=[];fileStatus();controls();await loadRooms();}
+  async function resetRooms(){saveDraft();state.generation++;state.project=$('chat-project').value;state.room=null;state.delivery=null;renderDelivery();state.rooms.clear();state.nextRooms=null;renderRoomList();$('more-rooms').hidden=true;updateLocation();state.events.clear();state.cursor=0;$('active-room').textContent='選擇一個對話';$('chat-stream').replaceChildren(emptyState());$('sync-status').textContent='尚未選擇對話';$('artifact-list').replaceChildren();$('attachment-list').replaceChildren();$('artifact-detail').hidden=true;$('search-results').replaceChildren();$('more-search').hidden=true;$('message-body').value='';setReply(null);state.pendingFiles=[];fileStatus();controls();await loadRooms();}
   function emptyState(){const box=node('div',undefined,'chat-empty');box.append(node('strong','先開啟一個討論主題'),node('p','從左側選擇或建立對話。你與 AI 可以在同一處討論，再將共識保存為成果。'));return box;}
   function updateProjectLinks(){for(const [id,path,view] of [['project-home-link','/ui',''],['project-tasks-link','/ui','tasks'],['project-memory-link','/ui','memory'],['project-mcp-link','/ui','connections'],['project-settings-link','/ui/account/password',''],['task-link','/ui','tasks']]){const a=$(id),q=new URLSearchParams({project:state.project});if(view)q.set('view',view);if(a)a.href=path+'?'+q;}}
   function updateLocation(){updateProjectLinks();const q=new URLSearchParams({project:state.project});if(state.room)q.set('session',state.room.session_id);history.replaceState(null,'','/ui/chat?'+q);}
@@ -174,6 +201,7 @@ CHAT_JS = r'''
   $('more-artifact').onclick=()=>detail&&showArtifact(detail.artifact_id,true).catch(fail);
   $('chat-project').onchange=()=>resetRooms().catch(fail);$('room-status').onchange=()=>resetRooms().catch(fail);$('more-rooms').onclick=()=>loadRooms(true).catch(fail);
   $('sync-now').onclick=()=>refreshRoom().catch(fail);
+  $('pause-delivery').onclick=async()=>{if(state.busy||state.stopped||!state.room||!state.delivery||cfg.dataset.role!=='admin')return;const gen=state.generation,args={...roomFields(),paused:!state.delivery.control.paused,expected_version:state.delivery.control.version};state.busy=true;controls();renderDelivery();try{clearError();await write('set_session_delivery_paused',args);}catch(error){if(gen===state.generation)fail(error);}finally{state.busy=false;controls();if(gen===state.generation)await refreshRoom().catch(fail);}};
   let composing=false;
   $('message-body').addEventListener('compositionstart',()=>{composing=true;});
   $('message-body').addEventListener('compositionend',()=>{composing=false;});

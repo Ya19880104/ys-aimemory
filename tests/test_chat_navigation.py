@@ -27,6 +27,9 @@ pytestmark = pytest.mark.skipif(NODE is None, reason="Node.js is required for ch
     "restore_last_room",
     "restore_authorization_and_explicit_url",
     "latest_artifacts_outside_message_window",
+    "overlapping_refresh_is_coalesced",
+    "delivery_state_and_pause",
+    "delivery_read_only",
 ])
 def test_chat_navigation(tmp_path, monkeypatch, scenario):
     # Render the actual page so IDs, focusability and form controls are not
@@ -34,7 +37,7 @@ def test_chat_navigation(tmp_path, monkeypatch, scenario):
     monkeypatch.setenv("HUB_WEB_USERNAME", "navigation-reader")
     monkeypatch.setenv("HUB_WEB_PASSWORD_HASH", hash_password("synthetic-navigation-password"))
     monkeypatch.setenv("HUB_WEB_PROJECTS", "alpha,beta")
-    monkeypatch.setenv("HUB_WEB_ROLE", "read_only" if scenario == "close_pending_artifact" else "admin")
+    monkeypatch.setenv("HUB_WEB_ROLE", "read_only" if scenario in {"close_pending_artifact", "delivery_read_only"} else "admin")
     monkeypatch.setenv("HUB_WEB_COOKIE_SECURE", "false")
     monkeypatch.setenv("HUB_WEB_MCP_ENABLED", "false")
     app = create_app(database_url="sqlite:///" + str(tmp_path / "navigation.db"), allow_sqlite=True,

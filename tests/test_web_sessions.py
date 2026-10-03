@@ -10,6 +10,7 @@ import pytest
 from memory_hub.app import create_app
 from memory_hub.models import Principal
 from memory_hub.web_password import hash_password
+from memory_hub.store import HubError
 
 
 @pytest.fixture
@@ -95,6 +96,49 @@ def test_latest_artifacts_index_is_scoped_bounded_and_omits_contents(room):
     assert client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'shared', 'session': '0'*32}).status_code == 404
     client.cookies.clear()
     assert client.get('/ui/chat/data', params={'op': 'artifacts', 'project': 'shared', 'session': sid}).status_code == 401
+
+
+def test_delivery_browser_adapter_preserves_csrf_nonce_scope_and_version(room, monkeypatch):
+    client, hub, _ = room
+    sid = action(client, 'create_session', {'project_id': 'shared', 'title': 'Delivery'}).json()['session_id']
+    calls = []
+
+    class DeliveryContract:
+        """Contract double: backend delivery behavior has its own service tests."""
+        def call(self, name, args, actor):
+            calls.append((name, args, actor))
+            assert actor.kind == 'human' and actor.role == 'admin'
+            if name == 'status':
+                return {'control': {'paused': False, 'version': 4}, 'participants': [
+                    {'worker_id': 'ai-a', 'display_name': 'Original alias', 'status': 'offline'}]}
+            if args['expected_version'] != 4:
+                raise HubError('stale_control', 'Room control changed', 409)
+            return {'paused': args['paused'], 'version': 5, 'running_turns_cancelled': False}
+
+    monkeypatch.setattr(hub, 'delivery', DeliveryContract(), raising=False)
+    response = client.get('/ui/chat/data', params={'op': 'delivery', 'project': 'shared', 'session': sid})
+    assert response.status_code == 200
+    assert response.json()['participants'][0] == {'worker_id': 'ai-a', 'display_name': 'Codex 測試端', 'status': 'offline'}
+    assert client.get('/ui/chat/data', params={'op': 'delivery', 'project': 'private', 'session': sid}).status_code == 404
+    assert len(calls) == 1
+    args = {'project_id': 'shared', 'session_id': sid, 'paused': True, 'expected_version': 4}
+    denied = client.post('/ui/chat/action', json={'action': 'set_session_delivery_paused', 'arguments': args})
+    assert denied.status_code == 403 and len(calls) == 1
+    result = action(client, 'set_session_delivery_paused', args, 'pause-once')
+    assert result.status_code == 200 and result.json()['running_turns_cancelled'] is False
+    assert calls[-1][1]['idempotency_key'] == 'pause-once'
+    stale = action(client, 'set_session_delivery_paused', {**args, 'expected_version': 3}, 'stale-pause')
+    assert stale.status_code == 409
+    client.cookies.clear()
+    assert client.get('/ui/chat/data', params={'op': 'delivery', 'project': 'shared', 'session': sid}).status_code == 401
+
+
+def test_delivery_missing_service_reports_unavailable_not_disconnected(room, monkeypatch):
+    client, hub, _ = room
+    monkeypatch.delattr(hub, 'delivery', raising=False)
+    result = client.get('/ui/chat/data?op=delivery&project=shared&session=' + 'a'*32)
+    assert result.status_code == 503
+    assert result.json()['error'] == 'unavailable'
 
 
 def test_chat_rejects_csrf_actor_forgery_and_cross_project(room):

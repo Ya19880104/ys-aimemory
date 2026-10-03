@@ -18,7 +18,7 @@ from .web_chat_assets import CHAT_CSS, CHAT_JS
 
 CHAT_ROUTES = {'/ui/chat', '/ui/chat/data', '/ui/chat/action', '/ui/chat/file'}
 CHAT_ACTIONS = {'create_session', 'post_session_message', 'create_session_artifact',
-                'upload_session_attachment', 'archive_session'}
+                'upload_session_attachment', 'archive_session', 'set_session_delivery_paused'}
 HEADERS = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer'}
 
 
@@ -43,7 +43,15 @@ def install_sessions(app, hub, auth, session, redirect):
         value = {key: present(item) for key, item in value.items()}
         if value.get('kind') == 'worker' and value.get('id') in worker_names:
             value['display_name'] = worker_names[value['id']]
+        elif value.get('worker_id') in worker_names:
+            value['display_name'] = worker_names[value['worker_id']]
         return value
+
+    def delivery_call(name, arguments, actor):
+        delivery = getattr(hub, 'delivery', None)
+        if delivery is None:
+            raise HubError('unavailable', '自動接話服務尚未就緒。', 503)
+        return delivery.call(name, arguments, actor)
 
     def identity(request):
         current = session(request)
@@ -86,8 +94,8 @@ def install_sessions(app, hub, auth, session, redirect):
             body = '<div class="chat-app"><header class="chat-top"><div><a id="project-home-link" class="brand" aria-label="返回專案總覽" href="/ui?project=' + quote(project, safe='') + '">ys-aimemory</a><span class="chat-title">共享對話</span></div><nav aria-label="主要導覽">' + navigation + '</nav></header>'
             body += '<div id="room-config" data-csrf="' + e(current['csrf']) + '" data-role="' + e(person.role) + '" data-user="' + e(person.user_id) + '"></div>'
             body += '<div class="chat-workspace"><section class="room-nav" aria-label="選擇對話"><h1>對話主題</h1><div class="room-filters"><div><label for="chat-project">專案</label><select id="chat-project">' + options + '</select></div><div><label for="room-status">顯示狀態</label><select id="room-status"><option value="open">進行中</option><option value="archived">已封存</option></select></div></div><form id="create-room"><label for="room-title">新增對話</label><input id="room-title" placeholder="例如：首頁改版討論" maxlength="160" required><button type="submit">建立對話</button></form><div id="room-list" aria-live="polite"></div><button id="more-rooms" type="button" hidden>更多對話</button><p class="room-note">一個對話就是一個討論主題。相同 MCP 連線可選擇授權範圍內的對話。切換對話不會增加專案權限。</p></section>'
-            body += '<main class="room-main"><header class="room-heading"><div><span class="eyebrow">對話工作區</span><h2 id="active-room">選擇一個對話</h2><p id="room-visibility">先討論，再保存共識。內容與附件對本專案的授權成員可見。</p></div><button id="archive-room" type="button" hidden>封存</button></header><div class="sync-bar"><span id="sync-status" role="status">尚未選擇對話</span><button id="sync-now" type="button">更新網頁</button></div><div class="delivery-notice"><strong>AI 自動接話尚未啟用</strong><span>訊息已保存不代表 AI 已收到。網頁會更新，AI 目前仍需主動讀取。</span><a href="/help#automatic-chat">了解目前進度</a></div><div id="chat-error" role="alert" hidden></div><button id="older-messages" type="button" hidden>載入較早訊息</button><div id="chat-stream" tabindex="-1" role="log" aria-label="共享對話紀錄" aria-live="polite"><div class="chat-empty"><strong>先開啟一個討論主題</strong>從左側選擇或建立對話，再一起整理想法。<p>AI 必須主動讀取或同步訊息，這裡不會自動喚醒模型。</p></div></div><form id="message-form" class="composer"><div class="composer-by">以 ' + e(label) + ' <strong>' + e(person.display_name) + '</strong> 發言</div><div id="reply-preview" hidden></div><label class="sr-only" for="message-body">訊息內容</label><textarea id="message-body" placeholder="直接發言到這個對話；需要指明某一則時才使用引用…" rows="3" maxlength="8000" required></textarea><div class="composer-tools"><div><label class="file-control" for="message-file">附加檔案</label><input id="message-file" type="file"><span id="file-status"></span></div><button id="send-message" type="submit">傳送訊息</button></div><p class="room-note">Enter 傳送 · Shift+Enter 換行 · 中文選字時不會送出</p><p class="room-note">附件上傳即共享 · 每檔 512 KiB · 對話合計 25 MiB · 訊息上限 8,000 UTF-8 bytes</p></form></main>'
-            body += '<section class="room-context" aria-label="共同成果"><section id="artifact-detail" tabindex="-1" aria-label="成果內容" hidden><h3 id="detail-title"></h3><p id="detail-meta" class="room-note"></p><pre id="detail-content"></pre><details id="version-info"><summary>版本資訊</summary><p id="detail-version"></p></details><button id="more-artifact" type="button" hidden>讀取下一段</button><button id="close-detail" type="button">返回對話 ↑</button></section><section class="context-section"><h2>最新共同成果</h2><p class="room-note">依建立時間顯示最新 10 份文件、方案與提案；點標題閱讀全文。</p><details id="artifact-editor"><summary>建立文件／提案</summary><form id="artifact-form"><label for="artifact-kind">類型</label><select id="artifact-kind"><option value="document">文件</option><option value="plan">方案</option><option value="summary">對話摘要</option><option value="task_proposal">任務提案</option><option value="handoff_proposal">交接提案</option></select><label for="artifact-title">標題</label><input id="artifact-title" maxlength="160" required><label for="artifact-content">內容</label><textarea id="artifact-content" required placeholder="目標、決定、來源、未完成事項…"></textarea><p class="room-note">保存時會標記當前讀到的訊息序號；新訊息不會被誤算進摘要。</p><button type="submit">保存成果</button></form></details><div id="artifact-list"></div><a id="task-link" href="/ui?view=tasks&amp;project=' + quote(project, safe='') + '">正式任務與交接 →</a></section><section class="context-section"><h3>共享檔案</h3><div id="attachment-list"><p class="room-note">選擇對話後查看附件。</p></div></section><section class="context-section connect-tip"><h3>讓 AI 加入討論</h3><p>各自連接 MCP，將加入指引貼給 AI，即可讀取同一個對話。</p><button id="copy-invite" type="button" disabled>複製加入指引</button><p>AI 需主動讀取訊息；網頁不會自動喚醒模型。先讀增量，按需取全文。</p></section><details class="search-disclosure"><summary>搜尋專案對話</summary><form id="search-form"><label for="search-query">搜尋本專案的對話與成果</label><div class="search-controls"><input id="search-query" maxlength="200" placeholder="輸入關鍵字" required><button type="submit">搜尋紀錄</button></div></form><div id="search-results" aria-live="polite"></div><button id="more-search" type="button" hidden>更多搜尋結果</button></details></section></div></div>'
+            body += '<main class="room-main"><header class="room-heading"><div><span class="eyebrow">對話工作區</span><h2 id="active-room">選擇一個對話</h2><p id="room-visibility">先討論，再保存共識。內容與附件對本專案的授權成員可見。</p></div><button id="archive-room" type="button" hidden>封存</button></header><div class="sync-bar"><span id="sync-status" role="status">尚未選擇對話</span><button id="sync-now" type="button">更新網頁</button></div><section class="delivery-notice" aria-label="AI 連線與送達狀態"><div class="delivery-heading"><strong id="delivery-title">選擇對話後查看 AI 連線</strong><button id="pause-delivery" type="button" hidden disabled>暫停自動接話</button></div><p id="delivery-explanation">訊息保存與 AI 收到、讀取、回覆是不同狀態。</p><div id="delivery-participants" aria-live="polite"></div><details><summary>傳送範圍與停止方式</summary><p>未指定對象的訊息，會提供給已加入此對話且啟用的 AI 接線。未加入或離線的 AI 不會立即回覆。暫停會阻止新的自動派送；訊息仍會保存，已開始的回合無法撤回。恢復後依各接線的游標續讀。</p><p>「接線在線」只表示背景接收程式有回報；工具已讀表示完整訊息已由工具送出，不代表模型理解。</p><a href="/help#automatic-chat">接入方式與目前限制</a></details></section><div id="chat-error" role="alert" hidden></div><button id="older-messages" type="button" hidden>載入較早訊息</button><div id="chat-stream" tabindex="-1" role="log" aria-label="共享對話紀錄" aria-live="polite"><div class="chat-empty"><strong>先開啟一個討論主題</strong>從左側選擇或建立對話，再一起整理想法。<p>AI 需先完成接線並加入這個對話；連線與送達狀態會顯示在上方。</p></div></div><form id="message-form" class="composer"><div class="composer-by">以 ' + e(label) + ' <strong>' + e(person.display_name) + '</strong> 發言</div><div id="reply-preview" hidden></div><label class="sr-only" for="message-body">訊息內容</label><textarea id="message-body" placeholder="直接發言到這個對話；需要指明某一則時才使用引用…" rows="3" maxlength="8000" required></textarea><div class="composer-tools"><div><label class="file-control" for="message-file">附加檔案</label><input id="message-file" type="file"><span id="file-status"></span></div><button id="send-message" type="submit">傳送訊息</button></div><p class="room-note">Enter 傳送 · Shift+Enter 換行 · 中文選字時不會送出</p><p class="room-note">附件上傳即共享 · 每檔 512 KiB · 對話合計 25 MiB · 訊息上限 8,000 UTF-8 bytes</p></form></main>'
+            body += '<section class="room-context" aria-label="共同成果"><section id="artifact-detail" tabindex="-1" aria-label="成果內容" hidden><h3 id="detail-title"></h3><p id="detail-meta" class="room-note"></p><pre id="detail-content"></pre><details id="version-info"><summary>版本資訊</summary><p id="detail-version"></p></details><button id="more-artifact" type="button" hidden>讀取下一段</button><button id="close-detail" type="button">返回對話 ↑</button></section><section class="context-section"><h2>最新共同成果</h2><p class="room-note">依建立時間顯示最新 10 份文件、方案與提案；點標題閱讀全文。</p><details id="artifact-editor"><summary>建立文件／提案</summary><form id="artifact-form"><label for="artifact-kind">類型</label><select id="artifact-kind"><option value="document">文件</option><option value="plan">方案</option><option value="summary">對話摘要</option><option value="task_proposal">任務提案</option><option value="handoff_proposal">交接提案</option></select><label for="artifact-title">標題</label><input id="artifact-title" maxlength="160" required><label for="artifact-content">內容</label><textarea id="artifact-content" required placeholder="目標、決定、來源、未完成事項…"></textarea><p class="room-note">保存時會標記當前讀到的訊息序號；新訊息不會被誤算進摘要。</p><button type="submit">保存成果</button></form></details><div id="artifact-list"></div><a id="task-link" href="/ui?view=tasks&amp;project=' + quote(project, safe='') + '">正式任務與交接 →</a></section><section class="context-section"><h3>共享檔案</h3><div id="attachment-list"><p class="room-note">選擇對話後查看附件。</p></div></section><section class="context-section connect-tip"><h3>讓 AI 加入討論</h3><p>各自連接 MCP，將加入指引貼給 AI，即可讀取同一個對話。</p><button id="copy-invite" type="button" disabled>複製加入指引</button><p>只有已啟用自動接話接線的 AI 會自動收到新訊息；單純連上 MCP 仍須主動讀取。</p></section><details class="search-disclosure"><summary>搜尋專案對話</summary><form id="search-form"><label for="search-query">搜尋本專案的對話與成果</label><div class="search-controls"><input id="search-query" maxlength="200" placeholder="輸入關鍵字" required><button type="submit">搜尋紀錄</button></div></form><div id="search-results" aria-live="polite"></div><button id="more-search" type="button" hidden>更多搜尋結果</button></details></section></div></div>'
             return page(body, script=CHAT_JS, css=CHAT_CSS, connect=True)
         except HubError as exc:
             if exc.status == 401:
@@ -108,6 +116,8 @@ def install_sessions(app, hub, auth, session, redirect):
                 action = q.get('action', '')
                 if action not in CHAT_ACTIONS or person.role == 'read_only':
                     raise HubError('forbidden', '此帳號無法執行此動作。', 403)
+                if action == 'set_session_delivery_paused' and person.role != 'admin':
+                    raise HubError('forbidden', '只有管理員可以暫停或恢復自動接話。', 403)
                 token = secrets.token_urlsafe(24)
                 if not auth.start_nonce(token, current, 'chat-' + action, nonce_scope(project, room)):
                     raise HubError('unauthorized', '登入已過期。', 401)
@@ -131,6 +141,8 @@ def install_sessions(app, hub, auth, session, redirect):
                     'artifact_id': q.get('artifact', ''), 'offset': int(q.get('offset', '0')), 'limit_chars': 8000}
             elif op == 'artifacts':
                 return result(hub.sessions.latest_artifacts(project, room, actor))
+            elif op == 'delivery':
+                return result(delivery_call('status', {'project_id': project, 'session_id': room}, actor))
             else:
                 raise HubError('not_found', '未知的讀取方式。', 404)
             return result(hub.sessions.call(name, args, actor))
@@ -161,7 +173,12 @@ def install_sessions(app, hub, auth, session, redirect):
             # Re-read live account after body/nonce work; never use caller actor fields.
             _, _, actor = identity(request)
             from starlette.concurrency import run_in_threadpool
-            value = await run_in_threadpool(hub.sessions.call, action, args, actor)
+            if action == 'set_session_delivery_paused':
+                if actor.role != 'admin':
+                    raise HubError('forbidden', '只有管理員可以暫停或恢復自動接話。', 403)
+                value = await run_in_threadpool(delivery_call, 'pause', args, actor)
+            else:
+                value = await run_in_threadpool(hub.sessions.call, action, args, actor)
             return result(value)
         except (HubError, ValidationError, ValueError, TypeError, SQLAlchemyError) as exc:
             return failure(exc)
