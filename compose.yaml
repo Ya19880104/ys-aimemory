@@ -36,6 +36,7 @@ services:
       HUB_WEB_MCP_ENABLED: ${HUB_WEB_MCP_ENABLED:-false}
       HUB_WEB_OWNER_ID: ${HUB_WEB_OWNER_ID:-}
       HUB_PUBLIC_BASE_URL: ${HUB_PUBLIC_BASE_URL:-}
+      HUB_WORKER_DISPLAY_NAMES: ${HUB_WORKER_DISPLAY_NAMES:-}
       HUB_PUBLIC_CA_FILE: /app/public/ys-ai-memory-ca.crt
     volumes:
       - ./nginx/public:/app/public:ro

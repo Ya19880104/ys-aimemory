@@ -26,7 +26,7 @@ def install_sessions(app, hub, auth, session, redirect):
     # Labels are an explicit operator assertion, never guessed from worker IDs.
     # They affect presentation only; author IDs and authorization are unchanged.
     try:
-        worker_names = json.loads(os.environ.get('HUB_WORKER_DISPLAY_NAMES', '{}'))
+        worker_names = json.loads(os.environ.get('HUB_WORKER_DISPLAY_NAMES') or '{}')
         if (not isinstance(worker_names, dict) or len(worker_names) > 200 or
             any(not isinstance(k, str) or not 1 <= len(k) <= 128 or
                 not isinstance(v, str) or not v.strip() or len(v) > 100 or
