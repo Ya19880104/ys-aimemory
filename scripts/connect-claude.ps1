@@ -17,7 +17,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Keep this revision and both digests together when publishing a new installer.
-$SourceRevision = '7ea4c425656285f1fd34201f23425ed29622b300'
+$SourceRevision = 'ee21c2dfccba1d7f60b44563880c8b6a864bf971'
 $SourceRoot = 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/' + $SourceRevision + '/'
 $SourceFiles = @(
     @{ Source = 'scripts/setup-claude.py'; Name = 'setup-claude.py'; Sha256 = '19c46cdf351f7427124743a208f3517975a540325f912ff7d79bd4d86cc8fd24' },
