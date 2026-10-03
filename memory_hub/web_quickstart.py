@@ -27,10 +27,8 @@ def walkthrough(base):
 </section><section id="quickstart" class="panel"><h2>第一次接入與手動讀寫驗證：五個步驟</h2>
 <p>以下可確認 MCP 與共享紀錄正常，尚不是自動對話教學。設定一次 MCP 後，在網頁選一個對話，把「加入指引」貼給 AI；不用先建立任務或交接。</p>
 <h3>1. 拿到自己 AI 的 Token</h3><p>登入後選專案，進入「MCP 接入 → Token 與客戶端設定」。為 Claude、Codex 各產生一個身分與 Token。Token 就像這個 AI 進入專案的鑰匙，不是網頁登入密碼。</p>
-<h3>2. 安裝一次，貼入 MCP 設定</h3><p>從下方「接入 MCP」下載安裝包，解壓到新資料夾，依三行安裝命令產生設定。Claude 使用專案 <code>.mcp.json</code>；把產生的設定貼入，保留原本其他 MCP，將 <code>env.YS_AIMEMORY_TOKEN</code> 的值換成剛取得的 Token。只在本機保存這份檔案，加入 <code>.gitignore</code>，不要上傳 GitHub。</p>
-<pre class="path"><code>"env": {
-  "YS_AIMEMORY_TOKEN": "在這裡貼上你的 Claude Token"
-}</code></pre><p>這是要替換的局部欄位，完整 command／args 路徑用安裝命令產生的內容。已登入 Desktop 的 Code 分頁不需要另登入 CLI。使用環境變數的進階方式見下方完整說明。</p>
+<h3>2. 安裝一次，貼入 MCP 設定</h3><p>從下方「接入 MCP」下載安裝包，解壓到新資料夾，依三行安裝命令產生設定。Claude 使用專案 <code>.mcp.json</code>；合併產生的設定、保留原本其他 MCP，以及 <code>${YS_AIMEMORY_TOKEN:-}</code> 引用。不要把實際 Token 寫進共享設定檔；加入 <code>.gitignore</code> 也不會解除既有 Git 追蹤。</p>
+<p>接著到 Claude「新對話的環境選單 → Local 旁齒輪 → 環境編輯器」，新增名稱 <code>YS_AIMEMORY_TOKEN</code>，值填剛取得的 Claude Token 並保存。這裡填實際值，不是引用文字。它會作用於所有新的本機工作，請勿混用不同 worker。已登入 Desktop 的 Code 分頁不需要另登入 CLI。</p>
 <h3>3. 開新 Claude 對話，確認連線</h3><p>選 Local 和剛設定的專案，開新對話。依畫面核准 MCP，貼上：</p>
 <pre class="path"><code>使用 YS Memory MCP，確認我指定專案的 worker 身分。
 先取得 get_worker_inbox 的 schema，再呼叫並告訴我 worker_id。

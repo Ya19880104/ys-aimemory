@@ -145,7 +145,7 @@ codex'''
 <h3>3.2 Claude：直接從已登入的 Desktop／IDE 使用</h3>
 <p><strong>第一次需要：安裝轉接器 → 合併 MCP 設定 → 提供 worker Token。</strong>把 JSON 或網址貼到聊天不會自動完成設定；設定完成後，日常只需貼指定專案／对話的加入指引。</p>
 <p>已登入 Claude Code 的 IDE 或 Desktop Code 分頁，就用這個客戶端；不需要另外登入獨立 CLI。以下是 Desktop 的<strong>本機 Code 工作</strong>路徑，其他 IDE 需核對自己的設定位置。</p>
-<p><strong>一般操作：</strong>把產生的設定合併到專案 <code>.mcp.json</code>，將 <code>env.YS_AIMEMORY_TOKEN</code> 的值換成自己的 worker Token，保存後開新的 Local Code 對話。含 Token 的設定只放本機並加入 <code>.gitignore</code>，不要當公開設定檔分享。下方是選擇保留引用、不把 Token 寫入設定檔的進階做法。</p>
+<p><strong>一般操作：</strong>把產生的設定合併到專案 <code>.mcp.json</code>，保留 <code>${{YS_AIMEMORY_TOKEN:-}}</code> 引用，依下列步驟在 Desktop 環境編輯器填入自己的 worker Token。不要把實際 Token 寫進共享設定檔；<code>.gitignore</code> 不會解除既有 Git 追蹤。</p>
 <ol><li>選擇要使用記憶的本機專案，將上方輸出的 <code>mcpServers.ys_memory</code> 合併到此專案 <code>.mcp.json</code>；保留其他 server，以及 <code>${{YS_AIMEMORY_TOKEN}}</code> 引用。已有同名項目就更新它，勿讓 HTTP 與 stdio 同名並存。</li><li>讓 MCP 子程序取得 Claude 自己的 Token。Desktop 可在 Code 工作的 Local 環境旁齒輪開啟環境編輯器，加入 <code>YS_AIMEMORY_TOKEN</code>；Token 值只輸入該秘密欄位，不貼進對話。</li><li>Desktop 會加密保存該環境變數，但它會影響<strong>所有新本機工作</strong>，不是只影響這個 Hub 對話。需要嚴格限制單一專案時，使用自己受保護的啟動流程；本安裝包尚未提供專案秘密載入器。</li><li>保存目前工作，依客戶端方式重新載入 MCP 或重新開啟這個專案。審閱專案信任與工具核准，再進行第 3.4 節的實際身份檢查。</li></ol>
 <p>另一個 PowerShell 設定變數，不會讓已開啟的 IDE 自動取得它。Desktop 也可能讀取使用者或 Desktop 的 MCP 設定；同名項目可能來自別的範圍，請核對實際啟動路徑。僅將設定存為 <code>.mcp.ys-memory.json</code> 不會讓 IDE 自動接入，那是 CLI 顯式選用的檔名。</p>
 <p>環境編輯器填入的是<strong>實際 Token 值</strong>，不是 <code>${{YS_AIMEMORY_TOKEN}}</code> 這段引用文字。1.1.1 產生的 stdio 設定使用 <code>${{YS_AIMEMORY_TOKEN:-}}</code>；缺值時回報 <code>TOKEN_MISSING</code>，不會把引用文字當 Token 送出。保存後開新 Local Code 對話；若仍用舊環境，先保存工作再重新啟動 Desktop。不要為此另外登入 CLI 或改成繞過工具權限。</p>

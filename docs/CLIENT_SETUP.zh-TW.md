@@ -7,11 +7,11 @@
 一次設定後，日常只需貼「加入指定專案／對話」指引。但第一次須完成三件事：**安裝 adapter → 合併 MCP 設定 → 提供自己的 worker Token**。把 JSON 或 MCP 網址貼到聊天，本身不會完成客戶端設定；Claude 模型登入也不會提供 Hub Token。
 
 1. 在 Desktop 的 Code 分頁使用 **Local**，選真正的開發專案，將 `--compact --print-claude-config` 輸出合併到該目錄的 `.mcp.json`。保留其他 MCP，Python／bridge／connection 三個路徑必須在執行 Claude 的那台電腦存在。
-2. 一般操作可直接把 `.mcp.json` 中 `env.YS_AIMEMORY_TOKEN` 的值換成 **Claude 專屬 worker Token**，保存後只在這台電腦使用；含 Token 的檔案不得提交 Git 或當公開範本分享。本庫已忽略 `.mcp.json`，其他專案先加入 `.gitignore`。若不想把 Token 存在專案設定，保留引用，改用下一段的環境編輯器。
+2. 保留 `.mcp.json` 中的 `${YS_AIMEMORY_TOKEN:-}` 引用。到 **新對話的環境選單 → Local 旁齒輪 → 環境編輯器**，新增名稱 `YS_AIMEMORY_TOKEN`，值填入 **Claude 專屬 worker Token** 並保存。這裡填真正的 Token，不是引用文字；不用貼到聊天或共享設定檔。
 3. 儲存後開新本機 Code 對話；如果版本仍用舊環境，保存工作再重啟 Desktop。依畫面審閱專案信任與 MCP 核准。**不用另外登入 CLI**，也不要為了測試改成繞過權限。
 4. 請 AI：「用 YS Memory 的 `memory_tools` 取得 `get_worker_inbox` schema，再以指定 project_id 呼叫，回報 worker_id；不要認領任務。」工具結果身分正確後，才貼共享對話的加入指引。
 
-進階方式：**新對話的環境選單 → Local 旁齒輪 → 環境編輯器**，新增 `YS_AIMEMORY_TOKEN` 並填入實際 Token。編輯器加密保存，但會套用所有新本機工作。`.mcp.json` 的 `${...}` 引用只會取值，不會產生 Token；另一個 PowerShell 設定的變數也不會注入已開啟的 Desktop。官方說明見 [Desktop 本機環境](https://code.claude.com/docs/en/desktop#local-sessions)與[共用 MCP 設定](https://code.claude.com/docs/en/desktop#shared-configuration)。
+環境編輯器加密保存，但會套用所有新本機工作。需要各專案不同 Token 時，改用各自受保護的啟動環境，不能讓不同 worker 混用。`.mcp.json` 的 `${...}` 引用只會取值，不會產生 Token；另一個 PowerShell 設定的變數也不會注入已開啟的 Desktop。**不要把實際 Token 寫進可能共享的 `.mcp.json`；即使加入 `.gitignore`，已追蹤的檔案仍會被提交。** 官方說明見 [Desktop 本機環境](https://code.claude.com/docs/en/desktop#local-sessions)與[共用 MCP 設定](https://code.claude.com/docs/en/desktop#shared-configuration)。
 
 1.1.1 輸出 `${YS_AIMEMORY_TOKEN:-}` 空值預設；未設定時 adapter 回 `TOKEN_MISSING`，不把未展開的引用送到主機。不同 Claude 版本對缺值引用的行為可能不同，不能拿「env 欄位非空」當作 Token 已傳入。詳見[官方環境展開規則](https://code.claude.com/docs/en/mcp#environment-variable-expansion-in-mcpjson)。
 
@@ -26,7 +26,7 @@
 
 `Hub tool not invoked` 表示尚未送出 Hub 業務工具；可能已嘗試初始化或唯讀工具發現。1.1.0 只有泛用失敗訊息，請下載 1.1.1 到新目錄再更新專案路徑；既有安裝不會自動升級。
 
-2026-10-03 遠端 Desktop 實測：原先只有環境引用且程序缺 Token；將自己的測試 Token 填入專案設定、開新 Code 對話後，Sonnet 5.5 / Medium 已透過原生 MCP 回傳正確 worker 身分。第一次錯誤參數與修正後成功均保留。這是該客戶端的身份驗收，不代表其他客戶端或所有操作已通過。
+2026-10-03 遠端 Desktop 實測：原先只有環境引用且程序缺 Token；測試者確認專案設定未被 Git 追蹤且已忽略後，填入自己的臨時測試 Token、開新 Code 對話，Sonnet 5.5 / Medium 已透過原生 MCP 回傳正確 worker 身分。這是受控測試方式，不是建議公開專案照貼 Token；上述一般安裝採環境編輯器。本輪沒有另行驗收環境編輯器的持久化行為。第一次錯誤參數與修正後成功均保留。
 
 ## 訂閱優先
 
