@@ -2,6 +2,32 @@
 
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
+
+## Latest round-two verification
+
+Runtime source: `24f317310ea6fdd66ca78da8cea3003a413d226c`, promoted **2026-10-03T15:16:07Z**, image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`. This section records sanitized executor-supplied results, not an independent rerun by the documentation reviewer. Native evidence below used watcher `e24b13c418bad9705f86b589b1ac212145d06a71` with the earlier `c4fe0f1` Hub, before promotion; do not assign that native evidence to the new runtime.
+
+| Gate | Result | Scope |
+| --- | --- | --- |
+| PostgreSQL VM stage | passed: 779 tests, 56 skipped, 3 warnings; 180.82 seconds | Skips are not passes |
+| Focused Windows checks | passed: 104 tests | Scoped source checks, not full candidate CI |
+| Promotion | passed: 427 checks in 22.332 seconds | Applies to this runtime/environment |
+| Public bootstrap | passed: all six URLs HTTP 200, declared hashes and Git blobs matched | Artifact integrity, not every client installation |
+| Claude idle automatic exchange | passed: approximately 16.646 seconds | Exact activation, idle listener, human browser message; ToolSearch plus native chat_read/chat_reply; no extra Claude prompt |
+| Claude pause/resume | passed for observed sequence | Queued human message remained unanswered while paused; resume produced native read/reply after approximately 6.808 seconds |
+| Claude controlled application outage | passed for observed sequence | About 12 seconds stopped; watcher reconnecting then idle with same binding/expiry; next human message produced native reply after approximately 6.119 seconds |
+| Claude three-turn budget | passed for observed interval | Exhausted at 3/3; later human message caused no fourth turn for at least 37 seconds |
+| Explicit disconnect | passed | Owned watcher stopped; no remaining owned Python watcher process or global configuration change. Independent STOP-case not tested because budget was already exhausted |
+| New-runtime Chrome logout/deep-link/login | passed | Selected project and conversation preserved; this does not certify all GUI surfaces |
+| GUI language switching | pending / not_run | HTTP language checks remain a separate earlier gate |
+| ChatGPT event discovery | passed | Tunnel restored, plugin refreshed, updated notification schemas and message.created visible; fresh Work identity passed |
+| ChatGPT native subscription / idle automatic action | not_run; no subscription established | Model reported unable to subscribe; root cause unresolved. Missing deferred tool names do not prove platform feature absence; events/subscribe is a protocol method |
+
+ChatGPT acceptance requires observing the real subscription request, callback verification and stored subscription, webhook 2xx acknowledgement and native action. See [official MCP Events testing](https://developers.openai.com/plugins/build/mcp-events#test-in-chatgpt). Discovery and prompted identity/read/write cannot substitute for these steps.
+
+Source/automatic expiry, full crash/restart, parent/orphan handling, load and revocation acceptance remain pending. No old-history replay was seen after the observed fresh join; other cursor/rejoin cases remain unverified. Earlier OAuth-expired, Chrome-offline and stale-metadata statements below describe their original snapshots and are superseded only within the scoped evidence above. Private identifiers, message bodies, hosts, evidence paths and screenshots are omitted.
+
+
 ## Latest deployed candidate: `c4fe0f1`
 
 Candidate source: `c4fe0f1ecedbe186cc4b80f195e47dc606fe9470`. Promotion completed at **2026-10-03T09:45:32Z**. These are version- and environment-specific results, not acceptance for every client. The executor supplied deployment/HTTP results; this document update independently checked the CI totals and sanitized native receipt fields. No private IDs, credentials, host addresses, or evidence paths are published.
@@ -25,13 +51,13 @@ The earlier `e1d71f8` CI run had one failure: the bootstrap source pin was stale
 
 ### Observed token usage; optimization remains under investigation
 
-| Single-turn observation | Input tokens | Cached input tokens (included in input) | Output tokens |
+| Reported counters for observed exchange | Input tokens | Cached input tokens (included in input) | Output tokens |
 | --- | ---: | ---: | ---: |
 | Initial installer pilot | 71,711 | 58,880 | 436 |
 | Scoped `skills.max_context_tokens=1` experiment at `ab1f20a` | 59,287 | 49,024 | 410 |
 | Final candidate native exchange | 59,520 | 51,584 | 467 |
 
-Each row is one observed turn, not a controlled benchmark or a guaranteed saving. The scoped skills override was followed by lower observed input, but these small samples do not establish causality, billing savings, or complete low-token optimization. The inspected inbox was only 126 bytes and was not the large-cost cause in this exchange; the new chat-scoped identity projection limits future inflation from unrelated task inboxes. Cost investigation continues.
+These are reported cumulative session/tool-exchange counters, not one prompt or billed usage; they are not a controlled benchmark or a guaranteed saving. The scoped skills override was followed by lower observed input, but these small samples do not establish causality, billing savings, or complete low-token optimization. The inspected inbox was only 126 bytes and was not the large-cost cause in this exchange; the new chat-scoped identity projection limits future inflation from unrelated task inboxes. Cost investigation continues.
 
 The copied-installation guidance safety fix has source-scoped acceptance: 28 tests passed with two existing warnings, including real PowerShell parser coverage for both languages/clients and hostile `;` / `$()` worker values. Complete-guide paste performs download/hash verification/review only; installation stays commented until explicitly selected after review. The fresh HTTP panel check confirms rendered deployment behavior, while the parser check covers generated command safety. Neither substitutes for GUI clicks or cloud automatic acceptance.
 

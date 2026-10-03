@@ -2,6 +2,32 @@
 
 [English](VALIDATION_2026-10-03.md) | [繁體中文](VALIDATION_2026-10-03.zh-TW.md)
 
+
+## 最新第二輪驗證
+
+執行版本：`24f317310ea6fdd66ca78da8cea3003a413d226c`，於 **2026-10-03T15:16:07Z** promotion，image `sha256:2ebd766dc9aad165adccb21526651b4835c39a575d248cb0530f9920e7aa1f90`。以下為執行者提供的去秘密結果，文件審查者未獨立重跑。原生證據使用 watcher `e24b13c418bad9705f86b589b1ac212145d06a71` 搭配 promotion 前的 `c4fe0f1` Hub，不能轉稱新 runtime 原生驗收。
+
+| 關卡 | 結果 | 範圍 |
+| --- | --- | --- |
+| PostgreSQL VM stage | passed：779 tests、56 skipped、3 warnings，180.82 秒 | Skip 不算通過 |
+| Windows focused checks | passed：104 tests | 限定來源檢查，不是完整候選 CI |
+| Promotion | passed：427 checks，22.332 秒 | 僅此版本／環境 |
+| 公開 bootstrap | passed：六個 URL HTTP 200，hash 與 Git blob 相符 | 檔案完整性，不代表所有客戶端安裝 |
+| Claude idle 自動 exchange | passed：約 16.646 秒 | 精確 activation、idle listener、人類瀏覽器訊息；ToolSearch＋native chat_read/chat_reply，無額外 Claude prompt |
+| Claude pause/resume | 本次序列 passed | 人類訊息 paused 期間未獲回覆；resume 後約 6.808 秒 native read/reply |
+| Claude controlled app outage | 本次序列 passed | App 約停止 12 秒；watcher reconnecting→idle，保留同 binding/expiry；下一人類訊息約 6.119 秒獲 native reply |
+| Claude 三輪 budget | 本次觀察 passed | 3/3 exhausted 後，新人類訊息至少 37 秒沒有第四輪 |
+| 明確 disconnect | passed | Owned watcher 停止、無殘留 owned Python watcher 或全域設定變更；budget 已耗盡，未獨立驗收 STOP-case |
+| 新 runtime Chrome logout/deep-link/login | passed | 保留選定專案與對話，不代表所有 GUI |
+| GUI 語言切換 | pending / not_run | HTTP 語系檢查仍是先前獨立關卡 |
+| ChatGPT event discovery | passed | Tunnel 復原、plugin refreshed、新 notification schema/message.created 可見；新 Work identity passed |
+| ChatGPT 原生訂閱／idle 自動動作 | not_run，未建立 subscription | 模型回報無法訂閱，根因未明；缺少 deferred tool 名稱不證明平台功能不存在，events/subscribe 是協定方法 |
+
+ChatGPT 需觀察真正 subscription request、callback verification／保存 subscription、webhook 2xx 與 native action，參閱[官方 MCP Events testing](https://developers.openai.com/plugins/build/mcp-events#test-in-chatgpt)。Discovery 與 prompted identity/read/write 不能替代。
+
+Source/automatic expiry、完整 crash/restart、parent/orphan、load、revocation 仍待驗收。觀察的 fresh join 未見舊歷史重播，其他 cursor/rejoin 案例未驗證。下方 OAuth 過期、Chrome 離線與 stale metadata 皆屬當時 snapshot，僅在上述明確範圍內被新證據更新。不公開私人 ID、訊息、host、證據路徑或截圖。
+
+
 ## 最新已部署候選版：`c4fe0f1`
 
 候選來源：`c4fe0f1ecedbe186cc4b80f195e47dc606fe9470`。Promotion 於 **2026-10-03T09:45:32Z** 完成。結果僅對所述版本／環境有效，不代表所有客戶端均已驗收。部署／HTTP 結果由執行者提供；本輪文件更新另外核對 CI 總數與原生回條的去秘密欄位。不公開私人 ID、憑證、主機地址或證據路徑。
@@ -31,7 +57,7 @@
 | `ab1f20a` 限定 scope 的 `skills.max_context_tokens=1` 實驗 | 59,287 | 49,024 | 410 |
 | 最終候選版原生交換 | 59,520 | 51,584 | 467 |
 
-每列只有一個已觀測回合，不是受控 benchmark 或保證節省。限定 skills override 後觀測 input 較低，但小樣本不足以證明因果、帳單節省或低 token 最佳化全面完成。本次檢查的 inbox 僅 126 bytes，不是此交換的大成本原因；新增聊天限定 identity projection 用來限制未來無關任務 inbox 膨脹。成本調查仍繼續。
+各列為已報告的累計 session/tool-exchange counters，不代表單一 prompt 或帳單用量，也不是受控 benchmark 或保證節省。限定 skills override 後觀測 input 較低，但小樣本不足以證明因果、帳單節省或低 token 最佳化全面完成。本次檢查的 inbox 僅 126 bytes，不是此交換的大成本原因；新增聊天限定 identity projection 用來限制未來無關任務 inbox 膨脹。成本調查仍繼續。
 
 複製安裝指引安全修正有來源 scoped 驗收：28 tests passed、兩項既有 warnings，包含英／繁、兩用戶端與含 `;`／`$()` worker 值的真 PowerShell parser。貼上完整指引只下載／驗 hash／開啟審閱；安裝命令保持註解，審閱後才明確選取執行。Fresh HTTP 面板檢查證明部署後的呈現，parser 檢查涵蓋產生命令的安全性；兩者均不取代 GUI 點擊或雲端自動驗收。
 
