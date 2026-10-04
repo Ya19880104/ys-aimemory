@@ -65,3 +65,13 @@ Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保�
 私人 Windows 命令 probe 重現原 `cmd /c` 引號失敗（exit 1）；修正外層引號後 exit 0。協調者約臺北時間 12:37 僅更新自有 global／workspace hook 命令，並保留 cleanup 回條。此時仍未觀察到真正原生 Stop hook 執行，probe 不證明自動 Hub 喚醒。
 
 新的短版 cloud task 約 12:33 啟用，模型 GPT 6.1 Sol／Light；12:36:33 留下新合成管理者訊息。此檢查點的原生讀取／回覆結果仍 pending。前述 delivery 次數是歷史觀察，不是此 task 的最終結果。
+
+## 本輪最後檢查點 — NOT PASSED
+
+新的乾淨 cloud 對話身分驗證通過，但訂閱仍卡在未讀的舊 batch。該 batch 派送三次，完整讀取與回覆仍無，processed cursor 未前進，因此新管理者 marker 未建立新的自動原生讀取／回覆。Task metadata 顯示某次執行比 first lease expiry 晚約六秒，這只是相關，不證明根因或該次執行處理哪個事件。
+
+之後明確手動 negative control 刻意以不存在的 notification ID 呼叫 `read_delta`；UI 回傳 `-32602`，安全診斷記錄 `notification_unknown`。這是手動測試，不是自動 task 用錯 ID 的證據。只觀察到此診斷呼叫；沒有成功讀取／回覆 log，也不證明 provider 完全未執行。
+
+本輪 continuation 為 **NOT PASSED**，不是 cloud 生命週期驗收完成。協調者約臺北時間 12:45 開始停止 task；此檢查點的 unsubscribe 確認及私人 runtime 停止仍 **PENDING**。歷史單事件 PASS 保留。
+
+Gemini 仍待使用者原生工具核准；私人 Windows observer 引號修正通過離線命令 probe，但真正原生 Stop hook 執行仍 **NOT RUN**。不宣稱 Gemini 自動 Hub 驗收、持續或公開接收器。本文件更新未改 schema、lease 或 recovery semantics。

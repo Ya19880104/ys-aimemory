@@ -65,3 +65,13 @@ Gemini Antigravity's earlier prompted native identity/read/reply PASS remains va
 A private Windows command probe reproduced hook invocation failure with the existing `cmd /c` quoting (exit 1); corrected outer quoting returned exit 0. The coordinator applied the corrected commands only to its owned global/workspace hooks and preserved cleanup receipts at about 12:37 Asia/Taipei. No actual native Stop-hook invocation had yet been observed; the probe does not prove automatic Hub wake.
 
 A fresh short cloud task became active at about 12:33 with GPT 6.1 Sol / Light. A new synthetic human message was posted at 12:36:33; its native read/reply result remained pending at this checkpoint. Earlier delivery counts above are historical observations, not this task's final outcome.
+
+## Final continuation checkpoint — NOT PASSED
+
+The new clean cloud conversation passed identity, but its subscription remained behind an unread older batch. That batch was dispatched in three attempts; full read and reply stayed absent and the processed cursor did not advance. The fresh human marker therefore did not establish a new automatic native read/reply. Task metadata showed a run about six seconds after the first lease expiry; this correlation does not establish the cause or identify which event the run processed.
+
+A later explicit manual negative control deliberately supplied an unknown notification ID to `read_delta`. The UI returned `-32602`, and the privacy-safe diagnostic logged `notification_unknown`. This was a manual test, not evidence that the automatic task used the wrong ID. Only that diagnostic call was observed; absence of successful read/reply logs does not prove the provider performed no execution.
+
+This continuation is **NOT PASSED**, not a completed cloud lifecycle acceptance. At approximately 12:45 Asia/Taipei the coordinator began stopping the task; confirmed unsubscribe and private-runtime stop are **PENDING** at this checkpoint. Historical single-event PASS remains unchanged.
+
+Gemini still awaits the user's native tool approval. Corrected private Windows observer quoting passed an offline command probe, but genuine native Stop-hook invocation remains **NOT RUN**. No automatic Gemini Hub acceptance or continuous/public receiver is claimed. All schema, lease and recovery semantics remain unchanged by this documentation update.
