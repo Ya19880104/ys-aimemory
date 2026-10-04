@@ -499,6 +499,86 @@ def test_protocol_success_envelopes_and_callback_diagnostic_are_bounded(pilot, c
     assert 'private-callback' not in diagnostic and 'do-not-log' not in diagnostic
 
 
+@pytest.mark.parametrize('message,category', [
+    ('Notification lease expired', 'notification_expired'),
+    ('Notification lease was superseded', 'notification_superseded'),
+    ('Subscription is not active; old notifications cannot write', 'subscription_inactive')])
+def test_rpc_failure_diagnostic_categories_and_fingerprint_are_private(pilot, capsys, monkeypatch, message, category):
+    def failed(*args):
+        raise cloud.GatewayError(message, -32001)
+    monkeypatch.setattr(pilot.gateway, 'call', failed)
+    identifier = 'synthetic-private-notification'
+    result = rpc(pilot.gateway, 'tools/call', {'name': 'read_delta', 'arguments': {
+        'notification_id': identifier, 'body': 'synthetic-private-body', 'token': SECRET, 'url': URL}})
+    log = capsys.readouterr().err
+    record = json.loads(log)
+    assert result['error']['code'] == -32001
+    assert record == {'event': 'gateway_request_error', 'timestamp': cloud.iso(pilot.now[0]),
+                      'method': 'tools/call', 'tool': 'read_delta', 'error_code': category,
+                      'notification_fingerprint': hashlib.sha256(identifier.encode()).hexdigest()[:16]}
+    assert all(value not in log for value in (identifier, 'synthetic-private-body', SECRET, URL))
+    assert len(log) < 512
+
+
+def test_untrusted_method_tool_exception_and_id_are_never_logged(pilot, capsys, monkeypatch):
+    marker = 'synthetic-secret-do-not-log'
+    result = pilot.gateway.dispatch({'jsonrpc': '2.0', 'id': marker, 'method': marker,
+                                     'params': {'name': marker, 'arguments': {'body': marker}}})
+    assert result['error']['code'] == -32601
+    log = capsys.readouterr().err
+    assert marker not in log and json.loads(log)['method'] == 'unknown'
+    def failed(*args):
+        raise RuntimeError(marker)
+    monkeypatch.setattr(pilot.gateway, 'call', failed)
+    result = rpc(pilot.gateway, 'tools/call', {'name': marker, 'arguments': {'notification_id': marker * 1000}})
+    log = capsys.readouterr().err
+    assert result['error']['code'] == -32603 and marker not in log
+    assert json.loads(log)['tool'] == 'unknown'
+    assert 'notification_fingerprint' not in json.loads(log)
+
+
+@pytest.mark.parametrize('tool,status', [('read_delta', 'partial_tool_read'),
+                                      ('read_delta', 'tool_read'), ('post_message', 'replied')])
+def test_success_diagnostics_preserve_wire_and_only_report_receipt_milestone(pilot, capsys, monkeypatch, tool, status):
+    value = {'body': 'synthetic-private-reply', 'delivery_receipt': {'status': status}}
+    monkeypatch.setattr(pilot.gateway, 'call', lambda *args: value)
+    result = rpc(pilot.gateway, 'tools/call', {'name': tool, 'arguments': {'body': SECRET}})
+    log = capsys.readouterr().err
+    assert result['result']['structuredContent'] == value
+    record = json.loads(log)
+    assert record['event'] == 'gateway_tool_completed' and record['receipt_status'] == status
+    assert SECRET not in log and value['body'] not in log
+
+
+def test_diagnostic_write_failure_never_retries_or_changes_committed_post(pilot, monkeypatch):
+    class BrokenStderr:
+        def write(self, text): raise OSError('synthetic-output-unavailable')
+    calls = []
+    monkeypatch.setattr(cloud.sys, 'stderr', BrokenStderr())
+    monkeypatch.setattr(pilot.gateway, 'call', lambda *args: calls.append(args) or {'delivery_receipt': {'status': 'replied'}})
+    result = rpc(pilot.gateway, 'tools/call', {'name': 'post_message', 'arguments': {'body': 'fixture'}})
+    assert result['result']['isError'] is False and len(calls) == 1
+
+
+def test_real_expired_notification_logs_rejection_without_read_or_cursor_change(pilot, capsys):
+    pilot.config['subscription_ttl'] = 600
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add(body='synthetic-private-source')
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    binding = active_binding(pilot)
+    before = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
+    pilot.now[0] += 301
+    result = rpc(pilot.gateway, 'tools/call', {'name': 'read_delta',
+                 'arguments': {'notification_id': identifier}})
+    record = json.loads(capsys.readouterr().err)
+    assert record['error_code'] == 'notification_expired'
+    assert result['error']['code'] == -32001
+    after = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
+    assert after['processed_sequence'] == before['processed_sequence']
+    assert after['latest_delivery']['read_at'] is None
+
+
 def test_native_batch_pages_full_escaped_message_receipts_and_stable_reply(pilot):
     pilot.gateway.subscribe(subscription())
     huge = 'boundary-' + chr(1) * 7980 + '-END'

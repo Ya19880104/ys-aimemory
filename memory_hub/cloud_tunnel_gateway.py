@@ -707,6 +707,34 @@ class Gateway:
                     elif terminal:
                         self.db.execute("UPDATE subscriptions SET status='callback_failed' WHERE id=?", (sub['id'],))
 
+    def _diagnostic(self, request, error_code=None, receipt_status=None):
+        """Bounded stderr metadata only; never echo caller or exception text."""
+        try:
+            methods = {'server/discover', 'tools/list', 'tools/call', 'events/list',
+                       'events/subscribe', 'events/unsubscribe', 'ping'}
+            method = request.get('method') if isinstance(request, dict) else None
+            method = method if isinstance(method, str) and method in methods else 'unknown'
+            params = request.get('params') if isinstance(request, dict) else None
+            params = params if isinstance(params, dict) else {}
+            tool = params.get('name') if method == 'tools/call' else None
+            tool = tool if isinstance(tool, str) and tool in {'identity', 'read_delta', 'post_message'} else 'unknown'
+            arguments = params.get('arguments')
+            notification = arguments.get('notification_id') if isinstance(arguments, dict) else None
+            record = {'event': 'gateway_request_error' if error_code else 'gateway_tool_completed',
+                      'timestamp': iso(self.clock()), 'method': method}
+            if method == 'tools/call':
+                record['tool'] = tool
+                if isinstance(notification, str) and 0 < len(notification) <= 128:
+                    record['notification_fingerprint'] = hashlib.sha256(notification.encode('utf-8')).hexdigest()[:16]
+            if error_code:
+                record['error_code'] = error_code
+            if receipt_status in {'partial_tool_read', 'tool_read', 'replied'}:
+                record['receipt_status'] = receipt_status
+            sys.stderr.write(compact(record).decode() + '\n')
+        except Exception:
+            # Diagnostic failure must never change a read/post's wire outcome.
+            pass
+
     def dispatch(self, request):
         identifier = request.get('id') if isinstance(request, dict) else None
         try:
@@ -726,6 +754,9 @@ class Gateway:
             elif method == 'tools/call':
                 fields(params, {'name', 'arguments', '_meta'}, {'name'})
                 value = self.call(params['name'], params.get('arguments', {}))
+                receipt = value.get('delivery_receipt') if isinstance(value, dict) else None
+                if params['name'] in ('read_delta', 'post_message'):
+                    self._diagnostic(request, receipt_status=receipt.get('status') if isinstance(receipt, dict) else None)
                 result = {'content': [{'type': 'text', 'text': compact(value).decode()}], 'structuredContent': value, 'isError': False}
             elif method == 'events/list':
                 fields(params, {'cursor', '_meta'})
@@ -740,6 +771,17 @@ class Gateway:
                 raise GatewayError('Method not supported', -32601)
             return None if 'id' not in request else {'jsonrpc': '2.0', 'id': identifier, 'result': {'resultType': 'complete', **result}}
         except GatewayError as exc:
+            categories = {
+                'Notification lease expired': 'notification_expired',
+                'Notification lease was superseded': 'notification_superseded',
+                'Subscription is not active; old notifications cannot write': 'subscription_inactive',
+                'Unknown notification; use its exact event notification_id': 'notification_unknown',
+                'Read cursor must stay inside this notification batch': 'read_cursor_outside_batch',
+                'Gateway stopped by the local operator': 'gateway_stopped',
+                'Hub request unavailable': 'hub_unavailable',
+                'Room automatic chat is paused': 'room_paused',
+            }
+            self._diagnostic(request, categories.get(str(exc), 'gateway_rejected'))
             if isinstance(request, dict) and 'id' not in request:
                 return None
             error = {'code': exc.code, 'message': str(exc)}
@@ -747,6 +789,7 @@ class Gateway:
                 error['data'] = {'reason': exc.reason}
             return {'jsonrpc': '2.0', 'id': identifier, 'error': error}
         except Exception:
+            self._diagnostic(request, 'internal_error')
             if isinstance(request, dict) and 'id' not in request:
                 return None
             return {'jsonrpc': '2.0', 'id': identifier, 'error': {'code': -32603, 'message': 'Gateway request failed'}}
