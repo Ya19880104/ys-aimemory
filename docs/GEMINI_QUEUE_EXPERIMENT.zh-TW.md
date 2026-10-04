@@ -66,8 +66,12 @@ attempt1 回執；兩方均到達 server 三回合預算後停止。
 累積預算沒有重置。此結果只適用該受控 CLI，不證明任意 Codex Desktop 對話
 自動喚醒，也不代表 in-flight restart 已通過。
 
-本快照中 Gemini 官方 host 接受一次自動通知，但原生 `chat_read` 核准提示仍待
-使用者處理，delivery 沒有 read／reply 回執。Gemini 持續收訊與重啟、完整三方
+Gemini 官方 host 接受一次自動通知，但原生 `chat_read` 核准提示等待使用者處理
+超過 delivery lease。Receiver 在 **2026-10-04 09:07:32 UTC** 記錄
+`unresolved`；delivery lease 於 09:07:29 UTC 到期，早於 binding 的
+09:13:21 UTC 到期。Delivery 沒有 read／reply 回執；journal 保留唯一 returned
+attempt，沒有自動重送。Native acceptance 為 `not_run`；這是保留的未完成 run，
+不是 delivery 完成或一般原始碼失敗。Gemini 持續收訊與重啟、完整三方
 驗收、斷線恢復、artifact 及正式 task handoff 仍未驗證。CLI returncode0 不等於
 原生驗收 passed。
 

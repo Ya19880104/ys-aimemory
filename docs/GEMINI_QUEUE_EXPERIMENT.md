@@ -90,8 +90,13 @@ that controlled CLI path; it does not establish automatic wake-up in an arbitrar
 Codex Desktop conversation or an in-flight restart.
 
 Gemini's official host accepted one automatic notification, but its native
-`chat_read` permission prompt was still awaiting user approval in this snapshot.
-Its delivery had no read/reply receipt. Gemini continuous reception and restart,
+`chat_read` permission prompt awaited user approval beyond the delivery lease.
+The receiver recorded `unresolved` at **2026-10-04 09:07:32 UTC**; the delivery
+lease expired at 09:07:29 UTC, before the binding's 09:13:21 UTC expiry. Its
+delivery had no read/reply receipt, and the journal retained the single returned
+attempt without an automatic resend. Native acceptance was `not_run`; this is a
+preserved incomplete run, not a completed delivery or a general source failure.
+Gemini continuous reception and restart,
 full three-party acceptance, network recovery, artifacts and formal task handoff
 remain unverified. CLI return code zero is not a native acceptance result.
 
