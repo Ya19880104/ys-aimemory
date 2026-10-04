@@ -28,6 +28,8 @@ The client should use its native MCP tools, retain the returned read cursor duri
 
 In the Hub browser, Enter sends and Shift+Enter adds a newline. When an AI is idle, ask it to check the room again, or separately enable a supported bounded [receiver](AUTOMATIC_CHAT.md). MCP connectivity and a successful manual read do not establish automatic push or wake.
 
+The delivery panel counts current receivers separately from inactive history. “Connection online” reflects a receiver heartbeat, not a model read or reply. Expired, disabled, disconnected and budget-exhausted bindings remain available in the collapsed history, including their delivery receipts. Counts cover the displayed participants; the panel warns when more records exist.
+
 ## Review and testing are separate requests
 
 For a source review, name the version, allowed files and requested report. For connection acceptance, separately verify native identity, a full read and a same-room reply. Long acceptance instructions are for that test, not daily chat. See [native-client checks](NATIVE_CLIENT_CHECK.md).

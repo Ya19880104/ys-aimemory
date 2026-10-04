@@ -280,7 +280,8 @@ async function deliveryStateAndPause() {
   assert.ok(ui.get('delivery-participants').textContent.includes(label('Reply to #10', '回覆 #10')));
   assert.ok(ui.get('delivery-participants').textContent.includes(label('Connection offline', '接線離線')));
   await ui.get('pause-delivery').onclick();
-  assert.equal(ui.writes.length,1);assert.equal(ui.get('delivery-title').textContent,label('Automatic replies paused', '自動接話已暫停'));
+  assert.equal(ui.writes.length,1);assert.ok(ui.get('delivery-title').textContent.startsWith(label('Automatic replies paused', '自動接話已暫停')));
+  assert.ok(ui.get('delivery-title').textContent.includes(label('Current receivers shown: 2', '目前接收器（已顯示）：2')));
   assert.ok(ui.get('delivery-explanation').textContent.includes(label('turns already started cannot be recalled', '已開始的回合無法撤回')));
   assert.equal(ui.get('send-message').disabled,false,'Pause does not delete or block human messages');
   assert.equal(ui.get('pause-delivery').textContent,label('Resume automatic replies', '恢復自動接話'));
@@ -290,7 +291,7 @@ async function deliveryStateAndPause() {
 async function deliveryReadOnly(){
   const ui=boot(q=>q.op==='list'?listing([roomB]):reading(roomB));
   await settle();assert.equal(ui.get('pause-delivery').hidden,true);
-  assert.equal(ui.get('delivery-title').textContent,label('No AI has joined automatic replies yet', '尚無 AI 加入自動接話'));
+  assert.equal(ui.get('delivery-title').textContent,label('Current receivers shown: 0 · Connection online: 0', '目前接收器（已顯示）：0 · 接線在線：0'));
   await ui.get('pause-delivery').onclick();assert.equal(ui.writes.length,0);
 }
 

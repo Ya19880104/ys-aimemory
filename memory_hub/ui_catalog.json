@@ -3438,5 +3438,21 @@
   "ui_c10d00000003": {
     "en": "The Hub has reserved these messages for this connection. This does not show that a notification was accepted or that the AI has read them.",
     "zh-TW": "Hub 已為這條接線保留這批訊息。這不代表通知已被接受，也不代表 AI 已讀取。"
+  },
+  "ui_c10d00000004": {
+    "en": "Current receivers shown: ",
+    "zh-TW": "目前接收器（已顯示）："
+  },
+  "ui_c10d00000005": {
+    "en": "Connection online: ",
+    "zh-TW": "接線在線："
+  },
+  "ui_c10d00000006": {
+    "en": "Inactive receiver history: ",
+    "zh-TW": "非作用中的接收器紀錄："
+  },
+  "ui_c10d00000007": {
+    "en": "Current receivers have an enabled, unexpired binding and remaining budget, or a turn in progress. Connection online reflects the receiver heartbeat, not a model read or reply. Expand inactive history for expired, disabled, disconnected or exhausted receivers.",
+    "zh-TW": "目前接收器的綁定已啟用、尚未到期且仍有額度，或正在處理一輪。接線在線只表示接收器的心跳，不代表模型已讀或回覆。展開非作用中紀錄可查看已到期、停用、中斷或額度用盡的接收器。"
   }
 }
