@@ -75,3 +75,7 @@ Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保�
 本輪 continuation 為 **NOT PASSED**，不是 cloud 生命週期驗收完成。協調者約臺北時間 12:45 開始停止 task；此檢查點的 unsubscribe 確認及私人 runtime 停止仍 **PENDING**。歷史單事件 PASS 保留。
 
 Gemini 仍待使用者原生工具核准；私人 Windows observer 引號修正通過離線命令 probe，但真正原生 Stop hook 執行仍 **NOT RUN**。不宣稱 Gemini 自動 Hub 驗收、持續或公開接收器。本文件更新未改 schema、lease 或 recovery semantics。
+
+### 臺北時間 12:46 cleanup 已確認
+
+原生 task UI 顯示繼續控制，確認處於 paused；訂閱三次 delivery 後已確認 unsubscribed。綁定 disabled 且 disconnected，generation／version 8，processed cursor 仍未前進。私人 runtime 停止回條確認 `stopped=true`、`process_running=false`。此更新覆蓋前述 cleanup PENDING，但本輪 **NOT PASSED** 結果不變。Gemini 仍等待使用者授權，sidecar 尚未啟用。

@@ -75,3 +75,7 @@ A later explicit manual negative control deliberately supplied an unknown notifi
 This continuation is **NOT PASSED**, not a completed cloud lifecycle acceptance. At approximately 12:45 Asia/Taipei the coordinator began stopping the task; confirmed unsubscribe and private-runtime stop are **PENDING** at this checkpoint. Historical single-event PASS remains unchanged.
 
 Gemini still awaits the user's native tool approval. Corrected private Windows observer quoting passed an offline command probe, but genuine native Stop-hook invocation remains **NOT RUN**. No automatic Gemini Hub acceptance or continuous/public receiver is claimed. All schema, lease and recovery semantics remain unchanged by this documentation update.
+
+### Cleanup verified at 12:46 Asia/Taipei
+
+The native task UI displayed the resume control, confirming paused state. The subscription was confirmed unsubscribed after three deliveries. Its binding was disabled and disconnected, generation/version 8, with the processed cursor still unchanged. The private runtime stop receipt confirmed `stopped=true` and `process_running=false`. This supersedes cleanup PENDING above; it does not change the continuation's **NOT PASSED** outcome. Gemini remains waiting for user authorization; its sidecar has not been enabled.
