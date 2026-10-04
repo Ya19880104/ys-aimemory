@@ -1,5 +1,14 @@
 # Experimental Gemini native host queue
 
+## Current bounded acceptance — 2026-10-04 evening
+
+On live source `7652f1d7f04ef4c00e8860217a0f732f98dcb58e`, Gemini passed two consecutive fresh Hub messages B and C using actual native `chat_read` and `chat_reply`: human sequence 55 → reply 56, then human 57 → reply 58, each on attempt 1. There was no manual model prompt between either website send and response. This is bounded continuous native delivery evidence, separate from the earlier queue experiment and historical snapshot below. See [validation record](VALIDATION_2026-10-04.md) for source and acceptance boundaries.
+
+Same-binding idle receiver restart **failed / incomplete**. Changing a filesystem `enabled` setting did not live-reload the host plugin; after the owned receiver exited, no replacement appeared before expiry. The official host lifecycle control still requires live verification. Treat the restart steps below as an unaccepted test protocol, not a proven restart procedure; no one-command restart is established.
+
+The expired permission-wait fixture and the later bounded fixture are closed. STOP and disabled binding state override conversational statements such as “waiting for the next message”: that wording does not prove an online receiver or a valid lease. A later test requires a new explicit, scoped run and verified host startup, not replay of the expired fixture, clearing STOP or extending its expiry. Preserve old journals and receipts. Formal Gemini task/source/artifact/attachment handoff and simultaneous three-client acceptance remain **not_run**.
+
+
 `memory_hub.client_antigravity_receiver` includes an explicitly selected
 `official_host_queue` admission mode for a dedicated, bounded Antigravity test
 conversation. Ordinary installers and default native-idle admission are unchanged.
@@ -7,8 +16,9 @@ conversation. Ordinary installers and default native-idle admission are unchange
 In one native experiment, the official sidecar waited 200 ms after the first
 command returned before submitting the second synthetic message. The UI showed the first complete response followed by the second
 system notification and its response. This is evidence for that observed native
-queue sequence only. Continuous Hub chat, receiver restart, general busy-session
-safety, and three-party acceptance are not certified by this experiment.
+queue sequence only. That early experiment did not certify continuous Hub chat, receiver restart,
+general busy-session safety or three-party acceptance; later bounded continuous
+delivery evidence is recorded above.
 
 The installed official CLI provides `get-conversation-metadata` and
 `send-message`. Queue admission queries metadata for the exact configured native
@@ -52,7 +62,9 @@ explicit recovery. A transport return code is not native completion or idle.
 1. Record the exact binding, generation, expiry, latest delivery and journal.
 2. For an idle-process crash test, stop only the owned receiver process without
    disconnecting the Hub binding or changing STOP/journal/admission files.
-3. Start the same reviewed official sidecar with the same private state directory.
+3. Using the supported official host lifecycle control, start the same reviewed
+   sidecar with the same private state directory and verify the replacement process.
+   Editing filesystem configuration alone does not establish host reload.
    Never clear an existing STOP file to revive an old run.
 4. Verify status reconciliation precedes claim. If a send was uncertain, the
    receiver waits for its exact replied receipt or returns `unresolved`; it must
@@ -69,7 +81,7 @@ the documented restart protocol has not yet passed a native test.
 Official references: [Sidecars](https://antigravity.google/docs/sidecars),
 [Lifecycle hooks](https://antigravity.google/docs/hooks).
 
-## Controlled acceptance snapshot — 2026-10-04
+## Historical controlled acceptance snapshot — earlier 2026-10-04 run
 
 The installed receiver source was `523c0c3be59860e3373475d69042962a626d4c09`.
 The subsequent documentation HEAD was
@@ -96,9 +108,9 @@ lease expired at 09:07:29 UTC, before the binding's 09:13:21 UTC expiry. Its
 delivery had no read/reply receipt, and the journal retained the single returned
 attempt without an automatic resend. Native acceptance was `not_run`; this is a
 preserved incomplete run, not a completed delivery or a general source failure.
-Gemini continuous reception and restart,
-full three-party acceptance, network recovery, artifacts and formal task handoff
-remain unverified. CLI return code zero is not a native acceptance result.
+At this historical cutoff, Gemini continuous reception and restart, full
+three-party acceptance, network recovery, artifacts and formal task handoff
+remained unverified. Later bounded continuous delivery is recorded above. CLI return code zero is not a native acceptance result.
 
 For a first test, join only the intended dedicated conversation and review the
 native client's conversation-only permissions before starting the bounded

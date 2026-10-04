@@ -1,5 +1,14 @@
 # Gemini 原生 host queue 實驗
 
+## 最新限定驗收 — 2026-10-04 晚間
+
+Live source `7652f1d7f04ef4c00e8860217a0f732f98dcb58e` 的 Gemini 已透過實際 native `chat_read` 與 `chat_reply` 通過兩則連續 fresh Hub 訊息 B、C：human sequence 55 → reply 56，再 human 57 → reply 58，均為 attempt 1。網站送出與兩次回覆之間沒有手動 model prompt。這是限定連續原生交付證據，與較早 queue 實驗及下方歷史快照分開；來源／驗收界線見[驗證記錄](VALIDATION_2026-10-04.zh-TW.md)。
+
+同 binding idle receiver restart **failed／incomplete**。更改檔案中的 `enabled` 設定未讓 host plugin live reload；owned receiver 退出後，到期前未出現替代程序。官方 host lifecycle 控制仍待 live 驗證。下方重啟步驟是尚未通過的測試 protocol，不是已驗證的重啟教學；尚無確立的一鍵重啟方式。
+
+到期的 permission-wait fixture 與後續限定 fixture 均已關閉。STOP／binding disabled 狀態優先於「等待下一則訊息」等對話文字；這類文字不證明 receiver 在線或 lease 有效。後續測試需要新的明確授權與限定 run，並驗證 host 啟動，不能重播過期 fixture、清除 STOP 或延長舊 expiry；保留舊 journal／收據。Gemini 正式 task／source／artifact／attachment 交接及同時三客戶端驗收仍為 **not_run**。
+
+
 `memory_hub.client_antigravity_receiver` 提供須明確選擇的
 `official_host_queue` admission mode，僅供專用、有限預算的 Antigravity 測試
 對話。一般 installer 與預設原生 idle admission 維持既有行為。
@@ -7,8 +16,8 @@
 一次原生實驗使用官方 sidecar，在第一個命令返回後等待 200 ms，再提交第二則
 合成訊息。UI 顯示第一則
 完整回覆，再顯示第二則 system notification 與回覆。這只證明當次觀察到的
-原生 queue 順序；尚未證明持續 Hub 聊天、receiver 重啟、一般忙碌工作階段安全
-或三方验收。
+原生 queue 順序；當時尚未證明持續 Hub 聊天、receiver 重啟、一般忙碌工作階段安全
+或三方驗收。後續限定連續交付證據另記於上方。
 
 已安裝官方 CLI 提供 `get-conversation-metadata` 與 `send-message`。Queue
 admission 在每次通知前，向 exact native conversation 查 metadata，核對本機
@@ -36,7 +45,8 @@ recovery；transport returncode 不是原生完成或 idle。
 1. 記錄 exact binding、generation、expiry、latest delivery 與 journal。
 2. Idle process crash 測試只停止 owned receiver process，不 disconnect Hub binding，
    不修改 STOP、journal 或 admission。
-3. 用同一受審官方 sidecar、同一私有 state directory 重啟；不可清除既有 STOP
+3. 透過支援的官方 host lifecycle 控制，以同一受審 sidecar、同一私有 state directory
+   啟動，確認替代程序確實出現；只修改檔案設定不證明 host reload。不可清除既有 STOP
    復活舊 run。
 4. 核對 status reconciliation 先於 claim。不確定 send 必須等 exact replied receipt
    或回 `unresolved`，不得重送同 delivery。
@@ -50,7 +60,7 @@ Windows Python 3.12 focused source suite 記錄 16 passed、兩個 dependency wa
 官方參考：[Sidecars](https://antigravity.google/docs/sidecars)、
 [Lifecycle hooks](https://antigravity.google/docs/hooks)。
 
-## 受控驗收快照 — 2026-10-04
+## 歷史受控驗收快照 — 2026-10-04 較早一輪
 
 已安裝 receiver 來源為 `523c0c3be59860e3373475d69042962a626d4c09`；後續文件
 HEAD 為 `11458de0b108b5e458408a15007480cccdaccc6d`。Server 維持
@@ -71,8 +81,8 @@ Gemini 官方 host 接受一次自動通知，但原生 `chat_read` 核准提示
 `unresolved`；delivery lease 於 09:07:29 UTC 到期，早於 binding 的
 09:13:21 UTC 到期。Delivery 沒有 read／reply 回執；journal 保留唯一 returned
 attempt，沒有自動重送。Native acceptance 為 `not_run`；這是保留的未完成 run，
-不是 delivery 完成或一般原始碼失敗。Gemini 持續收訊與重啟、完整三方
-驗收、斷線恢復、artifact 及正式 task handoff 仍未驗證。CLI returncode0 不等於
+不是 delivery 完成或一般原始碼失敗。在該歷史截點，Gemini 持續收訊與重啟、完整三方
+驗收、斷線恢復、artifact 及正式 task handoff 仍未驗證；後續限定連續交付另記於上方。CLI returncode0 不等於
 原生驗收 passed。
 
 首次測試只加入指定專用對話，先透過原生客戶端檢查僅限該對話的工具權限，再
