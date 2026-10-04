@@ -73,7 +73,7 @@ py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-
 
 本 repository 安裝器的子程序失敗會顯示 `installer_stage=venv|dependencies|adapter_verification`、`exit_code`（或 `not_started`），以及固定 `reason`：`tls`、`network`、`no_distribution`、`access_denied` 或 `unknown`。分類只表示符合的錯誤文字，不是已確認根因；不輸出擷取的子程序內容、套件 URL 或命令參數。失敗會停止，不自動重試；這些階段都在寫入 worker 密文與提交 `.mcp.json` 前。
 
-`venv` 核對 Python 3.12；`dependencies` 核對套件供應、網路及檔案權限；`adapter_verification` 核對可信 CA 與 adapter。`unknown` 需在本機調查，不分享可能含秘密的原始紀錄。固定 bootstrap 仍可能下載只回報 `CalledProcessError` 的舊安裝器；本次診斷修改不更新其 pins，也不證明先前失敗原因。
+`venv` 核對 Python 3.12；`dependencies` 核對套件供應、網路及檔案權限；`adapter_verification` 核對可信 CA 與 adapter。`unknown` 需在本機調查，不分享可能含秘密的原始紀錄。較早的固定 bootstrap 可能下載只回報 `CalledProcessError` 的舊安裝器；目前 bootstrap 已固定至審查過的診斷來源，但不會更新既有安裝，也不證明先前失敗原因。
 
 ## Token 成本與此次範圍
 
