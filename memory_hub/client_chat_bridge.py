@@ -53,6 +53,24 @@ def result(value):
         content=[types.TextContent(type='text', text=json.dumps(value,ensure_ascii=False))])
 
 
+def chat_status(directory, connection, bridge, *, clock=time.time):
+    try:
+        config = json.loads((directory/'chat-binding.json').read_text(encoding='utf-8'))
+    except FileNotFoundError:
+        # No configured binding is a normal inactive state, not a transport error.
+        # Catch only absence: malformed/unreadable configuration remains unavailable.
+        raise ScopeError('chat_not_active') from None
+    with httpx.Client(base_url=connection['endpoint'].removesuffix('/mcp'),
+        verify=bridge.verified_context(connection),trust_env=False,follow_redirects=False,timeout=10,
+        headers={'Authorization':'Bearer '+os.environ['YS_AIMEMORY_TOKEN']}) as client:
+        response = client.post('/v1/tools/get_worker_inbox',json={'arguments':{'project_id':config['project_id']}})
+        response.raise_for_status()
+        identity = unpack(response.json())
+    return result({'worker_id':identity['worker_id'],'project_id':config['project_id'],
+        'session_id':config['session_id'],'active':bool(config.get('native_session_id')) and
+            clock() < config['expires_at'] and not (directory/'STOP').exists()})
+
+
 class RoomGate:
     def __init__(self, directory, *, clock=time.time):
         self.directory, self.clock = Path(directory), clock
@@ -160,16 +178,7 @@ async def serve(directory):
         async with lock:
             try:
                 if name == 'chat_status' and arguments == {}:
-                    config = json.loads((directory/'chat-binding.json').read_text(encoding='utf-8'))
-                    with httpx.Client(base_url=connection['endpoint'].removesuffix('/mcp'),
-                        verify=bridge.verified_context(connection),trust_env=False,follow_redirects=False,timeout=10,
-                        headers={'Authorization':'Bearer '+os.environ['YS_AIMEMORY_TOKEN']}) as client:
-                        response = client.post('/v1/tools/get_worker_inbox',json={'arguments':{'project_id':config['project_id']}})
-                        response.raise_for_status()
-                        identity = unpack(response.json())
-                    return result({'worker_id':identity['worker_id'],'project_id':config['project_id'],
-                        'session_id':config['session_id'],'active':bool(config.get('native_session_id')) and
-                            time.time() < config['expires_at'] and not (directory/'STOP').exists()})
+                    return chat_status(directory, connection, bridge)
                 async def forward(tool, wire):
                     async with bridge.compact_upstream(connection) as upstream:
                         return await upstream.send_request(types.ClientRequest(types.CallToolRequest(

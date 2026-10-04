@@ -1,8 +1,50 @@
 import asyncio
 import json
 import pytest
-from memory_hub.client_chat_bridge import RoomGate, ScopeError, result
+from memory_hub.client_chat_bridge import RoomGate, ScopeError, result, chat_status
 from mcp import types
+
+
+def test_status_missing_binding_is_inactive_without_network(tmp_path, monkeypatch):
+    monkeypatch.setattr('memory_hub.client_chat_bridge.httpx.Client',
+                        lambda **kwargs: pytest.fail('Missing binding reached transport'))
+    with pytest.raises(ScopeError, match='^chat_not_active$'):
+        chat_status(tmp_path, {}, None)
+    assert not (tmp_path/'chat-binding.json').exists()
+
+
+def test_status_malformed_binding_is_not_reported_as_inactive(tmp_path, monkeypatch):
+    (tmp_path/'chat-binding.json').write_text('{broken')
+    monkeypatch.setattr('memory_hub.client_chat_bridge.httpx.Client',
+                        lambda **kwargs: pytest.fail('Malformed JSON reached transport'))
+    with pytest.raises(json.JSONDecodeError):
+        chat_status(tmp_path, {}, None)
+
+
+@pytest.mark.parametrize('inactive', [False, True])
+def test_status_retains_authenticated_identity_and_active_semantics(joined, monkeypatch, inactive):
+    import httpx
+    from types import SimpleNamespace
+    import memory_hub.client_chat_bridge as module
+    gate,config,_=joined
+    if inactive:
+        config['expires_at']=0
+        (gate.directory/'chat-binding.json').write_text(json.dumps(config))
+    calls=[]
+    def handle(request):
+        calls.append(request)
+        assert request.url.path=='/v1/tools/get_worker_inbox'
+        assert json.loads(request.content)=={'arguments':{'project_id':'p'}}
+        assert request.headers['Authorization']=='Bearer synthetic-status-token'
+        return httpx.Response(200,json={'worker_id':'own'})
+    real_client=httpx.Client
+    monkeypatch.setattr(module.httpx,'Client',lambda **kwargs:real_client(
+        **kwargs,transport=httpx.MockTransport(handle)))
+    monkeypatch.setenv('YS_AIMEMORY_TOKEN','synthetic-status-token')
+    observed=chat_status(gate.directory,{'endpoint':'https://hub.test/mcp'},
+        SimpleNamespace(verified_context=lambda _:True),clock=lambda:100).structuredContent
+    assert observed=={'worker_id':'own','project_id':'p','session_id':'room','active':not inactive}
+    assert len(calls)==1
 
 
 @pytest.fixture
