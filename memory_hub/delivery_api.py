@@ -22,7 +22,7 @@ def install_delivery_api(app, hub, principal_context):
 
     @app.post('/v1/chat/{operation}')
     async def operation(operation: str, request: Request):
-        if operation not in {'join', 'heartbeat', 'claim', 'dispatched', 'pause', 'control', 'disconnect'}:
+        if operation not in {'join', 'heartbeat', 'claim', 'reserve', 'activate', 'dispatched', 'pause', 'control', 'disconnect'}:
             return JSONResponse({'error': 'unknown_delivery_operation'}, status_code=404)
         try:
             payload = await request.json()

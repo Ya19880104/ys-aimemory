@@ -39,7 +39,7 @@
 - 不同請求不能取得該有效租約，只回 `busy`。dispatch／工具讀取之後，即使原請求也回 `busy`，避免程序重啟後再次喚醒；這不等於模型恰好執行一次。
 - 在綁定仍可運作的前提下，請求已完成、過期或被停止操作隔離後回 HTTP 409 `stale_claim`；綁定本身的暫停、停用、封存、到期狀態優先回傳。接收器可另建請求，但新租約仍依正常規則扣次數與回合。`stale_binding` 必須重新明確加入，不能擅自採用另一個原生對話的 generation；同 key 改參數回 `idempotency_conflict`。
 - 只有已授予的 claim 會存入既有 schema-v6 請求表。空閒查詢不新增 claim 紀錄、不增加 MCP discovery／模型上下文。跨續期的歷史紀錄仍會累積，本次有限測試不代表已驗證長期容量或保留策略。
-- **兩欄都省略**時保持舊版契約，回應遺失後仍可能等待 `busy`。先升級 Hub，再安裝新版 Claude／Codex 接收器；私人雲端試驗仍使用其獨立的舊版 claim 路徑。
+- **兩欄都省略**時保持舊版契約，回應遺失後仍可能等待 `busy`。先升級 Hub，再安裝新版 Claude／Codex 接收器；私人雲端 gateway 使用下述排隊 admission。
 
 - 無新訊息：`{status:"idle",delivery:null}`；接線程式自行等候再查，不啟動模型。
 - 暫停、停用、封存、過期、預算耗盡、尚有有效 lease 或三次重試失敗：回傳對應狀態，`delivery:null`。
@@ -85,3 +85,34 @@ Cookie 管理員 UI 直接透過 `hub.delivery.call('status'|'pause'|'control'|'
 v6 新增四張資料表，保留既有共享對話、私訊、任務、記憶與 idempotency 結果。既有未帶 delivery 欄位的 post 保持原本 request hash。升級由已有的資料庫啟動鎖序列化。
 
 舊 v5 程式會拒絕啟動較新的 schema。回退不能只切回 v5 image；應用 v6 相容修正版，或依正式備份程序一致還原應用與資料庫。SQLite 測試不代替 PostgreSQL migration/runtime 驗收。
+
+
+## 雲端排隊 admission（schema v6，無 migration）
+
+Callback `2xx` 只代表收件；ChatGPT 非同步處理，task batching 可增加等待時間。
+參考[官方 MCP Events](https://developers.openai.com/plugins/build/mcp-events)。
+Gateway 先保留不可變批次，首次原生讀取才取得 execution lease。
+
+- `POST /v1/chat/reserve`：`{project_id,binding_id,generation,request_id,queue_seconds:1800}`。
+  request ID 是 32 字元 object ID；queue 有效期 60–3600 秒且不超過 binding 期限。
+  `queued` 回傳 reservation ID、精確 scope/generation、binding/control version、sequence 範圍、
+  message IDs、路由 metadata 與 `queued_until`；不扣 model turn、不建立 execution lease。
+- `POST /v1/chat/activate`：`{project_id,binding_id,generation,reservation_id,lease_seconds:300}`。
+  同一 project transaction 重查權限、room、generation、管理版本、queue 到期、未變更 cursor、
+  無其他 pending delivery 與預算；建立精確 reserved range 並扣一次 turn。後來訊息不加入。
+  相同 activation 重試回同一有效 lease，不延長、不再扣 turn。改參數回 `idempotency_conflict`；
+  過期／隔離 admission 不換租約；重疊 reservation 不能並行 execution。原 `claim` 契約不變。
+
+Reservation／activation 存既有 schema-v6 request table，以 operation、worker 區隔，
+不借用 lease 欄位表示 queue。Pause/unpause、disable/re-enable、disconnect 隔離舊 reservation；
+activate 再查撤銷權限。queue／execution 到期使 cloud subscription terminal，需明確管理恢復，
+不 reset cursor、不偷偷換 notification；有限 queue TTL 不是 provider 啟動保證。
+
+Gateway 在 HTTP 前持久化 reserve request，保存加密 notification/outbox/admission。
+重啟以相同 identity 重試回應不明的 reserve/activate；callback 重試保留 event ID。
+已保存 ACK 重啟不重送；若遠端收件後、本機 ACK 保存前 crash，可能至少一次重送同 ID，
+仍需 provider 去重與冪等寫入。這不代表原生已讀。原生 `read_delta` 必須在 `queued_until` 前
+帶精確 notification ID，首次成功 admission 提供最多 300 秒全文讀取與回覆。
+失敗不得去除 metadata 當人工發文重試。
+
+隔離測試是 source evidence；真 ChatGPT Cloud 持續接收、batching／restart 需另行原生驗收。

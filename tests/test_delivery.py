@@ -459,10 +459,114 @@ def test_rest_auth_schema_status_and_no_mcp_discovery_cost(collaboration, monkey
         assert bad.status_code == 422 and 'do-not-echo' not in bad.text
         tools = client.post('/mcp', headers={**headers, 'Accept': 'application/json, text/event-stream'},
             json={'jsonrpc':'2.0', 'id':1, 'method':'tools/list', 'params':{}}).json()['result']['tools']
-        assert not any(x['name'] in {'join', 'claim', 'heartbeat', 'dispatched'} for x in tools)
+        assert not any(x['name'] in {'join', 'claim', 'reserve', 'activate', 'heartbeat', 'dispatched'} for x in tools)
+        message = post(hub, s, B)
+        scoped = {'project_id':'p', 'binding_id':joined.json()['binding_id'], 'generation':1}
+        queued = client.post('/v1/chat/reserve', headers=headers, json={**scoped, 'request_id':uuid.uuid4().hex})
+        assert queued.status_code == 200 and queued.json()['status'] == 'queued'
+        reservation = queued.json()['reservation']
+        assert reservation['message_ids'] == [message['message_id']]
+        admit_args = {**scoped, 'reservation_id':reservation['reservation_id']}
+        admitted = client.post('/v1/chat/activate', headers=headers, json=admit_args)
+        assert admitted.status_code == 200
+        assert client.post('/v1/chat/activate', headers=headers, json=admit_args).json() == admitted.json()
+        assert client.post('/v1/chat/activate', headers=headers, json={**admit_args, 'lease_seconds':301}).status_code == 422
         disconnected = client.post('/v1/chat/disconnect', headers=headers, json={
             'project_id': 'p', 'binding_id': joined.json()['binding_id'], 'expected_version': 1})
         assert disconnected.status_code == 200 and disconnected.json()['status'] == 'disconnected'
         manual = client.post('/v1/tools/post_session_message', headers=headers, json={'arguments': values(s,
             body='Manual post after explicit disconnect', idempotency_key='manual-after-disconnect')})
         assert manual.status_code == 200
+
+
+# Queue admission uses the same SQLite/PostgreSQL parametrized fixture as legacy deliveries.
+def reserve(hub, binding, **kwargs):
+    return call(hub, 'reserve', project_id=binding['project_id'], binding_id=binding['binding_id'],
+                generation=binding['generation'], request_id=kwargs.pop('request_id', uuid.uuid4().hex), **kwargs)
+
+
+def activate(hub, binding, reservation, **kwargs):
+    return call(hub, 'activate', project_id=binding['project_id'], binding_id=binding['binding_id'],
+                generation=binding['generation'], reservation_id=reservation['reservation_id'], **kwargs)
+
+
+def test_queue_reservation_delayed_restart_exact_range_replay_and_budget(collaboration):
+    hub, url, sqlite = collaboration
+    s = room(hub); binding = join(hub, s)
+    first = post(hub, s, B)
+    key = uuid.uuid4().hex
+    queued = reserve(hub, binding, request_id=key, queue_seconds=1200)
+    assert reserve(hub, binding, request_id=key, queue_seconds=1200) == queued
+    assert status(hub, s)['participants'][0]['turns_used'] == 0
+    late = post(hub, s, B)
+    restarted = Hub(Store(url, allow_sqlite=sqlite), clock=lambda:1420.0, principals=IDENTITIES)
+    admitted = activate(restarted, binding, queued['reservation'])
+    assert activate(restarted, binding, queued['reservation']) == admitted
+    delivery = admitted['delivery']
+    assert delivery['message_ids'] == [first['message_id']]
+    assert delivery['through_sequence'] < late['sequence']
+    assert status(restarted, s)['participants'][0]['turns_used'] == 1
+    read_delivery(restarted, s, delivery)
+    reply(restarted, s, delivery)
+    assert status(restarted, s)['participants'][0]['processed_sequence'] == delivery['through_sequence']
+
+
+def test_concurrent_exact_activation_and_overlapping_reservations(collaboration):
+    hub, _, _ = collaboration
+    s = room(hub); binding = join(hub, s); post(hub, s, B)
+    one = reserve(hub, binding)['reservation']
+    two = reserve(hub, binding)['reservation']
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: activate(hub, binding, one), range(2)))
+    assert results[0] == results[1]
+    reject('delivery_busy', lambda: activate(hub, binding, two))
+    assert status(hub, s)['participants'][0]['turns_used'] == 1
+
+
+@pytest.mark.parametrize('interruption', ['pause', 'disable', 'disconnect', 'expiry', 'claim', 'cursor', 'revoke'])
+def test_queue_rejects_fenced_or_changed_context_without_retarget(collaboration, interruption):
+    hub, _, _ = collaboration
+    s = room(hub); binding = join(hub, s); post(hub, s, B)
+    reservation = reserve(hub, binding, queue_seconds=60)['reservation']
+    if interruption == 'pause':
+        call(hub, 'pause', human('admin'), **values(s, paused=True, expected_version=1))
+        call(hub, 'pause', human('admin'), **values(s, paused=False, expected_version=2))
+        code = 'reservation_fenced'
+    elif interruption == 'disable':
+        call(hub, 'control', project_id='p', binding_id=binding['binding_id'], enabled=False, expected_version=1)
+        call(hub, 'control', project_id='p', binding_id=binding['binding_id'], enabled=True, expected_version=2)
+        code = 'reservation_fenced'
+    elif interruption == 'disconnect':
+        call(hub, 'disconnect', project_id='p', binding_id=binding['binding_id'], expected_version=1)
+        code = 'stale_binding'
+    elif interruption == 'expiry':
+        hub.delivery.clock = lambda:1060.0
+        code = 'reservation_expired'
+    elif interruption == 'revoke':
+        hub.delivery.principals = lambda conn: [ADMIN, B, Q]
+        code = 'forbidden'
+    else:
+        delivery = claim(hub, binding)['delivery']
+        if interruption == 'cursor':
+            read_delivery(hub, s, delivery); reply(hub, s, delivery)
+            code = 'reservation_cursor'
+        else:
+            code = 'delivery_busy'
+    before = status(hub, s)['participants'][0]
+    reject(code, lambda: activate(hub, binding, reservation))
+    after = status(hub, s)['participants'][0]
+    assert after['turns_used'] == before['turns_used']
+    assert after['processed_sequence'] == before['processed_sequence']
+
+
+def test_queue_ownership_argument_digest_and_finite_lifetime(collaboration):
+    from pydantic import ValidationError
+    hub, _, _ = collaboration
+    s = room(hub); binding = join(hub, s); post(hub, s, B)
+    key = uuid.uuid4().hex
+    queued = reserve(hub, binding, request_id=key)['reservation']
+    reject('idempotency_conflict', lambda: reserve(hub, binding, request_id=key, queue_seconds=60))
+    reject('forbidden', lambda: call(hub, 'activate', B, project_id='p', binding_id=binding['binding_id'],
+        generation=binding['generation'], reservation_id=queued['reservation_id']))
+    with pytest.raises(ValidationError): reserve(hub, binding, queue_seconds=3601)
+    with pytest.raises(ValidationError): activate(hub, binding, queued, lease_seconds=301)

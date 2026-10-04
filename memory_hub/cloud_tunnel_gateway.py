@@ -25,6 +25,7 @@ import ssl
 import sys
 import threading
 import time
+import uuid
 from urllib.parse import urlsplit
 
 import httpx
@@ -405,7 +406,7 @@ class Gateway:
         # late event-triggered job into an ordinary depth-0 writer.
         return self.db.execute('SELECT 1 FROM subscriptions LIMIT 1').fetchone() is not None
 
-    def _batch(self, notification_id):
+    def _batch(self, notification_id, *, activate=False):
         text(notification_id, 128)
         row = self.db.execute('SELECT * FROM batches WHERE notification_id=?', (notification_id,)).fetchone()
         if row is None:
@@ -416,6 +417,20 @@ class Gateway:
         if row['state'] not in ('active', 'replied'):
             raise GatewayError('Notification lease was superseded', -32001)
         delivery = self.box.decrypt(row['delivery'])
+        if 'reservation_id' in delivery:
+            if delivery['queued_until'] <= self.clock():
+                raise GatewayError('Notification queue expired', -32001)
+            if not activate:
+                raise GatewayError('Read this notification before replying', -32001)
+            binding = self.box.decrypt(sub['binding'])['receipt']
+            admitted = self.hub.relay('activate', binding_id=binding['binding_id'],
+                generation=binding['generation'], reservation_id=delivery['reservation_id'], lease_seconds=300)
+            delivery = admitted['delivery']
+            # Hub activation is idempotent. A crash before this local commit replays
+            # the exact activation, never creates a replacement lease or range.
+            with self.db:
+                self.db.execute('UPDATE batches SET delivery=? WHERE notification_id=?',
+                                (self.box.encrypt(delivery), notification_id))
         if row['state'] != 'replied' and delivery['lease_until'] <= self.clock():
             raise GatewayError('Notification lease expired', -32001)
         return row, delivery
@@ -438,17 +453,17 @@ class Gateway:
                    'notification_id': {'type': 'string', 'maxLength': 128}}, ['body'])]
 
     def events(self):
-        return [{'name': EVENT_NAME, 'description': 'One authorized batch of new messages in the fixed room. Read and reply with this event notification_id within its lease. A preview is incomplete. Automatic reply depth and model starts are bounded by the Hub.',
+        return [{'name': EVENT_NAME, 'description': 'One reserved batch of new messages in the fixed room. Read with this exact notification_id before its queue expiry to start a bounded reply lease. A preview is incomplete. Automatic reply depth and model starts are bounded by the Hub.',
                  'delivery': ['webhook'], 'inputSchema': {'type': 'object', 'properties': {}, 'additionalProperties': False},
                  'payloadSchema': {'type': 'object', 'properties': {
                      'message_id': {'type': 'string'}, 'sequence': {'type': 'integer'},
                      'session_id': {'type': 'string'}, 'project_id': {'type': 'string'},
                       'sender': {'type': 'string'}, 'preview': {'type': 'string'},
                       'notification_id': {'type': 'string'}, 'after_sequence': {'type': 'integer'},
-                      'through_sequence': {'type': 'integer'}, 'lease_until': {'type': 'string'},
+                      'through_sequence': {'type': 'integer'}, 'queued_until': {'type': 'string'},
                       'message_ids': {'type': 'array', 'items': {'type': 'string'}}},
                       'required': ['message_id', 'sequence', 'session_id', 'project_id', 'sender', 'preview',
-                                   'notification_id', 'after_sequence', 'through_sequence', 'lease_until', 'message_ids'],
+                                   'notification_id', 'after_sequence', 'through_sequence', 'queued_until', 'message_ids'],
                      'additionalProperties': False}}]
 
     def _subscription(self, params, subscribe):
@@ -570,7 +585,7 @@ class Gateway:
                 fields(arguments, {'after_sequence', 'limit', 'notification_id'})
                 delivery = None
                 if self._automatic() or 'notification_id' in arguments:
-                    _, delivery = self._batch(arguments.get('notification_id'))
+                    _, delivery = self._batch(arguments.get('notification_id'), activate=True)
                 after = integer(arguments.get('after_sequence', delivery['after_sequence'] if delivery else None), 0, MAX_SEQUENCE)
                 if delivery and not delivery['after_sequence'] <= after <= delivery['through_sequence']:
                     raise GatewayError('Read cursor must stay inside this notification batch')
@@ -630,28 +645,49 @@ class Gateway:
                                          (sub['id'],)).fetchone()
                 if active:
                     delivery = self.box.decrypt(active['delivery'])
-                    latest = current.get('latest_delivery') or {}
-                    completed = latest.get('delivery_id') == delivery['delivery_id'] and latest.get('status') == 'replied'
-                    if completed or current['status'] != 'processing' or delivery['lease_until'] <= now:
-                        with self.db:
-                            self.db.execute('UPDATE batches SET state=? WHERE notification_id=?',
-                                            ('replied' if completed else 'stale', active['notification_id']))
-                            self.db.execute("UPDATE outbox SET state='cancelled' WHERE event_id=? AND state='queued'",
-                                            (active['notification_id'],))
-                        active = None
+                    if 'reservation_id' in delivery:
+                        if delivery['queued_until'] <= now:
+                            with self.db:
+                                self.db.execute("UPDATE batches SET state='stale' WHERE notification_id=?", (active['notification_id'],))
+                                self.db.execute("UPDATE outbox SET state='cancelled' WHERE event_id=? AND state='queued'", (active['notification_id'],))
+                                self.db.execute("UPDATE subscriptions SET status='queue_expired' WHERE id=?", (sub['id'],))
+                            continue  # finite queue expiry is terminal; no silent replacement.
+                    else:
+                        latest = current.get('latest_delivery') or {}
+                        completed = latest.get('delivery_id') == delivery['delivery_id'] and latest.get('status') == 'replied'
+                        if completed:
+                            with self.db:
+                                self.db.execute("UPDATE batches SET state='replied' WHERE notification_id=?", (active['notification_id'],))
+                            active = None
+                        elif current['status'] != 'processing' or delivery['lease_until'] <= now:
+                            with self.db:
+                                self.db.execute("UPDATE batches SET state='stale' WHERE notification_id=?", (active['notification_id'],))
+                                self.db.execute("UPDATE subscriptions SET status='admission_failed' WHERE id=?", (sub['id'],))
+                            continue
                 if not active:
                     if remaining <= 0 or current['status'] == 'budget_exhausted':
                         with self.db:
                             self.db.execute("UPDATE subscriptions SET status='budget_exhausted' WHERE id=?", (sub['id'],))
                         continue
-                    claimed = self.hub.relay('claim', binding_id=binding['binding_id'], lease_seconds=300)
-                    if claimed['status'] != 'ready':
+                    reservation_key = uuid.uuid4().hex
+                    # Persist the request before network admission, so an ambiguous
+                    # response/restart cannot silently reserve a different range.
+                    meta_key = 'reserve:' + sub['id']
+                    with self.db:
+                        self.db.execute('INSERT OR IGNORE INTO meta VALUES(?,?)', (meta_key, reservation_key))
+                    reservation_key = self.db.execute('SELECT value FROM meta WHERE key=?', (meta_key,)).fetchone()[0]
+                    queued = self.hub.relay('reserve', binding_id=binding['binding_id'],
+                        generation=binding['generation'], request_id=reservation_key, queue_seconds=1800)
+                    if queued['status'] != 'queued':
+                        with self.db:
+                            self.db.execute('DELETE FROM meta WHERE key=?', (meta_key,))
                         continue
-                    delivery = claimed['delivery']
-                    notification = 'evt_' + delivery['delivery_id'] + '_' + delivery['lease_id']
+                    delivery = queued['reservation']
+                    notification = 'evt_' + delivery['reservation_id']
                     with self.db:
                         self.db.execute('INSERT INTO batches(notification_id,subscription_id,delivery) VALUES(?,?,?)',
                                         (notification, sub['id'], self.box.encrypt(delivery)))
+                        self.db.execute('DELETE FROM meta WHERE key=?', (meta_key,))
                 else:
                     notification = active['notification_id']
                     delivery = self.box.decrypt(active['delivery'])
@@ -673,7 +709,7 @@ class Gateway:
                             'preview': event.get('body', '').encode('utf-8')[:512].decode('utf-8', 'ignore'),
                             'notification_id': notification, 'after_sequence': delivery['after_sequence'],
                             'through_sequence': delivery['through_sequence'], 'message_ids': delivery['message_ids'],
-                            'lease_until': iso(delivery['lease_until'])}}
+                            'queued_until': iso(delivery['queued_until'])}}
                     with self.db:
                         self.db.execute('INSERT INTO outbox(subscription_id,event_id,sequence,body) VALUES(?,?,?,?)',
                                         (sub['id'], notification, delivery['through_sequence'], self.box.encrypt(payload)))
@@ -683,8 +719,6 @@ class Gateway:
                 # Check shared room control immediately before dispatch, including after reads.
                 if self.stopped() or self.hub.paused() or self.clock() >= sub['expires']:
                     return
-                self.hub.relay('dispatched', binding_id=binding['binding_id'],
-                               delivery_id=delivery['delivery_id'], lease_id=delivery['lease_id'])
                 destination = self.box.decrypt(sub['destination'])
                 payload = self.box.decrypt(item['body'])
                 body = compact(payload)
@@ -773,6 +807,7 @@ class Gateway:
         except GatewayError as exc:
             categories = {
                 'Notification lease expired': 'notification_expired',
+                'Notification queue expired': 'notification_queue_expired',
                 'Notification lease was superseded': 'notification_superseded',
                 'Subscription is not active; old notifications cannot write': 'subscription_inactive',
                 'Unknown notification; use its exact event notification_id': 'notification_unknown',

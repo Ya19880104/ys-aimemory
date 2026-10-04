@@ -567,7 +567,9 @@ def test_real_expired_notification_logs_rejection_without_read_or_cursor_change(
     pilot.gateway.tick()
     identifier = notification(pilot)
     binding = active_binding(pilot)
+    pilot.gateway.call('read_delta', {'notification_id': identifier, 'limit': 1})
     before = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
+    capsys.readouterr()
     pilot.now[0] += 301
     result = rpc(pilot.gateway, 'tools/call', {'name': 'read_delta',
                  'arguments': {'notification_id': identifier}})
@@ -576,7 +578,7 @@ def test_real_expired_notification_logs_rejection_without_read_or_cursor_change(
     assert result['error']['code'] == -32001
     after = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
     assert after['processed_sequence'] == before['processed_sequence']
-    assert after['latest_delivery']['read_at'] is None
+    assert after['latest_delivery']['read_at'] == before['latest_delivery']['read_at']
 
 
 def test_native_batch_pages_full_escaped_message_receipts_and_stable_reply(pilot):
@@ -588,10 +590,10 @@ def test_native_batch_pages_full_escaped_message_receipts_and_stable_reply(pilot
     identifier = notification(pilot)
     binding = active_binding(pilot)
     state = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
-    assert state['latest_delivery']['status'] == 'dispatched'
-    assert state['latest_delivery']['read_at'] is None
+    assert state['latest_delivery'] is None
+    assert state['turns_used'] == 0
     assert state['processed_sequence'] == binding['processed_sequence']
-    with pytest.raises(cloud.GatewayError, match='delivery_not_read'):
+    with pytest.raises(cloud.GatewayError, match='Read this notification'):
         pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Complete reply'})
     pages = read_batch(pilot, identifier)
     assert len(pages) == 5 and pages[0]['items'][0]['body'] == huge
@@ -653,36 +655,35 @@ def test_pause_fences_old_notification_and_never_rebinds_it_to_new_batch(pilot):
         pilot.gateway.call('post_message', {'notification_id':old, 'body':'Late reply'})
     pilot.hub.real.delivery.call('pause', {**common, 'paused':False, 'expected_version':2}, admin)
     pilot.gateway.tick()
-    new = notification(pilot)
-    assert new != old
-    with pytest.raises(cloud.GatewayError, match='superseded'):
+    assert notification(pilot) == old
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0] == 'admission_failed'
+    with pytest.raises(cloud.GatewayError):
         pilot.gateway.call('read_delta', {'notification_id':old})
-    read_batch(pilot, new)
-    pilot.gateway.call('post_message', {'notification_id':new, 'body':'Fresh fenced reply'})
 
 
-def test_claim_response_loss_waits_for_lease_and_does_not_double_claim(pilot):
+def test_reservation_response_loss_replays_exact_queue_without_turn_charge(pilot):
     pilot.config['subscription_ttl'] = 900
     pilot.gateway.subscribe(subscription())
     pilot.hub.add()
     relay = pilot.hub.relay
     dropped = [False]
-    def lose_claim(operation, **kwargs):
+    def lose_reserve(operation, **kwargs):
         result = relay(operation, **kwargs)
-        if operation == 'claim' and result['status'] == 'ready' and not dropped[0]:
+        if operation == 'reserve' and result['status'] == 'queued' and not dropped[0]:
             dropped[0] = True
             raise cloud.GatewayError('Synthetic response lost')
         return result
-    pilot.hub.relay = lose_claim
+    pilot.hub.relay = lose_reserve
     with pytest.raises(cloud.GatewayError): pilot.gateway.tick()
-    for _ in range(4): pilot.gateway.tick()
-    assert len(pilot.sent) == 1  # Only callback verification, no model start via a callback.
     binding = active_binding(pilot)
-    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 0
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 2
     pilot.now[0] += 301
     pilot.gateway.tick()
     assert len(pilot.sent) == 2
-    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 2
+    read_batch(pilot, notification(pilot))
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
 
 
 def test_reply_response_loss_reconciles_and_retries_without_duplicate(pilot):
@@ -749,27 +750,22 @@ def test_hub_http_budget_error_retries_one_full_event_only(tmp_path, monkeypatch
     assert all(x['full_text'] and x['delivery_id']=='d'*32 and x['lease_id']=='e'*32 for x in calls)
 
 
-def test_expired_batch_gets_fresh_notification_and_old_reply_cannot_write(pilot):
+def test_expired_execution_is_terminal_without_retargeting_notification(pilot):
     pilot.config['subscription_ttl'] = 900
     pilot.gateway.subscribe(subscription())
     pilot.hub.add()
     pilot.gateway.tick()
     old = notification(pilot)
     read_batch(pilot, old)
+    binding = active_binding(pilot)
     pilot.now[0] += 301
     with pytest.raises(cloud.GatewayError, match='expired'):
         pilot.gateway.call('post_message', {'notification_id':old, 'body':'Late reply'})
     pilot.gateway.tick()
-    new = notification(pilot)
-    assert new != old
-    rows = pilot.gateway.db.execute('SELECT delivery FROM batches ORDER BY rowid').fetchall()
-    before, after = [pilot.gateway.box.decrypt(x[0]) for x in rows]
-    assert before['delivery_id'] == after['delivery_id']
-    assert before['reply_idempotency_key'] == after['reply_idempotency_key']
-    assert before['lease_id'] != after['lease_id']
+    assert notification(pilot) == old
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0] == 'admission_failed'
+    assert pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
     assert not pilot.hub.posts
-    read_batch(pilot, new)
-    pilot.gateway.call('post_message', {'notification_id':new, 'body':'Live reply'})
 
 
 def test_ambiguous_join_reuses_key_and_never_resets_cursor_or_budget(pilot):
@@ -788,7 +784,7 @@ def test_ambiguous_join_reuses_key_and_never_resets_cursor_or_budget(pilot):
     binding = active_binding(pilot)
     assert binding['generation'] == 1
     pilot.gateway.tick()
-    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 0
     assert len(pilot.sent[-1][1]['data']['message_ids']) == 1
 
 
@@ -799,3 +795,98 @@ def test_manual_read_has_full_text_path_before_monitoring(pilot):
     page = pilot.gateway.call('read_delta', {'after_sequence':before})
     assert page['items'][0]['body'] == body and not page['items'][0]['body_truncated']
     assert 'delivery_receipt' not in page
+
+
+def test_ack_queue_restart_delayed_activation_exact_range_and_no_redelivery(pilot):
+    pilot.config['subscription_ttl'] = 1800
+    pilot.gateway.subscribe(subscription())
+    first = pilot.hub.add(body='reserved first')
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    binding = active_binding(pilot)
+    original = pilot.sent[-1][1]
+    pilot.gateway.db.close()
+    pilot.now[0] += 420
+    later = pilot.hub.add(body='outside immutable range')
+    pilot.gateway = cloud.Gateway(pilot.config, pilot.hub, box=cloud.SecretBox(KEY), sender=pilot.sender, clock=lambda:pilot.now[0])
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 2
+    assert pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 0
+    pages = read_batch(pilot, identifier)
+    assert [i['message_id'] for p in pages for i in p['items'] if i['type']=='message'] == [first['message_id']]
+    result = pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Exact reserved reply'})
+    assert result['delivery_receipt']['processed_sequence'] == original['data']['through_sequence'] < later['sequence']
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 3
+    read_batch(pilot, notification(pilot))
+    assert pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 2
+
+
+def test_activation_response_loss_restart_replays_one_lease_and_turn(pilot):
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    binding = active_binding(pilot)
+    relay = pilot.hub.relay
+    dropped = [False]
+    def lose_activate(operation, **kwargs):
+        result = relay(operation, **kwargs)
+        if operation == 'activate' and not dropped[0]:
+            dropped[0] = True
+            raise cloud.GatewayError('Synthetic activation response lost')
+        return result
+    pilot.hub.relay = lose_activate
+    with pytest.raises(cloud.GatewayError): read_batch(pilot, identifier)
+    first = relay('heartbeat', binding_id=binding['binding_id'])
+    pilot.gateway.db.close()
+    pilot.gateway = cloud.Gateway(pilot.config, pilot.hub, box=cloud.SecretBox(KEY), sender=pilot.sender, clock=lambda:pilot.now[0])
+    read_batch(pilot, identifier)
+    second = relay('heartbeat', binding_id=binding['binding_id'])
+    assert first['latest_delivery']['delivery_id'] == second['latest_delivery']['delivery_id']
+    assert first['turns_used'] == second['turns_used'] == 1
+    assert len(pilot.sent) == 2
+
+
+def test_queue_expiry_terminal_no_replacement_or_cursor_change(pilot):
+    pilot.config['subscription_ttl'] = 3600
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    binding = active_binding(pilot)
+    identifier = notification(pilot)
+    pilot.now[0] += 1801
+    with pytest.raises(cloud.GatewayError, match='queue expired'):
+        pilot.gateway.call('read_delta', {'notification_id':identifier})
+    pilot.gateway.tick()
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 2
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0] == 'queue_expired'
+    state = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
+    assert state['turns_used'] == 0 and state['processed_sequence'] == binding['processed_sequence']
+    assert state['latest_delivery'] is None
+
+
+def test_ambiguous_callback_restart_uses_same_event_id_without_admission(pilot):
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    def receipt_lost(*args):
+        pilot.sender(*args)
+        raise cloud.GatewayError('Synthetic remote receipt/local response loss')
+    pilot.gateway.sender = receipt_lost
+    pilot.gateway.tick()
+    first = pilot.sent[-1]
+    binding = active_binding(pilot)
+    pilot.gateway.db.close()
+    pilot.now[0] += 5
+    pilot.gateway = cloud.Gateway(pilot.config, pilot.hub, box=cloud.SecretBox(KEY), sender=pilot.sender, clock=lambda:pilot.now[0])
+    pilot.gateway.tick()
+    second = pilot.sent[-1]
+    assert first[1] == second[1]
+    assert first[2]['webhook-id'] == second[2]['webhook-id']
+    assert first[2]['webhook-timestamp'] != second[2]['webhook-timestamp']
+    assert pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 0
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 3  # verification + ambiguous receipt + identical retry.

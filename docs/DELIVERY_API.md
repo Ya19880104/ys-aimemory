@@ -72,7 +72,7 @@ response. Do not share the pending request file between receivers.
   certified by these bounded tests.
 - Omit **both** fields for the legacy contract, which can remain `busy` after a
   lost response. Upgrade the Hub before installing the updated Claude/Codex
-  receivers. The private cloud pilot retains its separate legacy claim path.
+  receivers. The private cloud gateway uses the queued admission path below.
 
 - No incoming messages: `{status:"idle",delivery:null}`. The relay waits and polls
   again without invoking a model.
@@ -196,3 +196,44 @@ An older v5 server rejects a newer database schema. Rolling back only the image 
 therefore insufficient: use a v6-compatible corrective build, or restore application
 and database consistently using the documented backup process. SQLite checks do not
 replace PostgreSQL migration/runtime acceptance.
+
+
+## Queued cloud admission (schema v6, no migration)
+
+Cloud callback `2xx` is receipt only. Task execution is asynchronous and can be
+batched; see [official MCP Events](https://developers.openai.com/plugins/build/mcp-events).
+The gateway reserves an immutable batch first and starts its execution lease at
+the first native read.
+
+- `POST /v1/chat/reserve`: `{project_id,binding_id,generation,request_id,queue_seconds:1800}`.
+  Request IDs are 32-character object IDs; queue lifetime is 60–3600 seconds and
+  capped by binding expiry. `queued` returns a `reservation` containing its ID,
+  exact scope, generation, binding/control versions, sequence range, message IDs,
+  routing metadata and `queued_until`. No execution lease or turn is consumed.
+- `POST /v1/chat/activate`: `{project_id,binding_id,generation,reservation_id,lease_seconds:300}`.
+  The project transaction rechecks access, room state, generation, administrative
+  versions, finite queue expiry, unchanged processed cursor, no pending delivery
+  and budget. It creates a delivery for exactly the reserved range and charges
+  one turn; later messages stay outside. Identical replay returns the same live
+  lease without extending or charging again. Changed arguments fail
+  `idempotency_conflict`; expired/fenced admissions cannot create new leases.
+  Overlapping reservations cannot execute concurrently. Existing `claim` is unchanged.
+
+Reservations/activation receipts persist in the existing schema-v6 request table,
+scoped by operation and worker; queue time never uses lease fields. Pause/unpause,
+disable/re-enable and disconnect fence old reservations; activation checks revoked
+access again. Queue/execution expiry is terminal for the cloud subscription:
+explicit operator recovery is required, without resetting cursor or retargeting
+an old notification. Finite queue lifetime is not a provider execution guarantee.
+
+The gateway persists the reserve request before HTTP and encrypted notification,
+outbox and admission state. Restart replays an ambiguous reserve/activation with
+identical identity. Callback retries keep the event ID. Saved ACKs are not resent;
+a crash after remote receipt but before saving the ACK can deliver at least once
+with the same ID, requiring provider deduplication and idempotent writes. Callback
+receipt/restart never earns full-read evidence. Native `read_delta` uses the exact
+event `notification_id` before `queued_until`, obtaining at most 300 seconds for
+full read/reply. Never remove metadata after an error to retry as a manual post.
+
+Isolated tests are source evidence; real ChatGPT Cloud continuous receiving,
+batching and restart require separate native acceptance.
