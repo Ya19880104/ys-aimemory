@@ -278,8 +278,51 @@ class DeliveryService:
             t.c.session_id == a['session_id']).order_by(t.c.worker_id).limit(101)).mappings().all()
         return {'project_id': a['project_id'], 'session_id': a['session_id'],
             'control': self._control(conn, room), 'latest_sequence': room['latest_sequence'],
-            'participants': [self._public_binding(conn, dict(b), room, self.clock()) for b in rows[:100]],
+            'participants': [self._status_binding(conn, dict(b), room, self.clock()) for b in rows[:100]],
             'has_more': len(rows) > 100, 'receipt_semantics': 'tool_read means complete messages returned by a tool; not proof of model comprehension'}
+
+    def _status_binding(self, conn, binding, room, now):
+        # Optional and additive: receivers compare the existing status values.
+        value = self._public_binding(conn, binding, room, now)
+        queued = self._queued_reservation(conn, binding, room, value['status'], now)
+        return {**value, 'queued_reservation': queued} if queued else value
+
+    def _queued_reservation(self, conn, binding, room, state, now):
+        """Range and expiry of the newest reservation that activation would still accept.
+
+        A reservation is Hub admission state only: not callback acceptance, a tool
+        read or a reply. Nothing that identifies or could activate it is returned.
+        """
+        if (state not in {'waiting', 'offline'} or room['latest_sequence'] <= binding['processed_sequence']
+                or self._pending(conn, binding) is not None):
+            return None
+        t = self.tables['joins']
+        scope = (t.c.project_id == binding['project_id'], t.c.actor_kind == 'worker',
+                 t.c.worker_id == binding['worker_id'])
+
+        def field(name):
+            return t.c.result[('reservation', name)]
+        # Fences are compared as text; only Hub-written numbers are cast, for expiry and order.
+        fence = {'after_sequence': binding['processed_sequence'], 'binding_id': binding['binding_id'],
+                 'generation': binding['generation'], 'binding_version': binding['version'],
+                 'control_version': self._control(conn, room)['version']}
+        # The primary-key prefix limits the scan to this worker's reservations in the project.
+        # Stale ones are excluded by the database, so the limit can only trim reservations
+        # that are all still valid, and the newest comes first. No history is returned.
+        rows = conn.execute(select(t.c.request_key, t.c.result).where(*scope, t.c.operation == 'reserve',
+            *(field(name).as_string() == str(value) for name, value in fence.items()),
+            field('queued_until').as_float() > now).order_by(field('created_at').as_float().desc(),
+            field('through_sequence').as_float().desc(), field('queued_until').as_float().desc()).limit(8)).all()
+        for key, result in rows:
+            reservation = result['reservation']
+            try:
+                self._reservation_live(conn, binding, room, reservation, now)
+            except HubError:
+                continue
+            if conn.execute(select(t.c.request_key).where(*scope, t.c.operation == 'activate',
+                    t.c.request_key == key)).first() is None:
+                return {k: reservation[k] for k in ('through_sequence', 'created_at', 'queued_until')}
+        return None
 
     def _queued_admission(self, conn, binding, room, a, now, operation):
         # Durable immutable reservations use the existing scoped idempotency store.
