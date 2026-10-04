@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from memory_hub.client_antigravity_receiver import durable, run
+from memory_hub.client_antigravity_receiver import official_metadata_admission, admitted
 from memory_hub.client_watch import exclusive
 from test_sessions import collaboration, room, human, values, A
 from test_index import _migration_db
@@ -151,6 +152,33 @@ def test_stale_admission_waits_then_accepts_new_real_stop(rig):
     assert run(config, client, directory, 'agentapi', lambda: event, now=lambda: clock[0],
         sleep=fresh_after_wait, execute=send, on_state=states.append) == 'budget_exhausted'
     assert states == ['needs_native_idle']
+
+
+def test_official_host_queue_scope_provider_and_strict_default(rig):
+    config, event, binding, client, calls, directory = rig
+    config['native_project_id'] = 'native-project'
+    result = Mock(returncode=0, stdout=json.dumps({'response': {'conversationMetadata': {'metadata': {
+        'workspaceUris':[directory.resolve().as_uri()], 'projectId':'native-project'}}}}).encode())
+    execute = Mock(return_value=result)
+    metadata = official_metadata_admission(config, 'agentapi', now=lambda:110, execute=execute)
+    assert metadata and 'fullyIdle' not in metadata
+    assert not admitted(config, metadata, 110)
+    config['admission_mode'] = 'official_host_queue'
+    assert admitted(config, metadata, 110)
+    result.stdout = json.dumps({'response': {'conversationMetadata': {'metadata': {
+        'workspaceUris':['file:///wrong'], 'projectId':'native-project'}}}}).encode()
+    assert official_metadata_admission(config, 'agentapi', execute=execute) is None
+
+
+def test_queue_rechecks_scope_before_each_send(rig):
+    config, event, binding, client, calls, directory = rig
+    config.update(admission_mode='official_host_queue', native_project_id='native-project', max_sends=1)
+    event.update(kind='official_metadata', scope_verified=True, native_project_id='native-project')
+    provider = Mock(side_effect=[event, None])
+    execute = Mock()
+    assert run(config,client,directory,'agentapi',provider,now=lambda:110,execute=execute) == 'unresolved'
+    assert provider.call_count == 2
+    execute.assert_not_called()
 
 
 def test_real_rest_contract_claim_dispatch_and_restart_no_resend(collaboration, tmp_path):

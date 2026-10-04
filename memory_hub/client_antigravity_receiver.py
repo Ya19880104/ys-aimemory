@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import time
 import uuid
+from urllib.parse import unquote, urlsplit
 
 from .client_watch import exclusive, reminder
 
@@ -41,6 +42,9 @@ def admitted(config, event, now):
             type(event.get('observed_at')) not in (int, float) or
             not 0 <= now - event['observed_at'] <= 60):
         return False
+    if config.get('admission_mode') == 'official_host_queue' and event.get('kind') == 'official_metadata':
+        return (event.get('scope_verified') is True and event.get('native_project_id') ==
+                config.get('native_project_id') and isinstance(config.get('native_project_id'), str))
     if event.get('kind') == 'native_stop':
         return event.get('fullyIdle') is True and event.get('terminationReason') == 'model_stop'
     return (config.get('admission_mode') == 'manually_admitted_dedicated_test' and
@@ -144,6 +148,14 @@ def run(config, client, directory, executable, admission, *, now=time.time,
             if (not admitted(config, event, now()) or (directory / 'STOP').exists() or
                     now() >= min(config['expires_at'], delivery['lease_until'])):
                 return 'unresolved'
+            if config.get('admission_mode') == 'official_host_queue':
+                # Query the official host again immediately before every send.
+                # This establishes scope only, never busy/idle/completion.
+                fresh = admission()
+                if not admitted(config, fresh, now()) or fresh.get('kind') != 'official_metadata':
+                    return 'unresolved'
+                if (directory / 'STOP').exists() or now() >= min(config['expires_at'], delivery['lease_until']):
+                    return 'unresolved'
             try:
                 result = execute([executable, 'send-message', config['native_session_id'], reminder(config, delivery)],
                     shell=False, capture_output=True, timeout=max(.001, min(10,
@@ -154,3 +166,33 @@ def run(config, client, directory, executable, admission, *, now=time.time,
                 journal['attempts'][-1].update(state='unknown', error_type=type(exc).__name__)
             durable(path, journal)
         return 'stopped' if (directory / 'STOP').exists() else 'expired'
+
+
+def official_metadata_admission(config, executable, *, now=time.time, execute=subprocess.run):
+    """Official CLI metadata only; discard raw output, never query histories/RPC."""
+    result = execute([executable, 'get-conversation-metadata', config['native_session_id']],
+        shell=False, capture_output=True, timeout=10,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    if result.returncode != 0:
+        return None
+    value = json.loads(result.stdout)
+    for key in ('response', 'conversationMetadata', 'metadata'):
+        if not isinstance(value, dict) or key not in value:
+            return None
+        value = value[key]
+        if isinstance(value, str) and key == 'response':
+            value = json.loads(value)
+    if not isinstance(value, dict):
+        return None
+    uris = value.get('workspaceUris')
+    if not isinstance(uris, list) or len(uris) != 1 or not isinstance(uris[0], str):
+        return None
+    uri = urlsplit(uris[0])
+    expected = urlsplit(Path(config['project']).resolve(strict=True).as_uri())
+    if (uri.scheme != 'file' or uri.netloc or uri.query or uri.fragment or
+            unquote(uri.path).casefold() != unquote(expected.path).casefold() or
+            value.get('projectId') != config.get('native_project_id')):
+        return None
+    return {'kind':'official_metadata', 'scope_verified':True, 'event_id':uuid.uuid4().hex,
+            'conversationId':config['native_session_id'], 'workspacePaths':[str(Path(config['project']).resolve())],
+            'native_project_id':value['projectId'], 'observed_at':now()}
