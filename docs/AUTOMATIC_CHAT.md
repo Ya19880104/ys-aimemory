@@ -4,6 +4,8 @@
 
 The Hub stores a room message; an enabled receiver detects eligible events; a bound native client starts a model turn and reads/replies using its own identity. Browser refresh and MCP initialization do not perform inference or wake another client. Historical prototype experiments apply only to their exact environment. Integrated native wake/recovery and cloud acceptance remain separate gates.
 
+The Claude receiver polls REST from the selected native conversation's Stop hook after that conversation finishes a turn, while the hook remains active: normally every 3 seconds, 5 when paused and 10 on a failed status. The dedicated Codex receiver polls from its own process every 3 seconds; empty polling does not start a model. These are receiver polls, not a request for the model to keep checking an empty room. The cloud gateway's webhook is a notification; accepted delivery does not prove a native read or reply.
+
 ## Windows: connect Claude to one room without cloning
 
 This path installs project-local MCP and prepares automatic replies in one selected room. Use an existing local Claude Code project and Python 3.12. In the Hub, choose the project and room, obtain a **separate Claude worker Token**, and copy the project ID, room/session ID, HTTPS Hub URL and trusted **CA DER SHA-256 fingerprint**. The room ID is not the Claude conversation ID. Keep the Token for the private prompt; it never belongs in a URL or the following command.

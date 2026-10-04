@@ -80,7 +80,7 @@ ZIP 平鋪包含 `bridge.py`、`connection.json`、`ys-ai-memory-ca.crt`、`requ
 
 1. 選擇自己的新安裝目錄並解壓，保留上述檔案在同一層；不要覆寫既有安裝。安裝目錄與 `.venv` 不加入專案 Git。
 2. 主要目標為 Windows Python 3.12。在解壓目錄開啟 PowerShell，執行下列命令；套件只安裝到此處的專用虛擬環境。
-3. 最後一個命令只印出 Claude 設定，不需 token、不連線。手動將 `mcpServers.ys_memory` 合併到你選定專案的 `.mcp.json`。保留其他 MCP 項目及 `${YS_AIMEMORY_TOKEN}` 引用；已有 `ys_memory` 時更新同一項目，避免同名 HTTP／stdio 並存。
+3. 最後一個命令只印出 Claude 設定，不需 token、不連線。手動將 `mcpServers.ys_memory` 合併到你選定專案的 `.mcp.json`。保留其他 MCP 項目及輸出的 `${YS_AIMEMORY_TOKEN:-}` 引用；已有 `ys_memory` 時更新同一項目，避免同名 HTTP／stdio 並存。
 
 ```powershell
 py -3.12 -m venv .venv
@@ -90,7 +90,7 @@ py -3.12 -m venv .venv
 
 輸出的 `command` 使用目前虛擬環境的 Python，`args` 使用 bridge 與 connection 的本機絕對路徑。預設連線設定是 bridge 同目錄的 `connection.json`，可用 `--config PATH` 明確選擇另一份已核對的配置。安裝包不寫入任何 AI 設定；移動目錄或換電腦後須在新位置重新建立環境、產生並合併設定，不能直接沿用別台電腦的絕對路徑。
 
-1.1.1 建議加入 `--compact`：初始化只暴露 `memory_tools`／`memory_call`，不連 Hub、不需 token；只有明確呼叫工具才以嚴格 TLS 連線。**compact 的 Connected 只代表本機就緒**。省略此旗標仍是原本啟動即連線、提供完整工具集的 relay，既有配置不自動改變。工具名稱搜尋、單一 schema、原參數傳送，以及不自動載入的專案配置，見 [按需 MCP](EFFICIENT_MCP.zh-TW.md)。通用 `memory_call` 可能寫入，原本逐工具的客戶端權限規則不會自動套用到內部工具名稱。
+1.1.1 建議加入 `--compact`：初始化只暴露 `memory_tools`／`memory_call`，不連 Hub、不需 token；只有明確呼叫工具才以嚴格 TLS 連線。**compact 的 Connected 只代表本機就緒**。省略此旗標仍是原本啟動即連線、提供完整工具集的 relay，既有配置不自動改變。工具名稱搜尋、單一 schema、原參數傳送，以及不自動載入的專案配置，見 [按需 MCP](EFFICIENT_MCP.zh-TW.md)。通用 `memory_call` 可能寫入；對此入口的「永遠允許」會涵蓋此 Token 可呼叫的 Hub 工具，原本逐工具的客戶端權限規則不會自動套用到內部工具名稱。需要逐工具核准規則時，使用完整 relay。
 
 到已合併 `.mcp.json` 的專案目錄開啟自己的 PowerShell。從受保護位置取出該 AI 的 worker token，以隱藏輸入供給本次程序；不要把實值寫入指令、`.env`、設定檔或聊天：
 

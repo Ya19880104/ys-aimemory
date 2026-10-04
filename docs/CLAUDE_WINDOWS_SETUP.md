@@ -12,7 +12,7 @@ The current Claude automatic acceptance attempt is **not_run because model-provi
 
 Windows, Python 3.12, and Claude Desktop Code → Local signed into your chosen work project. Obtain the verified Hub HTTPS origin, dedicated worker token/project grant, and public CA DER SHA-256 fingerprint through a trusted channel. This installs Hub connectivity, not Claude or model authentication.
 
-## URL installer
+## Run the project installer from a checkout
 
 After cloning, run with your own non-secret values:
 
@@ -38,7 +38,8 @@ Enter your token only at the hidden local prompt. Installation creates a dedicat
 Use native YS Memory MCP. My project_id is PROJECT_ID.
 Find memory_tools/memory_call, discover get_worker_inbox, then call its schema
 with the original arguments wrapper. Report the returned worker_id.
-Do not claim a task. If tools are absent report NOT_RUN; do not substitute a script.
+Do not claim a task. If tools are listed but not loaded, first load their schemas using the client tool search.
+If still absent after checking setup/loading, report NOT_RUN; do not substitute a script.
 ```
 
 Verify the issued identity. Create/select a Hub conversation, copy its join instructions, and ask Claude to read the newest message and write one reply. Independently confirm author/message ID/sequence in the Hub. This manual test does not enable [automatic chat](AUTOMATIC_CHAT.md).

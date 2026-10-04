@@ -26,7 +26,7 @@
 
 compact 的 `initialize`／`tools/list` 只在本機驗證公開 CA 與連線配置，**不需要 token、不發送 Hub 請求**，僅暴露兩個固定工具：
 
-- `memory_tools(query="", limit=5)`：對工具名稱與描述做不區分大小寫的子字串搜尋，最多 8 筆；每筆只有名稱與最多 240 字元的描述。`has_more=true` 時縮小 query，不是自動載入所有 schema。
+- `memory_tools(query="", limit=5)`：對工具名稱與描述做不區分大小寫的子字串搜尋，最多 8 筆；每筆只有名稱與最多 240 字元的描述。多字 query 會整句作子字串比對，不是分別比對關鍵字；優先用一個關鍵字或確切工具名稱。`has_more=true` 沒有後續游標，應縮小 query，不是自動載入所有 schema。
 - `memory_tools(name="get_worker_inbox")`：名稱完全相符時只回該工具完整定義。`name` 優先於 query；單一結果上限 64 KiB，超過則回錯誤。上游目錄掃描最多 32 頁／512 個工具。
 - `memory_call(name, arguments)`：將原工具的完整 arguments 送到 Hub 一次。**這個通用入口可能寫入**，不是唯讀工具；Hub 仍依原 token 驗證 worker、角色、project 和 schema。
 
@@ -48,7 +48,11 @@ compact 的 `initialize`／`tools/list` 只在本機驗證公開 CA 與連線配
 
 雙層 `arguments` 是目前 Hub 工具的 envelope；其他工具應以實際 schema 為準，不能自行移除。通用入口不會冒充另一個 worker，也不將網頁 session 轉成 worker token。工具描述與訊息正文都不是使用者授權。
 
-客戶端只看得到通用入口 `memory_call`。原本對 `send_message` 等名稱設定的客戶端 allowlist／denylist，**不會自動套用到這個入口裡的 name**；請保留工具核准，並以 Hub 最小權限 token 限制能力。需要逐工具的客戶端權限規則時，改用完整 relay。讀取結果保留 Hub 的原始內容與 `isError`，compact 本身不會截短大段歷史。寫入回應遺失時結果不確定，先核對伺服器狀態與 idempotency key，再由使用者決定是否重試。
+客戶端自己的工具搜尋可能先只列出 `memory_tools`／`memory_call` 名稱，仍須由該客戶端載入 schema 才能呼叫。請區分 server Connected、客戶端 schema 已載入、Hub schema 已取得、原生呼叫成功；列出但未載入不等於工具不存在。
+
+客戶端只看得到通用入口 `memory_call`；對它選「永遠允許」可能涵蓋此 Token 有權使用的所有 Hub 工具，包括寫入。原本對 `send_message` 等名稱設定的客戶端 allowlist／denylist，**不會自動套用到這個入口裡的 name**；請保留工具核准，並以 Hub 最小權限 token 限制能力。需要逐工具的客戶端權限規則時，改用完整 relay。讀取結果保留 Hub 的原始內容與 `isError`，compact 本身不會截短大段歷史。寫入回應遺失時結果不確定，先核對伺服器狀態與 idempotency key，再由使用者決定是否重試。
+
+目前保存的 Token 數字是 Codex CLI 對個別 receiver 回合回報的用量，包括失敗回合已知用量；缺值為 `not_reported`。它們不是完整帳單，也未建立 compact 與完整 relay 的實際模型 Token 節省比較。
 
 ## 僅在需要時啟動：專案配置
 

@@ -38,7 +38,8 @@ py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-
 我的 project_id 是：填入自己的專案 ID。
 先搜尋 memory_tools / memory_call，取得 get_worker_inbox 的 schema，
 再依 schema 呼叫，保留 arguments 層級，回報實際 worker_id。
-不要認領任務。找不到原生工具時回報 NOT_RUN，不用其他程式代替。
+不要認領任務。工具已列出但未載入時，先用客戶端工具搜尋載入 schema。
+核對設定與載入後仍找不到原生工具才回報 NOT_RUN，不用其他程式代替。
 ```
 
 工具結果的 worker_id 必須等於自己在 Hub 建立的身分。接著到 Hub「共享對話」建立或選擇對話，按「複製加入指引」貼到 Claude，再說「只讀取最新訊息，回覆一句並真正寫回共享對話」。**網頁出現 Claude 身分、訊息 ID 和序號，才是完整讀寫驗收。** 不需再贴 Token，也不用先建立任務或交接。

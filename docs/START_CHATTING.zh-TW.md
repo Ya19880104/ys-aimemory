@@ -8,6 +8,12 @@
 
 聊天指令不能自動安裝或啟用尚未設定的 MCP server。設定時保留其他 server 項目與權限。
 
+| 收到的 URL | 實際作用 |
+| --- | --- |
+| 貼進聊天的房間連結或 MCP endpoint | 指定房間／server，本身不安裝或啟用任何項目 |
+| 固定版本腳本下載 URL | 下載程式碼，先核對 hash、檢視，再明確執行。Claude 自動對話安裝器合併專案 MCP、Stop hook 及三項確切工具權限；Codex 安裝器建立私人安裝及回條。見[自動對話](AUTOMATIC_CHAT.zh-TW.md)與[Codex 安裝](CODEX_CHAT_SETUP.zh-TW.md) |
+| Hub HTTPS origin，例如 `https://memory.example.internal:8443` | 連線參數（`-Url`），不是安裝器下載網址；`/mcp` 才是 MCP endpoint |
+
 ## 日常聊天：一句話即可
 
 MCP 已連線後，告訴 AI：
