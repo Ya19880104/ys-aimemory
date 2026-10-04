@@ -2,7 +2,17 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
-## 原生驗收補充：2026-10-05 臺北 00:52
+## Gemini 原生 idle restart 驗收：2026-10-05 臺北 01:06
+
+已部署來源 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f` 的 fresh bounded Gemini V6 fixture，**首次自動原生讀取／回覆、官方同 binding idle receiver 停止／重啟，以及重啟後第二次自動原生讀取／回覆皆 passed**。Coordinator 觀察實際 native `chat_read`／`chat_reply` 結果與網站對應回覆；兩筆 durable journal attempts 另記錄 `replied`、return code 0。兩次回覆均沒有透過中間手動 model prompt 提供。Native admission／status、私有 harness 檢查與實際 delivery 保持不同證據關卡。
+
+首次 delivery 已 replied、沒有 unresolved delivery 後，透過官方 host lifecycle control 重啟。Idle restart 前後保留 binding 身分、generation、expiry、event budget、processed cursor 與 journal state，未 rejoin、重設 budget、延長 expiry 或重播舊事件。Held handles 證明原 receiver parent／child 在 enable 前已退出；替代 parent／child 具有新的 exact creation identity，executable 與 arguments 均已核對。Persistent MCP 程序排除於 receiver inventory；獨立 observer 另核對這些 receipts 與替代程序身分。私有 V6 file-URI normalization 修正的是驗收 controller 先前的 path 解讀，**不是產品 code recovery fix**；下方歷史失敗仍保留。
+
+Main STOP 僅執行一次、exit 0，server binding 已停用。臺北 01:31 後續唯讀核對確認原／替代 receiver exact PIDs、deadline guards 與另列 auxiliary PID 均已不存在，無法取得 exact exit codes。Controller ready PID 亦不存在，但 ready receipt 未保存 creation identity。**官方 controller disabled readback 仍 pending，因此完整 cleanup 尚未完成。**程序不存在不替代 held-handle exit receipt 或官方 host readback；persistent MCP lifetime 另列。
+
+本輪只驗收已觀察的 idle receiver lifecycle 與兩次自動 delivery。Native model crash、in-flight／unknown-commit recovery、無期限運行、第三次 delivery 及同時三客戶端 chat 均為**本 fixture not_run**；不推導新的產品部署或完整 suite passed。
+
+## 歷史原生驗收補充：2026-10-05 臺北 00:52
 
 以下觀察屬於已部署來源 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`；後續文件與私有 harness revision 沒有改變已部署產品。不新增完整 suite、部署或 provider-recovery passed 宣稱。
 
@@ -14,7 +24,7 @@ Task 要求的自行停止 **failed**，仍為 enabled。Operator 透過官方 U
 
 自行停止再次 **failed**：原保存 task instructions 明確要求 stop，model 後來卻聲稱應保留 trigger。臺北 00:48 已核對 operator UI pause；經審查的 exact-scope stop 僅執行一次、exit 0，閉合已確認。模型停止敘述不是 lifecycle 證據，仍須官方 pause／unsubscribe 與獨立 runtime closure。
 
-相同已部署產品來源的 fresh Gemini 訊息約於臺北 00:06:41 **自動原生完整讀取／回覆 passed**，中間沒有手動 model prompt；native UI、Hub replied receipts 與 durable replied journal 均核對為首次 attempt。後續同 binding idle restart **在私有 controller、receiver-disable consume 前 failed**。Native 診斷確認 `GetAllPlugins` 回傳 `file:` URI，私有 controller 卻當一般 filesystem path 處理；此失敗不斷言產品 receiver bug。Receiver／controller／guard cleanup 已核對，該輪閉合、未重播。另建私有 versioned fix 加入 strict file-URI normalization 與診斷，十項離線 fixtures passed，但**該修正的 live restart 仍 not_run**。
+相同已部署產品來源的 fresh Gemini 訊息約於臺北 00:06:41 **自動原生完整讀取／回覆 passed**，中間沒有手動 model prompt；native UI、Hub replied receipts 與 durable replied journal 均核對為首次 attempt。後續同 binding idle restart **在私有 controller、receiver-disable consume 前 failed**。Native 診斷確認 `GetAllPlugins` 回傳 `file:` URI，私有 controller 卻當一般 filesystem path 處理；此失敗不斷言產品 receiver bug。Receiver／controller／guard cleanup 已核對，該輪閉合、未重播。另建私有 versioned fix 加入 strict file-URI normalization 與診斷，十項離線 fixtures passed。**在此歷史截點，live restart 為 not_run**；後續 fresh V6 驗收另記於上方，不抹除本次失敗。
 
 後續 fresh Gemini fixture 已 prepare 並 join，因使用者正在操作電腦，於臺北 00:39 停止。未安裝 receiver、未送 human test message。已記錄 metadata stop／exit，臺北 00:47 核對官方 native disabled readback。00:52:40、約 deadline 後 9.5 秒，先前核對身分的 exact guard parent、child 與另列 auxiliary process 自然消失，未 kill。Guard 記錄 cleanup exit 1：原成功 stop 已消耗 exclusive stop ledger，未准入新 control，原 stop／disable receipts 不變。程序消失後無法取得 exact exit codes，不宣稱 guard exit 0 或整個 host 程序閉合；persistent MCP lifetime 另列。這不是 delivery 或 restart passed。同時三客戶端 chat 與 overall acceptance 仍 pending。Native status、source fixtures、operator cleanup 與實際 model 讀寫保持不同關卡。
 
@@ -119,6 +129,6 @@ Codex installer SHA-256：`F5E622AC3BC21CA06B311238C4B49491324FDD01C40F84FC97081
 
 ## 剩餘驗收界線
 
-Issue #12 保持 open，追蹤更廣 lifecycle/capacity。完整 native model crash/restart、獨立 STOP、legacy cloud lost-claim、長期 subscription/expiry/offline/revocation/duplicates/bursts、memo retention/load、controlled cost benchmark 仍 pending。上方 7652 的限定原生崩潰防重送 PASS 不涵蓋這些待驗項目；continuous 自動 cloud delivery 與 restart 仍未驗證；單一事件自動 identity 與完整讀取／回覆 passed 記於上方。
+Issue #12 保持 open，追蹤更廣 lifecycle/capacity。Gemini idle receiver restart 僅在上方限定 fixture passed。完整 native model crash/restart、獨立 STOP、legacy cloud lost-claim、長期 subscription/expiry/offline/revocation/duplicates/bursts、memo retention/load、controlled cost benchmark 仍 pending。上方 7652 的限定原生崩潰防重送 PASS 不涵蓋這些待驗項目；continuous 自動 cloud delivery 與 restart 仍未驗證；單一事件自動 identity 與完整讀取／回覆 passed 記於上方。
 
 上述歷史部署均建立備份、核對 header/hash；restore／off-host acceptance not_run。歷史 manifest 只識別原交付，不驗證後續來源修改。公開報告不含憑證、host、私人身份、訊息正文或私人截圖。
