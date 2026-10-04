@@ -495,7 +495,7 @@ def test_protocol_success_envelopes_and_callback_diagnostic_are_bounded(pilot, c
     with pytest.raises(cloud.GatewayError):
         cloud.callback_url('https://' + host + '/private-callback?secret=do-not-log', [])
     diagnostic = capsys.readouterr().err
-    assert json.loads(diagnostic) == {'event':'callback_host_not_allowed', 'hostname':host}
+    assert json.loads(diagnostic.splitlines()[-1]) == {'event':'callback_host_not_allowed', 'hostname':host}
     assert 'private-callback' not in diagnostic and 'do-not-log' not in diagnostic
 
 
@@ -511,7 +511,7 @@ def test_rpc_failure_diagnostic_categories_and_fingerprint_are_private(pilot, ca
     result = rpc(pilot.gateway, 'tools/call', {'name': 'read_delta', 'arguments': {
         'notification_id': identifier, 'body': 'synthetic-private-body', 'token': SECRET, 'url': URL}})
     log = capsys.readouterr().err
-    record = json.loads(log)
+    record = json.loads(log.splitlines()[-1])
     assert result['error']['code'] == -32001
     assert record == {'event': 'gateway_request_error', 'timestamp': cloud.iso(pilot.now[0]),
                       'method': 'tools/call', 'tool': 'read_delta', 'error_code': category,
@@ -526,15 +526,15 @@ def test_untrusted_method_tool_exception_and_id_are_never_logged(pilot, capsys, 
                                      'params': {'name': marker, 'arguments': {'body': marker}}})
     assert result['error']['code'] == -32601
     log = capsys.readouterr().err
-    assert marker not in log and json.loads(log)['method'] == 'unknown'
+    assert marker not in log and json.loads(log.splitlines()[-1])['method'] == 'unknown'
     def failed(*args):
         raise RuntimeError(marker)
     monkeypatch.setattr(pilot.gateway, 'call', failed)
     result = rpc(pilot.gateway, 'tools/call', {'name': marker, 'arguments': {'notification_id': marker * 1000}})
     log = capsys.readouterr().err
     assert result['error']['code'] == -32603 and marker not in log
-    assert json.loads(log)['tool'] == 'unknown'
-    assert 'notification_fingerprint' not in json.loads(log)
+    assert json.loads(log.splitlines()[-1])['tool'] == 'unknown'
+    assert 'notification_fingerprint' not in json.loads(log.splitlines()[-1])
 
 
 @pytest.mark.parametrize('tool,status', [('read_delta', 'partial_tool_read'),
@@ -545,7 +545,7 @@ def test_success_diagnostics_preserve_wire_and_only_report_receipt_milestone(pil
     result = rpc(pilot.gateway, 'tools/call', {'name': tool, 'arguments': {'body': SECRET}})
     log = capsys.readouterr().err
     assert result['result']['structuredContent'] == value
-    record = json.loads(log)
+    record = json.loads(log.splitlines()[-1])
     assert record['event'] == 'gateway_tool_completed' and record['receipt_status'] == status
     assert SECRET not in log and value['body'] not in log
 
@@ -573,7 +573,7 @@ def test_real_expired_notification_logs_rejection_without_read_or_cursor_change(
     pilot.now[0] += 301
     result = rpc(pilot.gateway, 'tools/call', {'name': 'read_delta',
                  'arguments': {'notification_id': identifier}})
-    record = json.loads(capsys.readouterr().err)
+    record = json.loads(capsys.readouterr().err.splitlines()[-1])
     assert record['error_code'] == 'notification_expired'
     assert result['error']['code'] == -32001
     after = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
@@ -890,3 +890,99 @@ def test_ambiguous_callback_restart_uses_same_event_id_without_admission(pilot):
     assert pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 0
     pilot.gateway.tick()
     assert len(pilot.sent) == 3  # verification + ambiguous receipt + identical retry.
+
+
+@pytest.mark.parametrize('status', [202, 429, 410, 0])
+def test_event_trace_correlates_native_ingress_and_preserves_retry(pilot, capsys, status):
+    pilot.gateway.subscribe(subscription())
+    verification = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+    assert [r['event'] for r in verification] == ['callback_verification_dispatch', 'callback_verification_completed']
+    assert verification[-1]['http_status'] == 200
+    pilot.hub.add(body='canary-private-body')
+    pilot.result['status'] = status
+    if status == 0:
+        def failed(*args):
+            raise RuntimeError('canary-private-exception')
+        pilot.gateway.sender = failed
+    pilot.gateway.tick()
+    identifier = pilot.gateway.db.execute('SELECT event_id FROM outbox').fetchone()[0]
+    logs = capsys.readouterr().err
+    records = [json.loads(line) for line in logs.splitlines()]
+    assert len(records) == 2
+    assert records[0]['event'] == 'gateway_event_dispatch'
+    assert records[1]['event'] == ('gateway_event_received' if status == 202 else 'gateway_event_failed')
+    assert records[1]['http_status'] == status and records[1]['attempt'] == 1
+    expected = hashlib.sha256(identifier.encode()).hexdigest()[:16]
+    assert all(r['notification_fingerprint'] == expected and r['timestamp'] == cloud.iso(pilot.now[0]) for r in records)
+    assert all(value not in logs for value in [identifier, URL, SECRET, 'canary-private-body', 'canary-private-exception'])
+    row = pilot.gateway.db.execute('SELECT state, attempts FROM outbox').fetchone()
+    assert tuple(row) == ('received' if status == 202 else 'failed' if status == 410 else 'queued', 1)
+    pilot.gateway.dispatch({'jsonrpc':'2.0', 'id':'canary-request-id', 'method':'tools/call',
+        'params':{'name':'read_delta', 'arguments':{'notification_id':identifier}}})
+    native = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+    assert native[0]['event'] == 'gateway_request_ingress'
+    assert native[0]['notification_fingerprint'] == expected
+    assert native[-1]['event'] == ('gateway_request_error' if status == 410 else 'gateway_tool_completed')
+    assert native[-1]['notification_fingerprint'] == expected
+    if status != 410:
+        assert native[-1]['receipt_status'] == 'tool_read'
+
+
+@pytest.mark.parametrize('failure', ['transport', 'challenge', 'http'])
+def test_verification_failure_trace_is_redacted_and_does_not_join(pilot, capsys, failure):
+    def failed(*args):
+        if failure == 'transport':
+            raise RuntimeError('canary-private-exception')
+        return (500 if failure == 'http' else 200), cloud.compact({'challenge':'canary-private-challenge'})
+    pilot.gateway.sender = failed
+    with pytest.raises(cloud.GatewayError, match='Callback verification failed'):
+        pilot.gateway.subscribe(subscription())
+    logs = capsys.readouterr().err
+    records = [json.loads(line) for line in logs.splitlines()]
+    assert [r['event'] for r in records] == ['callback_verification_dispatch', 'callback_verification_failed']
+    assert records[-1]['http_status'] == (0 if failure == 'transport' else 500 if failure == 'http' else 200)
+    assert records[0]['notification_fingerprint'] == records[1]['notification_fingerprint']
+    assert all(value not in logs for value in [URL, SECRET, 'canary-private-exception', 'canary-private-challenge'])
+    assert pilot.gateway.db.execute('SELECT count(*) FROM subscriptions').fetchone()[0] == 0
+
+
+def test_delivery_logging_failure_preserves_receipt_and_dedup(pilot, monkeypatch):
+    class BrokenStderr:
+        def write(self, text):
+            raise OSError('synthetic-unavailable')
+    monkeypatch.setattr(cloud.sys, 'stderr', BrokenStderr())
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 2
+    assert tuple(pilot.gateway.db.execute('SELECT state,attempts FROM outbox').fetchone()) == ('received', 1)
+    assert pilot.gateway.db.execute('SELECT delivered FROM subscriptions').fetchone()[0] == 1
+
+
+def test_event_read_metadata_declares_delivery_state_effects(pilot):
+    tool = next(t for t in pilot.gateway.tools() if t['name'] == 'read_delta')
+    assert tool['annotations']['readOnlyHint'] is False
+    assert 'event.data.notification_id' in tool['description']
+    assert 'delivery lease' in tool['description']
+    assert 'notification_id' not in tool['inputSchema'].get('required', [])
+
+
+def test_trace_retry_recovery_reuses_fingerprint_and_does_not_redeliver(pilot, capsys):
+    pilot.gateway.subscribe(subscription())
+    capsys.readouterr()
+    pilot.hub.add()
+    pilot.result['status'] = 429
+    pilot.gateway.tick()
+    failed = [json.loads(line) for line in capsys.readouterr().err.splitlines()][-1]
+    pilot.now[0] += 5
+    pilot.result['status'] = 202
+    pilot.gateway.tick()
+    recovered = [json.loads(line) for line in capsys.readouterr().err.splitlines()][-1]
+    assert failed['notification_fingerprint'] == recovered['notification_fingerprint']
+    assert failed['attempt'] == 1 and failed['terminal'] is False
+    assert recovered['attempt'] == 2 and recovered['event'] == 'gateway_event_received'
+    pilot.gateway.tick()
+    assert capsys.readouterr().err == ''
+    assert tuple(pilot.gateway.db.execute('SELECT state, attempts FROM outbox').fetchone()) == ('received', 2)
+    assert len(pilot.sent) == 3

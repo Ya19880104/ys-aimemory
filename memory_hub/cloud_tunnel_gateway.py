@@ -54,6 +54,14 @@ def iso(value):
     return datetime.fromtimestamp(value, timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
+def diagnostic(record):
+    """Best-effort output of fixed metadata only."""
+    try:
+        sys.stderr.write(compact(record).decode() + '\n')
+    except Exception:
+        pass
+
+
 def fields(value, allowed, required=()):
     if not isinstance(value, dict) or set(value) - set(allowed) or set(required) - set(value):
         raise GatewayError()
@@ -238,7 +246,7 @@ def callback_url(url, hosts):
         if (len(host) <= 253 and re.fullmatch(r'[a-z0-9]+(?:[a-z0-9.-]*[a-z0-9])?', host)
                 and host not in _CALLBACK_DIAGNOSTICS and len(_CALLBACK_DIAGNOSTICS) < 16):
             _CALLBACK_DIAGNOSTICS.add(host)
-            sys.stderr.write(compact({'event': 'callback_host_not_allowed', 'hostname': host}).decode() + '\n')
+            diagnostic({'event': 'callback_host_not_allowed', 'hostname': host})
         raise GatewayError('Callback hostname is not on the exact allowlist', -32015, 'callback_host_not_allowed')
     return parsed
 
@@ -443,10 +451,10 @@ class Gateway:
                     'annotations': {'readOnlyHint': read_only, 'destructiveHint': False, 'openWorldHint': False},
                     'securitySchemes': [{'type': 'noauth'}]}
         return [tool('identity', 'Verify the fixed worker/project/room of this private tunnel.', {}, read_only=True),
-            tool('read_delta', 'Read one bounded full-text page. For an event pass its notification_id; start at its after_sequence and follow next_after_sequence until delivery_receipt has no unread messages. Never infer a reply from a preview.',
+            tool('read_delta', 'Read one bounded full-text page. Event reads require event.data.notification_id and may activate a delivery lease and record read state; start at its after_sequence and follow next_after_sequence until delivery_receipt has no unread messages. Never infer a reply from a preview.',
                  {'after_sequence': {'type': 'integer', 'minimum': 0},
                    'limit': {'type': 'integer', 'minimum': 1, 'maximum': 10},
-                   'notification_id': {'type': 'string', 'maxLength': 128}}, (), True),
+                   'notification_id': {'type': 'string', 'maxLength': 128}}, (), False),
             tool('post_message', 'Reply after complete reads. For an event pass its notification_id; the gateway supplies the stable delivery key and lease. Before monitoring, manual posts require idempotency_key. A failed call may have committed: retry identical body.',
                  {'body': {'type': 'string', 'maxLength': 4000},
                    'idempotency_key': {'type': 'string', 'maxLength': 128},
@@ -510,6 +518,8 @@ class Gateway:
                 challenge = secrets.token_urlsafe(32)
                 body = compact({'type': 'verification', 'challenge': challenge})
                 event_id = 'verification_' + secrets.token_hex(16)
+                status = 0
+                self._delivery_diagnostic('callback_verification_dispatch', event_id, 1)
                 try:
                     status, response = self.sender(delivery['url'], body,
                         signed_headers(identifier, event_id, body, delivery['secret'], self.clock()), self.config['callback_hosts'])
@@ -517,7 +527,9 @@ class Gateway:
                     if not 200 <= status < 300 or not isinstance(echoed, str) or not hmac.compare_digest(echoed, challenge):
                         raise ValueError()
                 except Exception:
+                    self._delivery_diagnostic('callback_verification_failed', event_id, 1, status)
                     raise GatewayError('Callback verification failed', -32015, 'challenge_failed') from None
+                self._delivery_diagnostic('callback_verification_completed', event_id, 1, status)
             now = self.clock()
             self._ensure_active()  # A separate --stop process may have run during verification.
             # Expiration/refresh must not replenish an exhausted event budget.
@@ -722,6 +734,8 @@ class Gateway:
                 destination = self.box.decrypt(sub['destination'])
                 payload = self.box.decrypt(item['body'])
                 body = compact(payload)
+                attempts = item['attempts'] + 1
+                self._delivery_diagnostic('gateway_event_dispatch', item['event_id'], attempts)
                 try:
                     status, _ = self.sender(destination['url'], body,
                         signed_headers(sub['id'], item['event_id'], body, destination['secret'], self.clock(),
@@ -729,7 +743,6 @@ class Gateway:
                         self.config['callback_hosts'])
                 except Exception:
                     status = 0
-                attempts = item['attempts'] + 1
                 accepted = 200 <= status < 300
                 terminal = accepted or status in (410, 413) or (400 <= status < 500 and status != 429) or attempts >= 5
                 with self.db:
@@ -740,8 +753,22 @@ class Gateway:
                         self.db.execute('UPDATE subscriptions SET delivered=delivered+1 WHERE id=?', (sub['id'],))
                     elif terminal:
                         self.db.execute("UPDATE subscriptions SET status='callback_failed' WHERE id=?", (sub['id'],))
+                self._delivery_diagnostic('gateway_event_received' if accepted else 'gateway_event_failed',
+                                         item['event_id'], attempts, status, terminal)
 
-    def _diagnostic(self, request, error_code=None, receipt_status=None):
+    def _delivery_diagnostic(self, event, identifier, attempt, status=None, terminal=None):
+        try:
+            record = {'event': event, 'timestamp': iso(self.clock()), 'attempt': attempt,
+                      'notification_fingerprint': hashlib.sha256(identifier.encode()).hexdigest()[:16]}
+            if type(status) is int and (status == 0 or 100 <= status <= 599):
+                record['http_status'] = status
+            if terminal is not None:
+                record['terminal'] = terminal
+            diagnostic(record)
+        except Exception:
+            pass
+
+    def _diagnostic(self, request, error_code=None, receipt_status=None, *, ingress=False):
         """Bounded stderr metadata only; never echo caller or exception text."""
         try:
             methods = {'server/discover', 'tools/list', 'tools/call', 'events/list',
@@ -754,7 +781,7 @@ class Gateway:
             tool = tool if isinstance(tool, str) and tool in {'identity', 'read_delta', 'post_message'} else 'unknown'
             arguments = params.get('arguments')
             notification = arguments.get('notification_id') if isinstance(arguments, dict) else None
-            record = {'event': 'gateway_request_error' if error_code else 'gateway_tool_completed',
+            record = {'event': 'gateway_request_ingress' if ingress else ('gateway_request_error' if error_code else 'gateway_tool_completed'),
                       'timestamp': iso(self.clock()), 'method': method}
             if method == 'tools/call':
                 record['tool'] = tool
@@ -764,12 +791,14 @@ class Gateway:
                 record['error_code'] = error_code
             if receipt_status in {'partial_tool_read', 'tool_read', 'replied'}:
                 record['receipt_status'] = receipt_status
-            sys.stderr.write(compact(record).decode() + '\n')
+            diagnostic(record)
         except Exception:
             # Diagnostic failure must never change a read/post's wire outcome.
             pass
 
     def dispatch(self, request):
+        if isinstance(request, dict) and isinstance(request.get('method'), str) and request['method'] in {'tools/call', 'events/subscribe', 'events/unsubscribe'}:
+            self._diagnostic(request, ingress=True)
         identifier = request.get('id') if isinstance(request, dict) else None
         try:
             fields(request, {'jsonrpc', 'id', 'method', 'params'}, {'jsonrpc', 'method'})
@@ -789,7 +818,7 @@ class Gateway:
                 fields(params, {'name', 'arguments', '_meta'}, {'name'})
                 value = self.call(params['name'], params.get('arguments', {}))
                 receipt = value.get('delivery_receipt') if isinstance(value, dict) else None
-                if params['name'] in ('read_delta', 'post_message'):
+                if params['name'] in ('identity', 'read_delta', 'post_message'):
                     self._diagnostic(request, receipt_status=receipt.get('status') if isinstance(receipt, dict) else None)
                 result = {'content': [{'type': 'text', 'text': compact(value).decode()}], 'structuredContent': value, 'isError': False}
             elif method == 'events/list':
