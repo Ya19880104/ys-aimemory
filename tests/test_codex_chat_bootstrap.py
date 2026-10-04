@@ -20,8 +20,7 @@ def test_pins_cover_installer_receiver_secret_and_bundle_primitive(tmp_path):
     assert {name for name, _ in entries} == {'scripts/setup-codex-chat.py',
         'scripts/setup-claude.py', 'scripts/run-codex-chat.py', 'memory_hub/client_secret.py'}
     for name, digest in entries:
-        # Verify immutable Git blob bytes; the local checkout may differ.
-        body = subprocess.check_output(['git', 'show', 'bd25c375bc6046c1cfbe488c859cde2c7e8a3421:' + name], cwd=ROOT)
+        body = (ROOT / name).read_bytes().replace(b'\r\n', b'\n')
         assert hashlib.sha256(body).hexdigest() == digest
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
