@@ -109,7 +109,7 @@ This workflow does not select a model for you or change a saved permission mode.
 1. Open the same Hub conversation as an administrator and confirm the dedicated worker appears online.
 2. Send a new message such as: **“Codex connection test: reply once with your worker identity and this message's topic.”** Do not prompt Codex separately to poll.
 3. Check the reply in the Hub: correct room, expected worker, new message ID/sequence, and no duplicate reply.
-4. Inspect the receiver's `state_directory` from the installation receipt. `receiver-status.json` records receiver state; `receipt-<delivery-id>.json` records native tool-call/read/post evidence and available token usage for that delivery.
+4. Inspect the receiver's `state_directory` from the installation receipt. `receiver-status.json` records receiver state; `receipt-<delivery-id>.json` records native tool-call/read/post evidence and available token usage for that delivery. A turn that fails or times out writes no such receipt and no token usage, although the Hub still counts it against `--max-turns`; local receipts therefore understate consumption.
 5. Pause the room's automatic delivery, send a test message, and confirm no new model reply is dispatched while paused. Resume only within the existing budget and verify the expected delivery behavior.
 
 Browser refresh or `rest_identity_and_room_passed` does not prove automatic native replies. Record each test as **passed / failed / skipped / not_run**, with the checkout commit, receiver version, room, and delivery/message identifiers. The installation receipt remains an installation result, even after later runtime receipts exist. Do not publish private receipts or credentials in issues.
@@ -144,6 +144,7 @@ The time budget starts at the **first receiver start**, not installation. Its ex
 | `owned_codex_install_modified` or `owned_codex_receipt_invalid` | Preserve the directory for review; do not bypass the ownership/hash checks. |
 | Installed but no reply | Start the printed command; check CLI login, room pause, fresh messages, receiver status, budget, and actual runtime receipts. |
 | `receiver_was_stopped_keep_evidence_and_provision_new_bounded_run` | Preserve the old STOP/evidence and explicitly create a new bounded installation when wanted. |
+| Receiver ends with state `disabled` after a failed turn | A failed native turn makes the receiver disable its own Hub binding, so starting the same receipt again ends with `disabled`. Run the [read-only recovery report](#read-only-recovery-report), keep the state directory, and ask the administrator. Re-enabling a binding is an explicit Hub control described in the [delivery API](DELIVERY_API.md); a restart does not do it. |
 
 This guide describes the installer/receiver contract. It does not certify a particular machine's native run, Desktop injection, or ChatGPT cloud delivery. Those require their own recorded acceptance tests.
 
@@ -153,9 +154,46 @@ Upgrade the Hub first, then stop the old receiver and use this page's current pi
 
 Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid, dispatch has not started, and no full-message read has been recorded, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
 
-Receivers containing the unresolved-native guard stop before Hub join when a prior native turn is unresolved. Preserve `native-active.json` and the delivery journal. Confirm the old child has exited and reconcile server delivery/binding state before an authorized retry; never delete the marker simply to bypass the fence. Hard-crash tests use a synthetic live CLI child, so real-provider in-flight recovery remains pending. See [2026-10-04 evidence](VALIDATION_2026-10-04.md).
+Receivers containing the unresolved-native guard stop before Hub join when a prior native turn is unresolved. Preserve `native-active.json` and the delivery journal. Confirm the old child has exited and reconcile server delivery/binding state before an authorized retry; never delete the marker simply to bypass the fence. Hard-crash tests use a synthetic live CLI child, so real-provider in-flight recovery remains pending. See [2026-10-04 evidence](VALIDATION_2026-10-04.md). The [read-only recovery report](#read-only-recovery-report) shows what the Hub recorded for the reconciliation step.
 
 Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).
+
+## Read-only recovery report
+
+After `native_exit_unconfirmed_preserve_binding`, a failed turn or any restart you are unsure about, compare the receiver's local journal with what the Hub recorded before deciding anything. `scripts/inspect-codex-chat-recovery.py` prints that comparison. **It is a diagnostic, not a recovery.**
+
+It is not part of an installed client. Run it from a repository checkout with the receipt's private Python, and record the checkout commit:
+
+```powershell
+& 'PYTHON_PATH_FROM_THE_RECEIPT' 'C:\src\ys-aimemory\scripts\inspect-codex-chat-recovery.py' --receipt 'CLIENT_DIRECTORY\codex-install.json'
+```
+
+What it does and does not do:
+
+- Validates the receipt with the same check `inspect_command` uses, then opens the known journal files in `state_directory` for reading only. It writes nothing, takes no receiver lock and never removes `native-active.json`.
+- Sends one request, `GET /v1/chat/status` for the receipt's project and room, with this worker's own protected Token over the pinned CA. Its transport refuses every other method or path. There is no join, claim, post, disconnect, lease or expiry change, model start or process inspection.
+- Refuses linked, malformed or oversized journal files, and then does not contact the Hub.
+- Prints fixed state names and sentences only. The Token, lease and request IDs, reply keys, native session ID, paths and message bodies never appear. 32-character identifiers are shortened unless you add `--full-ids` for private reconciliation.
+
+Options: `--offline` (local journal only; no Token read, no Hub request), `--json`, `--language zh-TW`, `--full-ids`, `--timeout 1..30`. Exit code `0` means a report was produced, whatever its state. Exit code `1` means the receipt, arguments or journal location could not be validated; stderr then carries one fixed code.
+
+| State | Meaning | Rests on |
+| --- | --- | --- |
+| `server-replied` | The Hub recorded a reply for the journaled delivery. Detail `local-completion-missing`: the receiver saved no `receipt-<delivery-id>.json`, so only the local record is missing; do not resend. `local-completion-recorded`: both records name the same message. `local-completion-mismatch`: they disagree. | The Hub's latest delivery has the same ID, status `replied`, and a reply message ID and sequence. |
+| `server-read` | The Hub returned the complete messages to a tool call and recorded no reply. A read without a reply is not a completed turn. | The same delivery ID with status `tool_read`. |
+| `unresolved` | Neither a complete read nor a reply can be tied to the journaled delivery: it is only leased or dispatched, it failed, or the Hub's latest delivery is a different one. | The detail and the missing-evidence list. |
+| `stale-generation` | The Hub binding has another generation, so this journal no longer owns it. The journaled delivery's outcome stays unavailable. | The generation in `receiver-binding.json` against the Hub. |
+| `disconnected` | The Hub binding is released. | Hub status and generation. |
+| `unavailable` | No Hub evidence was read: offline, timeout, HTTP status, credential or TLS failure, or the binding was not listed. Only local facts are shown. | A fixed reason code. |
+| `no-delivery` | The journal holds no dispatched delivery. | The local journal. |
+| `scope-mismatch`, `invalid-local-state` | The journal or Hub binding belongs to another project, room or worker, or a journal file cannot be trusted. Stop and ask the administrator. | The local journal or the Hub binding. |
+
+Limits to keep in mind:
+
+- The status route lists only the latest delivery of the binding's current generation. An older delivery, or one from an earlier generation, is reported as missing evidence. **A Hub cursor that has passed a delivery is never treated as a reply.**
+- `native-active.json` holds no process identity, and the report uses only its presence. A missing, live or dead PID would not show that the original child exited, so the report never states that a retry is safe and never claims native exit.
+- A report taken while the receiver is running is a snapshot; the files can change underneath it.
+- The logic is covered by fixture tests. It has not been accepted against a real interrupted native turn; record that as `not_run` until it is.
 
 ## Explicit disconnect and manual posting
 

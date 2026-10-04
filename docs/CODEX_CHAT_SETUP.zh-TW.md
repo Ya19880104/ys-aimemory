@@ -109,7 +109,7 @@ native_acceptance: not_run
 1. 以管理員開啟同一個 Hub 對話，確認專屬 worker 已上線。
 2. 發送新訊息，例如：**「Codex 連線測試：請只回覆一次，說明你的 worker 身分與這則訊息的主題。」** 不要另外要求 Codex 主動查詢。
 3. 在 Hub 確認回覆出現在正確聊天室、作者為預期 worker、有新的訊息 ID／sequence，且沒有重複回覆。
-4. 依安裝回條的 `state_directory` 檢查紀錄：`receiver-status.json` 是接收器狀態；`receipt-<delivery-id>.json` 是該次原生工具呼叫、讀取、發文的證據，以及可取得的 Token 用量。
+4. 依安裝回條的 `state_directory` 檢查紀錄：`receiver-status.json` 是接收器狀態；`receipt-<delivery-id>.json` 是該次原生工具呼叫、讀取、發文的證據，以及可取得的 Token 用量。失敗或逾時的回合不會留下這份回條，也沒有 Token 用量紀錄，但 Hub 仍會計入 `--max-turns`；因此本機回條會低估實際用量。
 5. 暫停聊天室自動投遞後發送測試訊息，確認暫停期間不會派送新的模型回覆。在原有預算內恢復後，再核對預期的投遞行為。
 
 瀏覽器自動刷新或 `rest_identity_and_room_passed` 都不能證明原生自動回覆已成功。各項測試請分別記錄為 **passed / failed / skipped / not_run**，附上 checkout commit、接收器版本、聊天室與投遞／訊息 ID。即使後續已有執行回條，安裝回條仍只代表安裝結果。不要將私有回條或憑證公開到 issues。
@@ -144,6 +144,7 @@ native_acceptance: not_run
 | `owned_codex_install_modified` 或 `owned_codex_receipt_invalid` | 保留安裝目錄供查核，不要繞過歸屬或雜湊檢查。 |
 | 安裝完成但沒有回覆 | 執行回條中的啟動指令，檢查 CLI 登入、聊天室暫停、新訊息、接收器狀態、預算與實際執行回條。 |
 | `receiver_was_stopped_keep_evidence_and_provision_new_bounded_run` | 保留原 STOP 與證據，需要時明確建立新的有限度安裝。 |
+| 回合失敗後，接收器以 `disabled` 狀態結束 | 原生回合失敗時，接收器會停用自己的 Hub 綁定，因此再次執行同一份回條會以 `disabled` 結束。請執行[唯讀恢復報告](#唯讀恢復報告)、保留狀態目錄，並交由管理員判斷。重新啟用綁定是[交付 API](DELIVERY_API.zh-TW.md) 所述的明確 Hub 控制，重啟不會做這件事。 |
 
 本教學描述安裝器與接收器的行為，不表示某台電腦已通過原生執行、Desktop 訊息注入或 ChatGPT 雲端投遞驗收；這些項目需要各自的實測紀錄。
 
@@ -153,9 +154,46 @@ native_acceptance: not_run
 
 新版接收器先儲存領取請求，遇到暫時網路錯誤會在期限與停止控制內退避重試。相同請求只在尚未派送、沒有完整訊息讀取紀錄且租約有效時取回原通知，不重複扣交付嘗試或回合。已派送後重啟不會逕自再啟動同一輪模型；租約真正到期後重新交付仍有預算成本。這不保證模型恰好執行一次，也不代表已測完原生程序的所有中斷情境。
 
-包含 unresolved-native guard 的接收器，在舊 native turn 尚未釐清時會於 Hub join 前停止。保留 `native-active.json` 與交付 journal；確認舊 child 已退出，核對 server delivery／binding 狀態後才進行經授權的重試，不得單純刪除 marker 繞過阻擋。Hard-crash 測試使用合成且存活的 CLI child，真實 provider in-flight recovery 仍 pending。詳見[2026-10-04 證據](VALIDATION_2026-10-04.zh-TW.md)。
+包含 unresolved-native guard 的接收器，在舊 native turn 尚未釐清時會於 Hub join 前停止。保留 `native-active.json` 與交付 journal；確認舊 child 已退出，核對 server delivery／binding 狀態後才進行經授權的重試，不得單純刪除 marker 繞過阻擋。Hard-crash 測試使用合成且存活的 CLI child，真實 provider in-flight recovery 仍 pending。詳見[2026-10-04 證據](VALIDATION_2026-10-04.zh-TW.md)。核對時可用[唯讀恢復報告](#唯讀恢復報告)查看 Hub 的紀錄。
 
 綁定單純到期後可以一般手動發文；房間暫停、停用綁定、封存或撤銷權限仍然有效。過期自動回覆不得拔掉交付欄位改成手動重發。詳見[交付 API](DELIVERY_API.zh-TW.md)。
+
+## 唯讀恢復報告
+
+出現 `native_exit_unconfirmed_preserve_binding`、回合失敗，或任何不確定能否重啟的情況時，先比對接收器的本機 journal 與 Hub 的紀錄，再做決定。`scripts/inspect-codex-chat-recovery.py` 會印出這份比對。**它只是診斷，不是恢復。**
+
+它不在已安裝的用戶端內。請從 repository checkout 以回條中的專用 Python 執行，並記下 checkout commit：
+
+```powershell
+& '回條中的_PYTHON_路徑' 'C:\src\ys-aimemory\scripts\inspect-codex-chat-recovery.py' --receipt '用戶端目錄\codex-install.json'
+```
+
+它做什麼、不做什麼：
+
+- 以 `inspect_command` 所用的同一項檢查驗證回條，再以唯讀方式開啟 `state_directory` 內已知的 journal 檔。不寫入任何檔案、不取得接收器鎖，也絕不移除 `native-active.json`。
+- 只送出一個請求：以此 worker 自己受保護的 Token、經固定的 CA，對回條的專案與聊天室呼叫 `GET /v1/chat/status`。傳輸層會拒絕其他方法或路徑。不 join、claim、發文、disconnect，不更動租約或期限，不啟動模型，也不檢查程序。
+- journal 檔若是連結、格式錯誤或過大，一律拒絕，且不再連線 Hub。
+- 只輸出固定的狀態名稱與句子。Token、lease 與 request ID、回覆金鑰、native session ID、路徑與訊息內文都不會出現。32 字元的識別碼預設會縮短；需要私下核對時才加 `--full-ids`。
+
+選項：`--offline`（只看本機 journal，不讀 Token、不連 Hub）、`--json`、`--language zh-TW`、`--full-ids`、`--timeout 1..30`。結束代碼 `0` 表示已產生報告，不論狀態為何；`1` 表示回條、參數或 journal 位置無法通過驗證，stderr 只會有一個固定代碼。
+
+| 狀態 | 意義 | 依據 |
+| --- | --- | --- |
+| `server-replied` | Hub 已記錄此交付的回覆。細項 `local-completion-missing`：接收器沒有存下 `receipt-<delivery-id>.json`，缺的只是本機紀錄，不要重送。`local-completion-recorded`：兩份紀錄指向同一則訊息。`local-completion-mismatch`：兩份紀錄不一致。 | Hub 最新交付的 ID 相同、狀態為 `replied`，且有回覆訊息 ID 與 sequence。 |
+| `server-read` | Hub 已透過工具回傳完整訊息，但沒有記錄回覆。已讀未回不是完成的回合。 | 相同的交付 ID，狀態為 `tool_read`。 |
+| `unresolved` | 找不到可對應此交付的完整讀取或回覆：僅 leased 或 dispatched、已失敗，或 Hub 的最新交付是另一筆。 | 細項與「仍缺少的證據」清單。 |
+| `stale-generation` | Hub 的 binding 已是另一個 generation，此 journal 不再擁有它；該交付的結果維持無法取得。 | `receiver-binding.json` 的 generation 與 Hub 比對。 |
+| `disconnected` | Hub 的 binding 已釋放。 | Hub 狀態與 generation。 |
+| `unavailable` | 未取得 Hub 證據：離線、逾時、HTTP 狀態、憑證或 TLS 失敗，或清單中沒有此 binding。只顯示本機事實。 | 固定的原因代碼。 |
+| `no-delivery` | journal 內沒有已派送的交付。 | 本機 journal。 |
+| `scope-mismatch`、`invalid-local-state` | journal 或 Hub binding 屬於其他專案、聊天室或 worker，或 journal 檔不可信。請停止並交由管理員處理。 | 本機 journal 或 Hub binding。 |
+
+必須記得的限制：
+
+- 狀態路由只列出 binding 目前 generation 的最新交付。較舊的交付或前一個 generation 的交付，會列為缺少的證據。**Hub 游標越過某筆交付，絕不視為已回覆。**
+- `native-active.json` 不含程序身分，報告只使用它是否存在。PID 不存在、存活或已結束，都不能證明原本的 child 已退出；因此報告不會說可以安全重試，也不會宣稱 native 已退出。
+- 接收器執行中所產生的報告只是當下快照，檔案可能隨後改變。
+- 判斷邏輯由 fixture 測試涵蓋，尚未以真實中斷的 native turn 驗收；驗收前請記為 `not_run`。
 
 ## 明確中斷與恢復手動發文
 
