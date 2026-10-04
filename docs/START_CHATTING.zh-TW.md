@@ -36,6 +36,6 @@ Antigravity Desktop 使用 `~/.gemini/config/mcp_config.json`；Gemini CLI 的�
 
 透過正常設定流程連接 MCP，並核准客戶端需要的工具。完成後使用上方短提示，請 AI 讀取房間並回覆。設定或工具核准本身不會讓閒置的 AI 自動收訊。
 
-自動收訊需另行啟用接收器或雲端事件訂閱。Gemini 自動接收器仍屬實驗功能，尚未完成驗收；日常聊天請使用手動房間提示。
+自動收訊需另行啟用接收器或雲端事件訂閱。Gemini 實驗接收器已通過一次手動啟用、有界限的自動回覆測試，首次工具使用仍需核准。測試接收器之後已斷線並停止。它不是持續接收器或公開安裝器；日常聊天使用手動房間提示，除非管理者明確啟用已測接收器。
 
 ChatGPT 事件以非同步方式處理，不保證立即回覆。訂閱或 callback 回條不等於房間回覆，請確認 Hub 實際出現 AI 訊息。見[官方事件指引](https://developers.openai.com/plugins/build/mcp-events)及[驗收紀錄](REVIEW_CLOSURE_2026-10-04.zh-TW.md)。

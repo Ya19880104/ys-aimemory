@@ -78,4 +78,20 @@ Gemini 仍待使用者原生工具核准；私人 Windows observer 引號修正�
 
 ### 臺北時間 12:46 cleanup 已確認
 
-原生 task UI 顯示繼續控制，確認處於 paused；訂閱三次 delivery 後已確認 unsubscribed。綁定 disabled 且 disconnected，generation／version 8，processed cursor 仍未前進。私人 runtime 停止回條確認 `stopped=true`、`process_running=false`。此更新覆蓋前述 cleanup PENDING，但本輪 **NOT PASSED** 結果不變。Gemini 仍等待使用者授權，sidecar 尚未啟用。
+原生 task UI 顯示繼續控制，確認處於 paused；訂閱三次 delivery 後已確認 unsubscribed。綁定 disabled 且 disconnected，generation／version 8，processed cursor 仍未前進。私人 runtime 停止回條確認 `stopped=true`、`process_running=false`。此更新覆蓋前述 cleanup PENDING，但本輪 **NOT PASSED** 結果不變。該 cleanup 檢查點的 Gemini 仍待授權且 sidecar 未啟用；下述啟動問題更新覆蓋當時等待核准狀態。
+
+### 後續 Gemini 啟動問題（原生重試尚未執行）
+
+使用者確認 12:49 核准後原生 `chat_status` 已完成，回傳 `chat_operation_unavailable`。來源分析發現 pilot adapter 缺少 `chat-binding.json`，在任何 HTTP 請求前即發生 file-not-found。這是未綁定啟動失敗，不是憑證或 CA 驗證遭拒的證據。13:16 已準備僅身分用途的 inactive config（`expires_at=0`），但原生重試草稿尚未送出，恢復仍未確認。真正 Stop hook 尚未觀察到，自動收訊未驗收通過。聚焦來源測試（13 bridge checks、24 targeted checks）不能取代待執行的原生重試。
+
+### Gemini 手動啟用的單回合自動回覆 — PASS
+
+臺北時間 13:18，原生 `chat_status` 回傳指定身分／專案／房間與 `active:false`，身分／狀態 **PASS**。13:31 管理者明確啟用私人有界 one-shot 接收器；這是手動 admission，不是 native Stop observer 啟用。
+
+13:32:04 人類在 Hub 網站留言，官方 Antigravity sidecar `agentapi send-message` 喚醒已綁定原生對話，之後沒有追加 GUI follow-up prompt。使用者核准 conversation-scoped `chat_read`／`chat_reply` 後，13:32:51.9307487 完成原生完整讀取，13:33:00.7933464 回覆。Hub 確認單次 delivery replied、attempt 1、processed human sequence 7、reply sequence 8、turns 1/1 並達 `budget_exhausted`；回覆含合成 marker 與 `RECEIVED`。
+
+這證明**手動啟用的單回合自動原生讀取／回覆**，包含首次工具核准。Native Stop observer 啟用仍 **NOT RUN**；持續多輪、重啟恢復及公開安裝器仍 **NOT RUN**。Pilot cleanup 已確認，見下方。Bridge 來源修正使缺 binding 回報 `chat_not_active`，13 項聚焦測試為來源證據，與原生結果分開。本輪新 cloud continuation 失敗仍與歷史 cloud PASS 分開。
+
+#### One-shot pilot cleanup 已確認
+
+自有 binding 已斷線（generation 1→2），保留 STOP 與永久 attempt fence，無剩餘自有 Python receiver／MCP 程序。自有 MCP／hook 檔案精確恢復，另行使用者設定變更保留。本次 pilot 已停止，無持續 listener。獨立原生／Hub 回條核對僅支持單回合 PASS，不支持免核准、多輪或 Stop hook 啟用。

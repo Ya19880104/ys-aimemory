@@ -78,4 +78,20 @@ Gemini still awaits the user's native tool approval. Corrected private Windows o
 
 ### Cleanup verified at 12:46 Asia/Taipei
 
-The native task UI displayed the resume control, confirming paused state. The subscription was confirmed unsubscribed after three deliveries. Its binding was disabled and disconnected, generation/version 8, with the processed cursor still unchanged. The private runtime stop receipt confirmed `stopped=true` and `process_running=false`. This supersedes cleanup PENDING above; it does not change the continuation's **NOT PASSED** outcome. Gemini remains waiting for user authorization; its sidecar has not been enabled.
+The native task UI displayed the resume control, confirming paused state. The subscription was confirmed unsubscribed after three deliveries. Its binding was disabled and disconnected, generation/version 8, with the processed cursor still unchanged. The private runtime stop receipt confirmed `stopped=true` and `process_running=false`. This supersedes cleanup PENDING above; it does not change the continuation's **NOT PASSED** outcome. At that cleanup checkpoint Gemini still awaited authorization and its sidecar was not enabled; the later startup finding below supersedes that pending-approval status.
+
+### Later Gemini startup finding (native retry not yet run)
+
+The user subsequently confirmed that native `chat_status` completed after approval at 12:49, returning `chat_operation_unavailable`. Source analysis found the pilot adapter lacked `chat-binding.json`, causing a file-not-found before any HTTP request. This is an unbound-startup failure, not evidence of rejected credentials or CA validation. An identity-only inactive configuration (`expires_at=0`) was prepared at 13:16; the drafted native retry was not sent, so recovery remains unverified. Genuine Stop-hook invocation has still not been observed and automatic receiving is not accepted. Focused source tests (13 bridge checks and 24 targeted checks) do not replace that pending native retry.
+
+### Gemini manually enabled one-turn automatic reply — PASS
+
+At 13:18 Asia/Taipei, native `chat_status` returned the expected identity/project/room with `active:false`: identity/status **PASS**. At 13:31 the operator explicitly enabled a private bounded one-shot receiver; this was manual admission, not activation by the native Stop observer.
+
+A human posted in the Hub browser at 13:32:04. The official Antigravity sidecar `agentapi send-message` woke the bound native conversation, with no later GUI follow-up prompt. After the user approved conversation-scoped `chat_read`/`chat_reply`, native full read completed at 13:32:51.9307487 and reply at 13:33:00.7933464. The Hub confirmed one replied delivery, attempt 1, processed human sequence 7, reply sequence 8, and turns 1/1 with `budget_exhausted`. The reply contained the synthetic marker and `RECEIVED`.
+
+This proves **manually enabled, one-turn automatic native read/reply**, including first-use tool approval. Native Stop-observer activation remains **NOT RUN**; continuous multiple turns, restart recovery and a public installer remain **NOT RUN**. Pilot cleanup is confirmed below. The bridge source fix also makes missing binding report `chat_not_active`; its 13 focused tests are source evidence, separate from the native result. The unsuccessful fresh cloud continuation remains separate from historical cloud PASS.
+
+#### One-shot pilot cleanup confirmed
+
+The owned binding was disconnected (generation 1→2), STOP and the permanent attempt fence were retained, and no owned Python receiver/MCP process remained. Owned MCP/hook files were restored exactly while preserving an unrelated user setting change. This pilot is stopped; no persistent listener remains. Independent native/Hub receipt review supports the one-turn PASS only, not approval-free operation, multiple turns or Stop-hook activation.
