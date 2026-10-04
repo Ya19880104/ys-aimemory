@@ -136,11 +136,24 @@ batch completes.
 - `participants`: `binding_id`, `worker_id`, `client`, `display_name`, `generation`,
   `version`, `enabled`, `released_at`, `expires_at`, `last_seen_at`, `processed_sequence`,
   `max_turns`, `turns_used`, `relay_online`, `status`, and `latest_delivery`.
+- Optional `queued_reservation` on a participant: `through_sequence`, `created_at`,
+  `queued_until`. It is absent unless an unexpired, unactivated reservation matches
+  the current binding, generation, versions and cursor, with no pending delivery.
+  Only `waiting` or `offline` participants can show it. This describes Hub admission,
+  not an accepted notification, a tool read or a reply; existing `status` values
+  are unchanged. The panel says **Queued, not yet read** and keeps an offline label.
 - Participant states: `waiting`, `offline`, `processing`, `failed`,
   `budget_exhausted`, `paused`, `disabled`, `disconnected`, `expired`, `archived`, `revoked`.
 - Receipt states: `leased`, `dispatched`, `tool_read`, `replied`, `failed`, `retry_ready`, with
   timestamps and exact reply ID/sequence. Status omits bodies, credentials, lease
   IDs and native conversation identifiers.
+
+The queued lookup returns at most eight candidate rows after applying the fences
+and expiry in SQL. That limits returned rows, not the database scan: it still
+examines that worker's reservation history within the project. It does not run
+when the cursor is current, a delivery is pending, or the binding is blocked.
+At large history volumes, measure this query and consider a separately reviewed
+index/schema change. No message bodies or reservation identifiers are returned.
 
 Admins may `POST /v1/chat/pause` with
 `{project_id,session_id,paused,expected_version,idempotency_key?}`. Same-key retries

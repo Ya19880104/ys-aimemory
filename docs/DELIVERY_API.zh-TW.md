@@ -67,8 +67,11 @@
 
 - `control`：`paused`、`version`。
 - `participants`：`binding_id`、`worker_id`、`client`、`display_name`、`generation`、`version`、`enabled`、`released_at`、`expires_at`、`last_seen_at`、`processed_sequence`、`max_turns`、`turns_used`、`relay_online`、`status`、`latest_delivery`。
+- 參與者上的選填 `queued_reservation`：僅含 `through_sequence`、`created_at`、`queued_until`。只有未過期、尚未啟用的保留符合目前 binding、generation、版本與游標，且沒有待處理 delivery 時才出現；僅適用 `waiting` 或 `offline`。它表示 Hub 的准入保留，不代表通知已被接受、工具已讀取或已回覆；既有 `status` 值不變。介面顯示「排隊中，尚未讀取」，離線標示仍保留。
 - 參與者狀態：`waiting` / `offline` / `processing` / `failed` / `budget_exhausted` / `paused` / `disabled` / `disconnected` / `expired` / `archived` / `revoked`。
 - 收據狀態：`leased` / `dispatched` / `tool_read` / `replied` / `failed` / `retry_ready`。含各階段時間與確切 reply ID/序號；不包含正文、Token、lease ID 或 native session ID。
+
+排隊查詢先由 SQL 篩選版本等條件與期限，再回傳最多八筆候選。這限制的是回傳筆數，不是資料庫掃描量：資料庫仍會檢查該 worker 在專案內的保留歷史。游標已到最新、已有待處理交付或綁定受阻時，不執行此查詢。歷史量大時應量測成本，另案審查索引／schema 變更；回應不含訊息正文或保留識別碼。
 
 管理員 `POST /v1/chat/pause`：`{project_id,session_id,paused,expected_version,idempotency_key?}`。相同 key 是可重試的；不同 key 必須使用最新版本。暫停阻擋新 dispatch/工具交付寫回，普通管理員對話仍可發言。已綁定的 worker 在暫停、停用或仍有未完成 delivery 時，不能把失敗回覆改用無 delivery 欄位繞過停止或 lease。回傳 `running_turns_cancelled:false`，因為正在供應商端執行的模型不能由 Hub 假稱已取消。客戶端仍必須自行支援中止。
 
