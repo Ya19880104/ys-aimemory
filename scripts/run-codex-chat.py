@@ -400,11 +400,13 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
     if active.exists():
         raise ReceiverError('native_exit_unconfirmed_preserve_binding')
     save(active, {'state': 'starting'})
+    proof = NativeProof(config, delivery)
     try:
         proc = subprocess.Popen(args, cwd=working, env=environment(), stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', errors='replace',
             shell=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-    except OSError:
+    except OSError as exc:
+        record_native_failure(directory, delivery, proof, 'start', exc)
         # CreateProcess failed: no child exists. Do not clear any later unknown exit.
         active.unlink()
         raise
@@ -438,7 +440,6 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
 
     thread = threading.Thread(target=read_output, daemon=True)
     thread.start()
-    proof = NativeProof(config, delivery)
     deadline, last_beat, total = now() + config['turn_timeout'], now(), 0
     try:
         while True:
@@ -462,13 +463,48 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
                 raise ReceiverError('native_event_limit')
             proof.event(item)
         return proof.finish(proc.wait(timeout=10))
+    except Exception as exc:
+        record_native_failure(directory, delivery, proof, 'execution', exc)
+        raise
     finally:
         finished.set()
-        terminate(proc)
+        try:
+            terminate(proc)
+        except Exception as exc:
+            record_native_failure(directory, delivery, proof, 'cleanup', exc)
+            raise
         active.unlink(missing_ok=True)
         thread.join(timeout=1)
         proc.stdout.close()
 
+
+
+def record_native_failure(directory, delivery, proof, phase, error):
+    """Local incomplete evidence is not a server disposition or retry permission."""
+    allowed = {'native_turn_failed', 'native_acceptance_incomplete',
+               'native_stopped_or_timed_out', 'native_binding_stopped',
+               'native_output_too_large', 'invalid_native_json', 'native_event_limit',
+               'native_tree_exit_unconfirmed', 'unexpected_native_builtin'}
+    code = str(error) if isinstance(error, ReceiverError) and str(error) in allowed else 'native_exception'
+    record = {'status': 'incomplete', 'phase': phase, 'error_code': code,
+              'token_usage': dict(proof.token_usage), 'native_tool_calls': proof.calls,
+              'native_reply_receipt_observed': proof.post is not None,
+              'server_disposition': 'not_reconciled', 'retry_authorized': False}
+    # Evidence output must not turn a failed call into a new execution attempt.
+    try:
+        path = directory / ('native-failure-' + delivery['delivery_id'] + '.json')
+        if not path.exists():
+            save(path, record)
+    except OSError:
+        pass
+
+
+def record_receiver_failure(directory, result):
+    # Repeated fenced restarts keep the original status, with one bounded failure.
+    target = ('receiver-restart-failure.json' if
+              result.get('error_code') == 'native_exit_unconfirmed_preserve_binding'
+              else 'receiver-status.json')
+    save(directory / target, result)
 
 def receiver(config, client, directory, *, turn=native_turn, now=time.time, sleep=time.sleep):
     stop = lambda: (directory / 'STOP').exists() or now() >= config['expires_at']
@@ -798,7 +834,7 @@ def main():
         result = {'state': 'failed', 'error_type': type(exc).__name__,
                   'error_code': str(exc) if isinstance(exc, ReceiverError) else 'receiver_failed', 'at': time.time()}
         if status_directory is not None:
-            save(status_directory / 'receiver-status.json', result)
+            record_receiver_failure(status_directory, result)
         print(json.dumps(result), file=sys.stderr)
         return 1
 

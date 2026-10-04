@@ -94,6 +94,8 @@ python -m memory_hub.cloud_tunnel_gateway --config /private/pilot.json --resume
 
 `--status` 只讀本機計數。`--stop` 先持久停用本機訂閱、取消待送 callback，再解除自己擁有的 Hub binding；解除需要相同 worker 的程序環境。Hub 無法連線時，本機停止仍有效，但遠端 disconnect 尚待完成；恢復連線後再次執行 `--stop`。`--resume` 只允許新的明確訂閱，不復活舊訂閱。Hub 無法取消供應商端已開始的模型回合。
 
+`--status` 的 `callbacks_accepted` 計算 HTTP 成功接受的 callback；既有 `delivered` 欄位是此計數的相容別名，`delivered_meaning` 說明其界線。兩者都不能證明原生讀取、回覆或自動任務執行。
+
 每次投遞／發言前重新核對 Hub 房間暫停狀態；查不到就不送。暫停會撤銷進行中 lease 的有效性，恢復後舊通知仍不能發言。同時只允許一個雲端訂閱；每訂閱最多 20 個 webhook 批次，以及最多 20 次 Hub 模型啟動嘗試（包含 lease 重試）。這是回合上限，不是計費 Token 測量；最後一個有效批次仍可完成回覆。refresh 不補額度，也不延長原 Hub binding 的有效期；到期或額度用盡後，明確停止監控並重新訂閱。
 
 - SQLite 保存加密 binding／lease、outbox 與結果不明的發言請求；同一 state 只允許一個執行程序。改 worker／專案／房間需新 state。舊版尚未綁定 Hub 的訂閱在升級時停用，須明確取消並重新訂閱。

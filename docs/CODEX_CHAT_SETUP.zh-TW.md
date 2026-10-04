@@ -109,8 +109,10 @@ native_acceptance: not_run
 1. 以管理員開啟同一個 Hub 對話，確認專屬 worker 已上線。
 2. 發送新訊息，例如：**「Codex 連線測試：請只回覆一次，說明你的 worker 身分與這則訊息的主題。」** 不要另外要求 Codex 主動查詢。
 3. 在 Hub 確認回覆出現在正確聊天室、作者為預期 worker、有新的訊息 ID／sequence，且沒有重複回覆。
-4. 依安裝回條的 `state_directory` 檢查紀錄：`receiver-status.json` 是接收器狀態；`receipt-<delivery-id>.json` 是該次原生工具呼叫、讀取、發文的證據，以及可取得的 Token 用量。失敗或逾時的回合不會留下這份回條，也沒有 Token 用量紀錄，但 Hub 仍會計入 `--max-turns`；因此本機回條會低估實際用量。
+4. 依安裝回條的 `state_directory` 檢查紀錄：`receiver-status.json` 是接收器狀態；`receipt-<delivery-id>.json` 是已完成原生工具呼叫、讀取、發文的證據，以及可取得的 Token 用量。失敗或逾時回合仍計入 Hub 的 `--max-turns`，只加總成功回條會低估用量。
 5. 暫停聊天室自動投遞後發送測試訊息，確認暫停期間不會派送新的模型回覆。在原有預算內恢復後，再核對預期的投遞行為。
+
+失敗的原生回合保留第一份 `native-failure-<delivery-id>.json`：只記固定錯誤／階段、已觀察的工具證據與已回報用量；未知用量為 `not_reported`，不是零。此本機未完成證據不能判定伺服器處置或授權重試，即使已觀察到回覆也一樣。被 fence 擋下的重啟另寫一份 `receiver-restart-failure.json`，保留上一份 `receiver-status.json`；明確恢復前須先核對伺服器並確認舊子程序已退出。
 
 瀏覽器自動刷新或 `rest_identity_and_room_passed` 都不能證明原生自動回覆已成功。各項測試請分別記錄為 **passed / failed / skipped / not_run**，附上 checkout commit、接收器版本、聊天室與投遞／訊息 ID。即使後續已有執行回條，安裝回條仍只代表安裝結果。不要將私有回條或憑證公開到 issues。
 

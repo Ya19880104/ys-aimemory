@@ -943,7 +943,8 @@ def main():
             gateway = Gateway(config, None)
             if args.status:
                 print(json.dumps({'stopped': gateway.stopped(), 'subscriptions': [dict(row) for row in
-                    gateway.db.execute('SELECT id,status,expires,delivered FROM subscriptions')],
+                    gateway.db.execute('SELECT id,status,expires,delivered,delivered AS callbacks_accepted FROM subscriptions')],
+                    'delivered_meaning': 'callbacks_accepted_not_native_read_or_reply',
                     'delivery_counts': {row[0]: row[1] for row in gateway.db.execute('SELECT state,count(*) FROM outbox GROUP BY state')}}))
             else:
                 if args.stop:

@@ -745,3 +745,54 @@ def test_native_start_preserves_preexisting_unknown_marker(monkeypatch,tmp_path)
     with pytest.raises(runner.ReceiverError,match='native_exit_unconfirmed'):
         runner.native_turn(CONFIG,DELIVERY,tmp_path,lambda:{'status':'processing'},lambda:False)
     assert (tmp_path/'native-active.json').read_bytes()==raw and calls==[]
+
+
+@pytest.mark.parametrize('usage', [None, {'input_tokens':123,'cached_input_tokens':0,'output_tokens':4}])
+def test_failed_native_turn_preserves_only_observed_usage(monkeypatch,tmp_path,usage):
+    stream=[{'type':'turn.completed','usage':usage},{'type':'error','message':'canary-private-provider-error'}]
+    class Process:
+        stdout=io.StringIO('\n'.join(json.dumps(x) for x in stream)+'\n')
+        def poll(self):return 0
+        def wait(self,timeout):return 0
+    monkeypatch.setattr(runner.subprocess,'Popen',lambda *a,**k:Process())
+    with pytest.raises(runner.ReceiverError,match='native_turn_failed'):
+        runner.native_turn(CONFIG,DELIVERY,tmp_path,lambda:{'status':'processing'},lambda:False)
+    raw=(tmp_path/('native-failure-'+DELIVERY['delivery_id']+'.json')).read_text()
+    record=json.loads(raw)
+    assert record['token_usage']==runner.NativeProof.reported_usage(usage)
+    assert record['phase']=='execution' and record['error_code']=='native_turn_failed'
+    assert record['server_disposition']=='not_reconciled' and record['retry_authorized'] is False
+    assert 'canary-private-provider-error' not in raw
+    assert not (tmp_path/('receipt-'+DELIVERY['delivery_id']+'.json')).exists()
+
+
+def test_incomplete_local_proof_preserves_observed_reply_without_retry(tmp_path):
+    proof=runner.NativeProof(CONFIG,DELIVERY)
+    proof.post={'synthetic':'canary-private-post'}
+    runner.record_native_failure(tmp_path,DELIVERY,proof,'execution',RuntimeError('canary-private-token'))
+    raw=(tmp_path/('native-failure-'+DELIVERY['delivery_id']+'.json')).read_text()
+    record=json.loads(raw)
+    assert record['native_reply_receipt_observed'] is True
+    assert record['status']=='incomplete' and record['server_disposition']=='not_reconciled'
+    assert record['token_usage']['input_tokens']=='not_reported'
+    assert 'canary-private' not in raw and record['error_code']=='native_exception'
+
+
+def test_repeated_fenced_restart_keeps_prior_status_without_nesting(tmp_path):
+    status=tmp_path/'receiver-status.json';raw=b'{"binding_id":"synthetic-old","native_turns":1}'
+    status.write_bytes(raw)
+    result={'state':'failed','error_code':'native_exit_unconfirmed_preserve_binding','at':123}
+    for _ in range(3):runner.record_receiver_failure(tmp_path,result)
+    assert status.read_bytes()==raw
+    assert json.loads((tmp_path/'receiver-restart-failure.json').read_text())==result
+    assert sorted(p.name for p in tmp_path.iterdir())==['receiver-restart-failure.json','receiver-status.json']
+
+
+def test_native_failure_preserves_first_phase(tmp_path):
+    proof = runner.NativeProof(CONFIG, DELIVERY)
+    delivery = {'delivery_id': 'fixture-delivery'}
+    runner.record_native_failure(tmp_path, delivery, proof, 'execution', runner.ReceiverError('native_turn_failed'))
+    path = tmp_path / 'native-failure-fixture-delivery.json'
+    first = path.read_bytes()
+    runner.record_native_failure(tmp_path, delivery, proof, 'cleanup', RuntimeError('private-canary'))
+    assert path.read_bytes() == first

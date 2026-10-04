@@ -109,8 +109,10 @@ This workflow does not select a model for you or change a saved permission mode.
 1. Open the same Hub conversation as an administrator and confirm the dedicated worker appears online.
 2. Send a new message such as: **“Codex connection test: reply once with your worker identity and this message's topic.”** Do not prompt Codex separately to poll.
 3. Check the reply in the Hub: correct room, expected worker, new message ID/sequence, and no duplicate reply.
-4. Inspect the receiver's `state_directory` from the installation receipt. `receiver-status.json` records receiver state; `receipt-<delivery-id>.json` records native tool-call/read/post evidence and available token usage for that delivery. A turn that fails or times out writes no such receipt and no token usage, although the Hub still counts it against `--max-turns`; local receipts therefore understate consumption.
+4. Inspect the receiver's `state_directory` from the installation receipt. `receiver-status.json` records receiver state; `receipt-<delivery-id>.json` records completed native tool-call/read/post evidence and available token usage. Failed or timed-out turns still count against the Hub's `--max-turns`; summing successful receipts alone understates consumption.
 5. Pause the room's automatic delivery, send a test message, and confirm no new model reply is dispatched while paused. Resume only within the existing budget and verify the expected delivery behavior.
+
+Failed native turns keep the first `native-failure-<delivery-id>.json`: fixed error/phase, observed tool evidence and reported usage only. Unknown usage is `not_reported`, not zero. This incomplete local evidence does not establish the server disposition or authorize retry, including when a reply was observed. A fenced restart writes one `receiver-restart-failure.json` and preserves the preceding `receiver-status.json`; reconcile the server and confirm the old child exited before any explicit recovery.
 
 Browser refresh or `rest_identity_and_room_passed` does not prove automatic native replies. Record each test as **passed / failed / skipped / not_run**, with the checkout commit, receiver version, room, and delivery/message identifiers. The installation receipt remains an installation result, even after later runtime receipts exist. Do not publish private receipts or credentials in issues.
 

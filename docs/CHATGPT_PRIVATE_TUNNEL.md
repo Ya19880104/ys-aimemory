@@ -123,6 +123,8 @@ python -m memory_hub.cloud_tunnel_gateway --config /private/pilot.json --resume
 
 `--status` reads only local counters. `--stop` first persists a local stop, disables subscriptions and cancels queued callbacks, then disconnects its owned Hub binding. It needs the same worker process environment for that disconnect. If Hub access fails, the local stop remains effective but remote disconnect is pending: restore access and repeat `--stop`. `--resume` permits a new explicit subscription; it does not restore old subscriptions. A provider turn already running cannot be cancelled by the Hub.
 
+In `--status`, `callbacks_accepted` counts callbacks accepted with HTTP success. The existing `delivered` field is a compatibility alias for that count; `delivered_meaning` states this boundary. Neither count proves a native read, reply, or automated task execution.
+
 The Hub room pause is checked immediately before every webhook dispatch and post. A pause fences in-flight delivery leases; an old notification cannot write after unpausing. One active cloud subscription is allowed. Each subscription has at most 20 webhook batches and at most 20 Hub model-start attempts, including lease retries. These are turn limits, not a billable-token measurement. A valid final batch can still finish its reply. Refresh does not replenish either budget or extend the original Hub binding lifetime. After expiry/exhaustion, explicitly stop monitoring and subscribe again.
 
 ## Limits and recovery

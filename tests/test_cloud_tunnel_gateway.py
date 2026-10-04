@@ -1081,3 +1081,18 @@ def test_nonterminal_reservation_failure_preserves_saved_key(pilot):
     assert keys[0]==keys[1]
     assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0]=='active'
     assert pilot.gateway.db.execute("SELECT count(*) FROM meta WHERE key LIKE 'reserve:%'").fetchone()[0]==1
+
+
+
+def test_local_status_callback_counter_keeps_legacy_alias(pilot,monkeypatch,capsys):
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    monkeypatch.setattr(cloud,'load_config',lambda path:pilot.config)
+    monkeypatch.setattr(cloud,'Gateway',lambda *a,**k:pilot.gateway)
+    monkeypatch.setattr(cloud.sys,'argv',['gateway','--config',__file__,'--status'])
+    assert cloud.main()==0
+    value=json.loads(capsys.readouterr().out)
+    row=value['subscriptions'][0]
+    assert row['delivered']==row['callbacks_accepted']==1
+    assert value['delivered_meaning']=='callbacks_accepted_not_native_read_or_reply'
