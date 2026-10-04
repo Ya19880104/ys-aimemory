@@ -2,6 +2,22 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
+## 原生驗收補充：2026-10-05 臺北 00:52
+
+以下觀察屬於已部署來源 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`；後續文件與私有 harness revision 沒有改變已部署產品。不新增完整 suite、部署或 provider-recovery passed 宣稱。
+
+Fresh bounded Cloud identity-only event trial **自動原生 identity 執行 passed**。事件 callback 約於臺北 00:27:19 收到 HTTP 200，實際 native `identity` ingress／completion 隨後於 00:27:47 出現。Coordinator 觀察原生結果與正確限定身分，獨立 observer 另以 gateway tool-call receipts 核對。事件至 identity 執行間沒有手動 model prompt；callback 接受本身不算原生執行。本輪沒有 `read_delta`／`post_message` ingress：**本輪自動完整讀取／回覆 not_run**，較早自動讀寫 failed 與手動 native passed 分開保留。另一次完整 read/post 比較記於下方；不宣稱完整 formal GPT 驗收。
+
+Task 要求的自行停止 **failed**，仍為 enabled。Operator 透過官方 UI 暫停，unsubscribe 另獲核對。首次 runtime cleanup 在 local STOP 與 DB stopped 保存後 failed：官方 tunnel client 正規化兩個 own health/log profile path，私有 harness 的完整 profile byte pin 因此拒絕清理。另以經審查、僅執行一次的 cleanup 反轉這兩個 path 重建原完整 profile hash，重新核對 exact runtime ownership，再 disconnect Hub binding 並停止官方 runtime。最終 runtime readback 與本機 stopped state 於臺北 00:39 確認閉合。保留原失敗，不推導 guard exit-code 成功。這是私有驗收 harness 問題，不是產品 delivery defect 的證據。
+
+後續 fresh bounded Cloud trial 在相同已部署來源、與 identity trial 相同 permission choice 下，**單一事件自動完整原生讀取／回覆 passed**，沒有改用「allow all tools」。臺北 00:46:23 送出 human 訊息，00:46:31 callback 收到 HTTP 200。實際 `read_delta` ingress／completion 為 00:47:01.923–00:47:01.994，receipt 為 `tool_read`；`post_message` ingress／completion 為 00:47:08.050–00:47:08.113，receipt 為 `replied`。Native UI 核對同一事件完整讀取、沒有 unread 或 truncated content，Coordinator 另在網站觀察對應回覆。Task 建立至 cleanup 間沒有手動 model prompt。這驗收單一事件自動關卡，不驗收 continuous delivery、第二事件、restart 或完整 formal GPT；較廣關卡仍 **not_run**，歷史失敗保留。
+
+自行停止再次 **failed**：原保存 task instructions 明確要求 stop，model 後來卻聲稱應保留 trigger。臺北 00:48 已核對 operator UI pause；經審查的 exact-scope stop 僅執行一次、exit 0，閉合已確認。模型停止敘述不是 lifecycle 證據，仍須官方 pause／unsubscribe 與獨立 runtime closure。
+
+相同已部署產品來源的 fresh Gemini 訊息約於臺北 00:06:41 **自動原生完整讀取／回覆 passed**，中間沒有手動 model prompt；native UI、Hub replied receipts 與 durable replied journal 均核對為首次 attempt。後續同 binding idle restart **在私有 controller、receiver-disable consume 前 failed**。Native 診斷確認 `GetAllPlugins` 回傳 `file:` URI，私有 controller 卻當一般 filesystem path 處理；此失敗不斷言產品 receiver bug。Receiver／controller／guard cleanup 已核對，該輪閉合、未重播。另建私有 versioned fix 加入 strict file-URI normalization 與診斷，十項離線 fixtures passed，但**該修正的 live restart 仍 not_run**。
+
+後續 fresh Gemini fixture 已 prepare 並 join，因使用者正在操作電腦，於臺北 00:39 停止。未安裝 receiver、未送 human test message。已記錄 metadata stop／exit，臺北 00:47 核對官方 native disabled readback。00:52:40、約 deadline 後 9.5 秒，先前核對身分的 exact guard parent、child 與另列 auxiliary process 自然消失，未 kill。Guard 記錄 cleanup exit 1：原成功 stop 已消耗 exclusive stop ledger，未准入新 control，原 stop／disable receipts 不變。程序消失後無法取得 exact exit codes，不宣稱 guard exit 0 或整個 host 程序閉合；persistent MCP lifetime 另列。這不是 delivery 或 restart passed。同時三客戶端 chat 與 overall acceptance 仍 pending。Native status、source fixtures、operator cleanup 與實際 model 讀寫保持不同關卡。
+
 ## 最新部署版本：臺北 23:02
 
 2026-10-04 臺北 23:02，來源 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f` 取代 `7652f1d7f04ef4c00e8860217a0f732f98dcb58e`。核對運行中的 image 為 `sha256:bee084e88203ef1425f70a8d8f84cc8f783e112cfd04945c6cca5032aac5b09a`。後續文件 commit 與此部署版本分開。
@@ -19,7 +35,7 @@
 
 公開 Codex bootstrap `c609da7f849f8c73c3346deab8578ca1668418fa` 的四個來源固定為 `2e2739bf9307f02e42708209d987d888ab636eec`；bootstrap raw SHA-256 為 `a7294c0826e45e076ef0ebbd9530baa48f7e344babcf482f74d53c4349f7c691`。四個公開 HTTP-200 下載來源與其 pins、Git-blob hashes 皆相符。Coordinator 另行核對已部署瀏覽器的英文／繁中 command generator；完整性與瀏覽器呈現不代表完整 bootstrap 執行或 native delivery 通過。
 
-Native 關卡仍分開：下方限定的 Codex → Claude → Gemini 順序正式交接 passed；同時三方聊天仍 **not_run**；Gemini idle-restart recovery 沒有新的 passed 證據，較早一輪仍 **failed／incomplete**。保留後續 Gemini 原生 tool-read 成功、但工具核准延遲造成 `chat_delivery_expired`、未成功回覆的失敗；此處不宣稱更新的自動 delivery passed。Cloud 自動讀取／回覆仍 **failed**，與手動原生讀寫 passed 分開。部署、CI 與文件檢查不推進這些關卡。
+在歷史 23:02 截點，Native 關卡仍分開：下方限定的 Codex → Claude → Gemini 順序正式交接 passed；同時三方聊天仍 **not_run**；Gemini idle-restart recovery 沒有新的 passed 證據，較早一輪仍 **failed／incomplete**。保留後續 Gemini 原生 tool-read 成功、但工具核准延遲造成 `chat_delivery_expired`、未成功回覆的失敗；此處不宣稱更新的自動 delivery passed。Cloud 自動讀取／回覆仍 **failed**，與手動原生讀寫 passed 分開。部署、CI 與文件檢查不推進這些關卡。
 
 本報告分開記錄來源檢查、部署及原生／瀏覽器驗收的版本界線。先前候選 `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`（基線 `ee21c2dfccba1d7f60b44563880c8b6a864bf971`）曾在下方較早一輪檢查中部署；後續結果見下一節。較早的原生證據保留於[2026-10-03 記錄](VALIDATION_2026-10-03.zh-TW.md)。
 
@@ -103,6 +119,6 @@ Codex installer SHA-256：`F5E622AC3BC21CA06B311238C4B49491324FDD01C40F84FC97081
 
 ## 剩餘驗收界線
 
-Issue #12 保持 open，追蹤更廣 lifecycle/capacity。完整 native model crash/restart、獨立 STOP、legacy cloud lost-claim、長期 subscription/expiry/offline/revocation/duplicates/bursts、memo retention/load、controlled cost benchmark 仍 pending。上方 7652 的限定原生崩潰防重送 PASS 不涵蓋這些待驗項目；cloud 自動事件仍未通過。
+Issue #12 保持 open，追蹤更廣 lifecycle/capacity。完整 native model crash/restart、獨立 STOP、legacy cloud lost-claim、長期 subscription/expiry/offline/revocation/duplicates/bursts、memo retention/load、controlled cost benchmark 仍 pending。上方 7652 的限定原生崩潰防重送 PASS 不涵蓋這些待驗項目；continuous 自動 cloud delivery 與 restart 仍未驗證；單一事件自動 identity 與完整讀取／回覆 passed 記於上方。
 
 上述歷史部署均建立備份、核對 header/hash；restore／off-host acceptance not_run。歷史 manifest 只識別原交付，不驗證後續來源修改。公開報告不含憑證、host、私人身份、訊息正文或私人截圖。
