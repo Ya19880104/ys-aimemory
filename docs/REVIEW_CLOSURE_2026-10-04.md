@@ -101,3 +101,7 @@ This proves **manually enabled, one-turn automatic native read/reply**, includin
 #### One-shot pilot cleanup confirmed
 
 The owned binding was disconnected (generation 1→2), STOP and the permanent attempt fence were retained, and no owned Python receiver/MCP process remained. Owned MCP/hook files were restored exactly while preserving an unrelated user setting change. This pilot is stopped; no persistent listener remains. Independent native/Hub receipt review supports the one-turn PASS only, not approval-free operation, multiple turns or Stop-hook activation.
+
+### Installer pin refresh after the status correction
+
+CI at `2734b65` caught a stale chat-bootstrap source pin: the reviewed bridge had changed, but the installer still downloaded its previous revision. The immutable installer was updated at `5f9400802ecdfe98f350a25a1f6848e1cf5ba1d0`, targeting source `b168876f00f85ccb37e97bb11c3678d8cb9e6ae4`; its SHA-256 is `BCD5D9FA1A4B7CC20579985252261AE47028B22D0FD400D095DFA2DD34F8A53E`. The current guide and UI command use that new pin. The earlier installer/native results above retain their original identity and are not fresh native acceptance of this installer. The first corrective bootstrap/bridge check passed 47 tests on Windows.

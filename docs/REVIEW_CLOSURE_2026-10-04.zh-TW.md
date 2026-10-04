@@ -101,3 +101,7 @@ Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保�
 #### One-shot pilot cleanup 已確認
 
 自有 binding 已斷線（generation 1→2），保留 STOP 與永久 attempt fence，無剩餘自有 Python receiver／MCP 程序。自有 MCP／hook 檔案精確恢復，另行使用者設定變更保留。本次 pilot 已停止，無持續 listener。獨立原生／Hub 回條核對僅支持單回合 PASS，不支持免核准、多輪或 Stop hook 啟用。
+
+### 狀態修正後同步安裝器版本
+
+`2734b65` 的 CI 發現 chat bootstrap 仍固定舊版來源：bridge 已修正，但安裝器尚未跟進。新的固定安裝器版本為 `5f9400802ecdfe98f350a25a1f6848e1cf5ba1d0`，下載來源 `b168876f00f85ccb37e97bb11c3678d8cb9e6ae4`；SHA-256 為 `BCD5D9FA1A4B7CC20579985252261AE47028B22D0FD400D095DFA2DD34F8A53E`。目前教學與 UI 指令已更新此 pin。上方較早的安裝器／原生驗收仍只對原版本有效，不代表新版安裝器已重新完成原生驗收。修正後第一輪 Windows bootstrap／bridge 檢查為 47 項通過。

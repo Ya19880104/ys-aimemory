@@ -268,7 +268,7 @@ if(!copied.includes("-WorkerId 'worker''o'")||!copied.includes("-ProjectId 'proj
 if(!copied.includes('# https://docs.example.test/CODEX_CHAT_SETUP.md'))throw Error('Codex guide');
 if(copied.includes('# undefined')||!copied.includes('# '+expected.codex))throw Error('Codex translated instructions');
 fields['auto-client'].value='claude';$('auto-client').onchange();if($('auto-project-hint').hidden)throw Error('Claude path hint');await $('copy-auto-setup').onclick();
-if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('757861E45CE53F207940F825779B63F66B5BD7CCB7F0A5F67A1337CEE09B6F58'))throw Error('Claude command');
+if(!copied.includes("-Project 'REPLACE_WITH_EXACT_LOCAL_PROJECT'")||copied.includes(' -WorkerId')||!copied.includes('BCD5D9FA1A4B7CC20579985252261AE47028B22D0FD400D095DFA2DD34F8A53E'))throw Error('Claude command');
 if(!copied.includes('# https://hub.example.com/help?lang=en'))throw Error('Claude offline guide');
 if(copied.includes('# undefined')||!copied.includes('# '+expected.claude))throw Error('Claude translated instructions');
 copied='';fields['auto-hours'].value='9';await $('copy-auto-setup').onclick();if(copied)throw Error('invalid budget copied');
