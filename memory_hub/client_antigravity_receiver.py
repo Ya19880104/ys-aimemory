@@ -49,7 +49,7 @@ def admitted(config, event, now):
 
 
 def run(config, client, directory, executable, admission, *, now=time.time,
-        sleep=time.sleep, execute=subprocess.run):
+        sleep=time.sleep, execute=subprocess.run, on_state=lambda state: None):
     """Resume same binding only. `admission()` returns observed metadata, never guesses.
 
     Manual admission admits only the initial send. Later sends need fresh native
@@ -75,7 +75,8 @@ def run(config, client, directory, executable, admission, *, now=time.time,
             return 'scope_mismatch'
 
         def call(operation, data):
-            response = client.post('/v1/chat/' + operation, json=data)
+            response = (client.get('/v1/chat/status', params=data) if operation == 'status'
+                        else client.post('/v1/chat/' + operation, json=data))
             response.raise_for_status()
             return response.json()
 
@@ -111,7 +112,9 @@ def run(config, client, directory, executable, admission, *, now=time.time,
             if (not isinstance(event_id, str) or not event_id or event_id in journal['used_events'] or
                     not admitted(config, event, now()) or
                     (event.get('kind') == 'manual_initial' and journal['attempts'])):
-                return 'needs_native_idle'
+                on_state('needs_native_idle')
+                sleep(min(3, max(0, config['expires_at'] - now())))
+                continue
             if journal['claim_request'] is None:
                 journal['claim_request'] = uuid.uuid4().hex
                 durable(path, journal)
@@ -150,4 +153,4 @@ def run(config, client, directory, executable, admission, *, now=time.time,
             except (OSError, subprocess.TimeoutExpired) as exc:
                 journal['attempts'][-1].update(state='unknown', error_type=type(exc).__name__)
             durable(path, journal)
-        return 'stopped'
+        return 'stopped' if (directory / 'STOP').exists() else 'expired'

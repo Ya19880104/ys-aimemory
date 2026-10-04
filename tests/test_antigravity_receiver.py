@@ -1,11 +1,14 @@
 import json
 import subprocess
+import time
 from unittest.mock import Mock
 
 import pytest
 
 from memory_hub.client_antigravity_receiver import durable, run
 from memory_hub.client_watch import exclusive
+from test_sessions import collaboration, room, human, values, A
+from test_index import _migration_db
 
 
 @pytest.fixture
@@ -28,7 +31,11 @@ def rig(tmp_path):
         response = Mock()
         response.json.return_value = value
         return response
-    return config, event, binding, Mock(post=post), calls, tmp_path
+    def get(path, params):
+        assert path == '/v1/chat/status'
+        assert params == {'project_id': 'project', 'session_id': 'room'}
+        return post(path, params)
+    return config, event, binding, Mock(post=post, get=get), calls, tmp_path
 
 
 def test_return_is_not_idle_and_second_send_needs_real_event(rig):
@@ -37,8 +44,12 @@ def test_return_is_not_idle_and_second_send_needs_real_event(rig):
         binding['latest_delivery'] = {'delivery_id': 'delivery', 'status': 'replied'}
         return Mock(returncode=0)
     execute = Mock(side_effect=send)
-    assert run(config, client, directory, 'agentapi', lambda: event, now=lambda: 110,
-               execute=execute) == 'needs_native_idle'
+    clock = [110]
+    states = []
+    assert run(config, client, directory, 'agentapi', lambda: event, now=lambda: clock[0],
+               sleep=lambda _: clock.__setitem__(0, 401), on_state=states.append,
+               execute=execute) == 'expired'
+    assert states == ['needs_native_idle']
     assert execute.call_count == 1
     assert calls[0] == 'status'
 
@@ -123,3 +134,56 @@ def test_live_process_lock_blocks_second_receiver(rig):
         assert run(config, client, directory, 'agentapi', lambda: event,
                    now=lambda: 110) == 'already_running'
     assert calls == []
+
+
+def test_stale_admission_waits_then_accepts_new_real_stop(rig):
+    config, event, binding, client, calls, directory = rig
+    config['max_sends'] = 1
+    clock = [170]
+    states = []
+    def fresh_after_wait(_):
+        event.update(kind='native_stop', event_id='fresh-stop', observed_at=171,
+                     fullyIdle=True, terminationReason='model_stop')
+        clock[0] = 171
+    def send(*args, **kwargs):
+        binding['latest_delivery'] = {'delivery_id': 'delivery', 'status': 'replied'}
+        return Mock(returncode=0)
+    assert run(config, client, directory, 'agentapi', lambda: event, now=lambda: clock[0],
+        sleep=fresh_after_wait, execute=send, on_state=states.append) == 'budget_exhausted'
+    assert states == ['needs_native_idle']
+
+
+def test_real_rest_contract_claim_dispatch_and_restart_no_resend(collaboration, tmp_path):
+    from fastapi.testclient import TestClient
+    from memory_hub.app import create_app
+    hub, url, sqlite = collaboration
+    session = room(hub)
+    token = 'synthetic-antigravity-receiver-token'
+    app = create_app(database_url=url, allow_sqlite=sqlite,
+                     auth_tokens=json.dumps({token: A.model_dump()}))
+    with TestClient(app, headers={'Authorization': 'Bearer ' + token}) as client:
+        joined = client.post('/v1/chat/join', json=values(session, client='gemini', display_name='Gemini',
+            native_session_id='11111111-1111-1111-1111-111111111111', max_turns=2,
+            ttl_seconds=600, idempotency_key='real-receiver-test')).json()
+        hub.sessions.call('post_session_message', values(session, body='Synthetic hello',
+                          idempotency_key='real-human'), human())
+        started = time.time()
+        clock = [started]
+        config = dict(client='gemini', project=str(tmp_path), **values(session),
+            binding_id=joined['binding_id'], generation=joined['generation'],
+            native_session_id='11111111-1111-1111-1111-111111111111', expires_at=started+590,
+            max_sends=2, idempotency_key='real-receiver-test', admission_mode='manually_admitted_dedicated_test')
+        event = dict(kind='manual_initial', event_id='real-initial', observed_at=started,
+            conversationId=config['native_session_id'], workspacePaths=[str(tmp_path.resolve())],
+            ui_idle_confirmed=True, exclusive_test_conversation=True)
+        execute = Mock(return_value=Mock(returncode=0))
+        assert run(config, client, tmp_path, 'agentapi', lambda: event, now=lambda: clock[0],
+                   sleep=lambda _: clock.__setitem__(0, started+301), execute=execute) == 'unresolved'
+        packet = json.loads((tmp_path / 'chat-delivery.json').read_text())
+        assert len(packet['delivery_id']) == len(packet['lease_id']) == 32
+        assert packet['join_key'] == config['idempotency_key']
+        state = client.get('/v1/chat/status', params=values(session)).json()['participants'][0]
+        assert state['latest_delivery']['status'] == 'dispatched'
+        assert run(config, client, tmp_path, 'agentapi', lambda: event, now=lambda: started+301,
+                   execute=execute) == 'unresolved'
+        assert execute.call_count == 1
