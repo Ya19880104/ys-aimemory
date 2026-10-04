@@ -75,20 +75,23 @@ async function settle() { for (let i = 0; i < 6; i++) await new Promise(setImmed
 
 function boot(handler, session = roomB.session_id, options = {}) {
   const document = documentFrom(input.html), requests = [], navigation = [], writes=[];
+  if(options.user)document.getElementById('room-config').dataset.user=options.user;
   const location = {search: options.search ?? ('?project=alpha&session=' + session)};
   const storage = new Map(Object.entries(options.storage || {}));
+  const draftStorage = options.sessionStorage || new Map();
   const userKey = 'ys-memory:last-chat:' + document.getElementById('room-config').dataset.user;
   if(options.saved)storage.set(userKey,JSON.stringify(options.saved));
   const context = {
     document, location, URLSearchParams, TextEncoder,
     crypto:{randomUUID:()=> 'synthetic-ui-request-id'},
     localStorage: {getItem: key=>storage.get(key)||null, setItem: (key,value)=>storage.set(key,value), removeItem:key=>storage.delete(key)},
+    sessionStorage: {getItem:key=>draftStorage.get(key)||null,setItem:(key,value)=>draftStorage.set(key,value),removeItem:key=>draftStorage.delete(key)},
     history: {replaceState(_state, _title, url) { navigation.push(url); location.search = new URL(url, 'http://example.test').search; }},
     setTimeout() { /* Polling is not part of these deterministic interactions. */ },
     fetch: async (path, fetchOptions) => {
       assert.equal(fetchOptions.credentials, 'same-origin');
       assert.equal(fetchOptions.cache, 'no-store');
-      if(fetchOptions.method==='POST'&&options.writeHandler){const body=JSON.parse(fetchOptions.body);writes.push(body);assert.equal(fetchOptions.headers['X-CSRF-Token'],document.getElementById('room-config').dataset.csrf);return {ok:true,status:200,json:async()=>options.writeHandler(body)};}
+      if(fetchOptions.method==='POST'&&options.writeHandler){const body=JSON.parse(fetchOptions.body);writes.push(body);assert.equal(fetchOptions.headers['X-CSRF-Token'],document.getElementById('room-config').dataset.csrf);return {ok:!options.writeStatus,status:options.writeStatus||200,json:async()=>options.writeHandler(body)};}
       assert.ok(!fetchOptions.method || fetchOptions.method === 'GET', 'Navigation must not write');
       const q = Object.fromEntries(new URL(path, 'http://example.test').searchParams);
       requests.push(q);
@@ -291,7 +294,34 @@ async function deliveryReadOnly(){
   await ui.get('pause-delivery').onclick();assert.equal(ui.writes.length,0);
 }
 
+async function draftReloadRecovery(){
+ const store=new Map(), handler=q=>q.op==='list'?listing([roomB]):q.op==='nonce'?{nonce:'test-nonce'}:reading(q.session===roomA.session_id?roomA:roomB);
+ let ui=boot(handler,roomB.session_id,{sessionStorage:store});await settle();
+ ui.get('message-body').value='unsent synthetic draft';ui.get('message-body').listeners.input();
+ ui=boot(handler,roomB.session_id,{sessionStorage:store});await settle();assert.equal(ui.get('message-body').value,'unsent synthetic draft');assert.equal(ui.writes.length,0);
+ const other=boot(handler,roomA.session_id,{sessionStorage:store});await settle();assert.equal(other.get('message-body').value,'');
+ const foreign=boot(handler,roomB.session_id,{sessionStorage:store,user:'other-user'});await settle();assert.equal(foreign.get('message-body').value,'');
+ for(const k of store.keys())store.set(k,'{invalid');ui=boot(handler,roomB.session_id,{sessionStorage:store});await settle();assert.equal(ui.get('message-body').value,'');
+}
+async function draftUnknownWrite(){
+ const store=new Map(),handler=q=>q.op==='list'?listing([roomB]):q.op==='nonce'?{nonce:'test-nonce'}:reading(q.session===roomA.session_id?roomA:roomB);
+ let ui=boot(handler,roomB.session_id,{sessionStorage:store,writeHandler:()=>{throw new Error('unknown response');}});await settle();ui.get('message-body').value='unknown outcome';await ui.get('message-form').onsubmit({preventDefault(){}});
+ const key=ui.writes[0].arguments.idempotency_key;
+ ui=boot(handler,roomB.session_id,{sessionStorage:store,writeHandler:()=>({})});await settle();assert.equal(ui.writes.length,0);assert.equal(ui.get('message-body').value,'unknown outcome');await ui.get('message-form').onsubmit({preventDefault(){}});assert.equal(ui.writes[0].arguments.idempotency_key,key);
+ const clean=boot(handler,roomB.session_id,{sessionStorage:store});await settle();assert.equal(clean.get('message-body').value,'');
+ for(const [k,v] of store){const d=JSON.parse(v);d.body='attachment outcome';const args={project_id:'alpha',session_id:roomB.session_id,body:d.body,attachment_ids:['synthetic-upload']};d.pending=[[JSON.stringify(['post_session_message',args]),key]];store.set(k,JSON.stringify(d));}const changed=boot(handler,roomB.session_id,{sessionStorage:store,writeHandler:()=>({})});await settle();await changed.get('message-form').onsubmit({preventDefault(){}});assert.equal(changed.writes.length,0,'Changed attachment details cannot create a second request for an unknown send');
+}
+
+async function csrfDraftRecovery(){
+ const store=new Map(),handler=q=>q.op==='list'?listing([roomB]):q.op==='nonce'?{nonce:'test-nonce'}:reading(roomB);
+ const ui=boot(handler,roomB.session_id,{sessionStorage:store,writeStatus:403,writeHandler:()=>({error:'csrf',message:'old token'})});await settle();ui.get('message-body').value='csrf rejected draft';await ui.get('message-form').onsubmit({preventDefault(){}});assert.ok(ui.get('chat-error').textContent.includes(label('Reload','重新載入')));assert.equal(ui.writes.length,1);
+ const restored=boot(handler,roomB.session_id,{sessionStorage:store});await settle();assert.equal(restored.get('message-body').value,'csrf rejected draft');assert.equal(restored.writes.length,0);
+}
+
 const scenarios = {
+  csrf_draft_recovery:csrfDraftRecovery,
+  draft_reload_recovery:draftReloadRecovery,
+  draft_unknown_write:draftUnknownWrite,
   deep_link_outside_first_page: deepLinkOutsideFirstPage,
   project_change_during_deep_link: projectChangeDuringDeepLink,
   project_change_clears_old_rooms: projectChangeClearsOldRooms,

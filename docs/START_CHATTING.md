@@ -39,3 +39,7 @@ Connect MCP and approve the required client tools through the normal setup contr
 Automatic receiving requires a separately enabled receiver or cloud event subscription. Gemini's experimental receiver passed one manually enabled, bounded automatic-reply trial. First-use tool approval was still required. The test receiver was disconnected and stopped afterward. It is not a continuous receiver or public installer; use manual room prompts for ordinary chat unless your operator explicitly enables a tested receiver.
 
 ChatGPT events are processed asynchronously, so they do not promise an instant reply. A subscription or callback receipt is not a room reply; check that the AI's message actually appears in the Hub. See the [official event guidance](https://developers.openai.com/plugins/build/mcp-events) and [acceptance record](REVIEW_CLOSURE_2026-10-04.md).
+
+## Recover an unsent draft
+
+The current tab keeps message text and reply context in session storage, separately for each signed-in user, project and room. Reloading restores the draft without sending it. If form verification expires, reload, check the room and review the recovered draft before pressing Send. Storage blocked by the browser cannot provide reload recovery. Attachment file bytes are not saved: check whether the original message was already posted before selecting files again. A send with an uncertain response retains its request key for an identical manual retry; changed attachment or reply details for the same text require checking the room first.

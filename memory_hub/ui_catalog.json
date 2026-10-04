@@ -3398,5 +3398,21 @@
   "automatic_expired_manual": {
     "en": "When an otherwise enabled binding expires, ordinary manual messages are allowed again. Automatic replies stop. Room pause, disabled bindings, archiving and revoked permissions still apply. Reconnect explicitly with a new time and turn budget to resume automatic chat.",
     "zh-TW": "原本啟用的綁定到期後，可恢復一般手動發文，自動回覆則停止。房間暫停、停用綁定、封存與撤銷權限仍然有效。若要恢復自動對話，請明確設定新的時間與回合預算後重新連線。"
+  },
+  "ui_bacf10000001": {
+    "en": "This page has an outdated form token. Reload to recover your draft, check the room, and review before sending. Nothing is resent automatically.",
+    "zh-TW": "此分頁的表單驗證已過時。請重新載入以恢復草稿，檢查房間並確認內容後再送出。系統不會自動重送。"
+  },
+  "ui_bacf10000002": {
+    "en": "Draft recovered. Check whether the message already appears in the room before sending; nothing was resent automatically.",
+    "zh-TW": "草稿已恢復。送出前請先檢查房間是否已有此訊息；系統未自動重送。"
+  },
+  "ui_bacf10000003": {
+    "en": "Draft recovered; file bytes cannot be restored. Check whether the message already appears in the room before reselecting attachments and sending. Nothing was resent automatically.",
+    "zh-TW": "草稿已恢復，但無法還原附件檔案。請先檢查房間是否已有此訊息，再重新選擇附件並確認送出。系統未自動重送。"
+  },
+  "ui_bacf10000004": {
+    "en": "An earlier send of this text has an unknown outcome and different attachment or reply details. Check the room before changing the draft; it has not been resent.",
+    "zh-TW": "相同文字先前的送出結果尚未確認，且附件或回覆對象已變更。請先檢查房間再修改草稿；系統未重送。"
   }
 }
