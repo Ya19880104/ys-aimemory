@@ -2,10 +2,29 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
+## Latest deployed release: 23:02 Taipei
+
+On 2026-10-04 at 23:02 Taipei, source `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f` replaced `7652f1d7f04ef4c00e8860217a0f732f98dcb58e`. The verified running image is `sha256:bee084e88203ef1425f70a8d8f84cc8f783e112cfd04945c6cca5032aac5b09a`. Later documentation commits are separate from that deployed release.
+
+The isolated deployment-host PostgreSQL stage recorded **1,088 passed, 63 skipped, 3 warnings in 216.14 seconds**; image package inventory also passed. Promotion recorded **457 checks passed** from **2026-10-04T15:02:25.457778Z to 15:02:47.672031Z**, 22.214 seconds. Schema 6, all 26 public tables, migration history, permissions and tool catalog were preserved; only ordinary expired `web_auth_entries` cleanup was permitted. The protected preupgrade backup was hashed and archive-readability checked. Live-backup restoration and off-VM transfer remain **not_run**. Postdeploy current-source/image readback agreed, and the running service was healthy with PostgreSQL health `ok`.
+
+The first stage attempt failed source inventory verification **before build or live changes**: Windows Git archive applied CRLF conversion while inventory hashes represented raw LF Git blobs. The failure was retained; a new LF archive verified every member against raw Git inventory before separate stage/promotion. It did not erase or replay the failed attempt.
+
+| Exact 6d0ce27 public CI run | Windows installer | SQLite | PostgreSQL |
+| --- | --- | --- | --- |
+| [37209955545](https://github.com/Ya19880104/ys-aimemory/actions/runs/37209955545) | 326 passed, 1 warning; 16.52s | 894 passed, 32 skipped, 3 warnings; 135.64s | 1,121 passed, 30 skipped, 3 warnings; 199.23s |
+| [37209953630](https://github.com/Ya19880104/ys-aimemory/actions/runs/37209953630) | 326 passed, 1 warning; 15.89s | 894 passed, 32 skipped, 3 warnings; 124.72s | 1,121 passed, 30 skipped, 3 warnings; 141.66s |
+
+Both runs completed successfully. Counts describe separate environments/runs and are not added together; skips remain skips. The earlier local 924-test result below belongs to exact product-code revision `225fc57844b36fb48caaf6815f88f053f1091fbf`.
+
+Public Codex bootstrap `c609da7f849f8c73c3346deab8578ca1668418fa` pins four source files to `2e2739bf9307f02e42708209d987d888ab636eec`; bootstrap raw SHA-256 is `a7294c0826e45e076ef0ebbd9530baa48f7e344babcf482f74d53c4349f7c691`. Four downloaded public HTTP-200 sources matched both their pins and Git-blob hashes. The coordinator separately verified the deployed English/Traditional Chinese browser command generator. Integrity and browser rendering do not establish end-to-end bootstrap execution or native delivery.
+
+Native boundaries remain separate: the bounded sequential formal Codex → Claude → Gemini handoff below passed; simultaneous three-client chat remains **not_run**; Gemini idle-restart recovery has no newer pass, and the earlier attempt remains **failed / incomplete**. Preserve the later Gemini failure in which native tool-read succeeded but approval delay caused `chat_delivery_expired` and no successful reply. No newer automatic-delivery pass is claimed here. Cloud automatic read/reply remains **failed**, separately from its manual native read/write pass. Deployment, CI and document checks do not advance these gates.
+
 This report retains separate version boundaries for source checks, deployment and native/browser acceptance. The earlier candidate `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`, based on `ee21c2dfccba1d7f60b44563880c8b6a864bf971`, was deployed during the earlier checks below. Later results follow in the next section. Earlier native evidence remains in [2026-10-03 validation](VALIDATION_2026-10-03.md).
 
 
-## Current candidate source and bounded native evidence
+## Historical candidate source and bounded native evidence (22:30 cutoff)
 
 At the 22:30 Taipei evidence cutoff, product code `225fc57844b36fb48caaf6815f88f053f1091fbf` was **unpublished and not deployed**; live was `7652f1d7f04ef4c00e8860217a0f732f98dcb58e`. Independent source review covered safe CLI-start failure cleanup, conservative stale-claim recovery with legacy journal preservation, terminal cloud reservation conflicts, bounded failed-native receipts, preservation of prior status on fenced restart, callback-counter compatibility and a read-only recovery inspector. Unknown token usage remains `not_reported`; incomplete local evidence grants no retry. These source/fixture results do not certify deployed recovery.
 
@@ -21,7 +40,7 @@ Earlier native Gemini messages B and C on live 7652 passed consecutively: human 
 
 A later fresh Gemini run received an automatic notification at 22:22 Taipei, but native `chat_read` failed `chat_not_active`. The coordinator's 22:29 server readback showed `dispatched`, with `read_at` and `replied_at` null; process evidence identified a still-running older MCP bridge and no matching fresh bridge. At 22:30, STOP cleanup succeeded: the fresh binding was disabled at version 2 and no fresh receiver remained. The older MCP bridge was still running after a 22:31 UI refresh. This preserves a failed native-read gate; notification acceptance does not prove delivery, and no new native idle-restart pass is claimed. Supported official host reload remains unverified. Cloud automatic event delivery remains **failed in its separate earlier run**, with the user comparison pending. Live deployment, broader crash recovery and overall product acceptance are not advanced by these results.
 
-## Current deployed source and installer chain
+## Historical 7652 deployed source and installer chain
 
 Live source: `7652f1d7f04ef4c00e8860217a0f732f98dcb58e`; image: `sha256:d4d2f2800c9f9c090f631aed807e7882aa7cbdfc1b15cc2b13765c1d81d2cab4`. Isolated deployment-host suite: **1,010 passed, 63 skipped, 3 warnings in 232.17 seconds**. Promotion: **454 checks passed**, 2026-10-04T11:45:02.755408Z–11:45:26.279132Z. Schema 6 was preserved; the 26-table comparison allowed only expired `web_auth_entries` cleanup. Backup headers/hashes were checked; restore and off-VM acceptance were **not_run**. Candidate CI: Windows **268 passed, 1 warning**; SQLite **817 passed, 32 skipped, 3 warnings**; PostgreSQL **1,043 passed, 30 skipped, 3 warnings**. Results remain separate by environment; skips are not passes.
 

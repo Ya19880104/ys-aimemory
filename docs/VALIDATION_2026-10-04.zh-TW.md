@@ -2,10 +2,29 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
+## 最新部署版本：臺北 23:02
+
+2026-10-04 臺北 23:02，來源 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f` 取代 `7652f1d7f04ef4c00e8860217a0f732f98dcb58e`。核對運行中的 image 為 `sha256:bee084e88203ef1425f70a8d8f84cc8f783e112cfd04945c6cca5032aac5b09a`。後續文件 commit 與此部署版本分開。
+
+隔離部署主機 PostgreSQL stage：**1,088 passed、63 skipped、3 warnings，216.14 秒**；image package inventory 亦 passed。Promotion：**457 checks passed**，**2026-10-04T15:02:25.457778Z–15:02:47.672031Z**，22.214 秒。保留 schema 6、全部 26 個 public tables、migration history、權限與工具目錄；僅允許 `web_auth_entries` 一般到期清理。受保護的升級前備份已核對 hash 與 archive 可讀性；live backup restore 與 off-VM transfer 仍 **not_run**。部署後 current source／image readback 相符，運行服務 healthy，PostgreSQL health 為 `ok`。
+
+首次 stage 在 **build 與 live 變更之前**因來源 inventory 檢查失敗：Windows Git archive 將內容轉成 CRLF，但 inventory hashes 對應原始 LF Git blobs。保留此失敗；新的 LF archive 逐一核對全部成員與原始 Git inventory 後，另行 stage／promotion，沒有抹除或重播失敗 attempt。
+
+| 精確 6d0ce27 公開 CI run | Windows installer | SQLite | PostgreSQL |
+| --- | --- | --- | --- |
+| [37209955545](https://github.com/Ya19880104/ys-aimemory/actions/runs/37209955545) | 326 passed、1 warning；16.52 秒 | 894 passed、32 skipped、3 warnings；135.64 秒 | 1,121 passed、30 skipped、3 warnings；199.23 秒 |
+| [37209953630](https://github.com/Ya19880104/ys-aimemory/actions/runs/37209953630) | 326 passed、1 warning；15.89 秒 | 894 passed、32 skipped、3 warnings；124.72 秒 | 1,121 passed、30 skipped、3 warnings；141.66 秒 |
+
+兩輪皆 completed／success。不同環境與輪次計數不相加，skip 仍是 skip。下方較早本機 924-test 結果只對應精確 product-code revision `225fc57844b36fb48caaf6815f88f053f1091fbf`。
+
+公開 Codex bootstrap `c609da7f849f8c73c3346deab8578ca1668418fa` 的四個來源固定為 `2e2739bf9307f02e42708209d987d888ab636eec`；bootstrap raw SHA-256 為 `a7294c0826e45e076ef0ebbd9530baa48f7e344babcf482f74d53c4349f7c691`。四個公開 HTTP-200 下載來源與其 pins、Git-blob hashes 皆相符。Coordinator 另行核對已部署瀏覽器的英文／繁中 command generator；完整性與瀏覽器呈現不代表完整 bootstrap 執行或 native delivery 通過。
+
+Native 關卡仍分開：下方限定的 Codex → Claude → Gemini 順序正式交接 passed；同時三方聊天仍 **not_run**；Gemini idle-restart recovery 沒有新的 passed 證據，較早一輪仍 **failed／incomplete**。保留後續 Gemini 原生 tool-read 成功、但工具核准延遲造成 `chat_delivery_expired`、未成功回覆的失敗；此處不宣稱更新的自動 delivery passed。Cloud 自動讀取／回覆仍 **failed**，與手動原生讀寫 passed 分開。部署、CI 與文件檢查不推進這些關卡。
+
 本報告分開記錄來源檢查、部署及原生／瀏覽器驗收的版本界線。先前候選 `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`（基線 `ee21c2dfccba1d7f60b44563880c8b6a864bf971`）曾在下方較早一輪檢查中部署；後續結果見下一節。較早的原生證據保留於[2026-10-03 記錄](VALIDATION_2026-10-03.zh-TW.md)。
 
 
-## 現行候選來源與限定原生證據
+## 歷史候選來源與限定原生證據（22:30 截點）
 
 截至臺北 22:30 的證據截點，產品 code `225fc57844b36fb48caaf6815f88f053f1091fbf` **尚未發布、未部署**；當時 live 為 `7652f1d7f04ef4c00e8860217a0f732f98dcb58e`。獨立來源審查涵蓋 CLI 建立失敗的安全清理、保留舊 journal 的保守 stale-claim recovery、terminal cloud reservation conflict、有限 failed-native receipt、fenced restart 保留先前 status、callback counter 相容性及唯讀 recovery inspector。未知 token usage 維持 `not_reported`；不完整本機證據不授予 retry。這些來源／fixture 結果不驗收已部署恢復行為。
 
@@ -21,7 +40,7 @@ Recovery inspector source `71deeb8fc322160a5b49523e8cbc12e28542a4d1` 的 online�
 
 較晚 fresh Gemini run 在臺北 22:22 收到自動通知，但 native `chat_read` 回 `chat_not_active`。Coordinator 於 22:29 的 server readback 為 `dispatched`，`read_at`／`replied_at` 皆 null；程序證據確認仍是較舊 MCP bridge，沒有對應 fresh bridge。22:30 STOP cleanup 成功：fresh binding 已停用、version 2，無 fresh receiver 存活。22:31 UI refresh 後，較舊 MCP bridge 仍運行。保留此 native-read failed 關卡；通知接受不代表 delivery，不宣稱新的 native idle-restart passed。支援的官方 host reload 仍未驗證。Cloud 自動事件在較早獨立一輪仍 **failed**，待使用者比較；這些結果不推進 live deployment、更廣 crash recovery 或 overall product acceptance。
 
-## 現行部署來源與 installer chain
+## 歷史 7652 部署來源與 installer chain
 
 Live source：`7652f1d7f04ef4c00e8860217a0f732f98dcb58e`；image：`sha256:d4d2f2800c9f9c090f631aed807e7882aa7cbdfc1b15cc2b13765c1d81d2cab4`。隔離部署主機 suite：**1,010 passed、63 skipped、3 warnings，232.17 秒**。Promotion：**454 checks passed**，2026-10-04T11:45:02.755408Z–11:45:26.279132Z。保留 schema 6；26-table 比對僅允許 `web_auth_entries` 到期清理。已檢查 backup headers／hashes，restore／off-VM acceptance **not_run**。候選 CI：Windows **268 passed、1 warning**；SQLite **817 passed、32 skipped、3 warnings**；PostgreSQL **1,043 passed、30 skipped、3 warnings**。不同環境結果分開，skip 不算 passed。
 
