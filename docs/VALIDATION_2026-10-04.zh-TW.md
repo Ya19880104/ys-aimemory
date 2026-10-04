@@ -5,19 +5,21 @@
 本報告分開記錄來源檢查、部署及原生／瀏覽器驗收的版本界線。先前候選 `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`（基線 `ee21c2dfccba1d7f60b44563880c8b6a864bf971`）曾在下方較早一輪檢查中部署；後續結果見下一節。較早的原生證據保留於[2026-10-03 記錄](VALIDATION_2026-10-03.zh-TW.md)。
 
 
-## 後續候選來源與 Gemini 原生證據
+## 現行候選來源與限定原生證據
 
-候選來源 `8e7267f323e54c7b6f7731df866f9c9a7396e214` 與 live `7652f1d7f04ef4c00e8860217a0f732f98dcb58e` 分開。三項限定修正通過獨立審查：CLI 建立程序失敗、尚無 child 時，僅移除本次新建的 native-active marker；receiver journal 沒有任何先前 native attempt 時，才重試到期的 stale claim，保留有歧義的舊 journal；cloud subscription 遇允許清單內的 terminal reservation conflict 時停止，未知失敗則保留 request identity。這些是來源／fixture 結果，不是已部署恢復驗收。
+截至臺北 22:30 的證據截點，產品 code `225fc57844b36fb48caaf6815f88f053f1091fbf` **尚未發布、未部署**；當時 live 為 `7652f1d7f04ef4c00e8860217a0f732f98dcb58e`。獨立來源審查涵蓋 CLI 建立失敗的安全清理、保留舊 journal 的保守 stale-claim recovery、terminal cloud reservation conflict、有限 failed-native receipt、fenced restart 保留先前 status、callback counter 相容性及唯讀 recovery inspector。未知 token usage 維持 `not_reported`；不完整本機證據不授予 retry。這些來源／fixture 結果不驗收已部署恢復行為。
 
-在該精確候選僅執行一次隔離本機 Windows 完整 suite：**868 passed、2 skipped、3 warnings，422.92 秒**，exit 0，2026-10-04T13:32:03Z–13:39:11Z（臺北 21:32–21:39）。Stderr 為空，clone 維持 clean。兩項 skip 需要明確 opt-in 的可拋棄 PostgreSQL runtime；warnings 分別涉及 Starlette/httpx、Pydantic 未解析的 lifespan forward reference，以及 per-request cookies。本 suite 未執行 provider 或真實線上資料庫測試。
+在該精確 code revision 僅執行一次本機 Windows／Python 3.12.13 完整 suite：**924 passed、2 skipped、3 warnings，403.75 秒**，exit 0，2026-10-04T14:11:52Z–14:18:40Z（臺北 22:11–22:18），stderr 為空。兩項 skip 需要明確 opt-in 的可拋棄 PostgreSQL runtime；warnings 涉及 Starlette/httpx、Pydantic 未解析的 lifespan forward reference 及 per-request cookies。Provider／真實線上資料庫驗收未執行；後續文件 revision 另列身分，不跨 suite 加總 counts。
 
-候選 Codex bootstrap 固定為 `2ab108a6522fe77617f68e198756121e408a0677`，四個來源檔固定於 `c8d32664b4970688e42d6532533611ca8322155a`；raw SHA-256 為 `54d7027effd8fa36f0ef5b424ca543b96142a9dd145e8f0e1bdc6778ddf47f84`。獨立 Git object 核對確認四個來源 hash，以及 UI／英文／繁中 consumer 的 revision／hash pins 相符。此本機完整性檢查不證明公開下載可用或安裝器完整執行；下方已部署 installer chain 保留獨立版本界線。
+候選 Codex bootstrap 固定為 `c609da7f849f8c73c3346deab8578ca1668418fa`，四個來源檔固定於 `2e2739bf9307f02e42708209d987d888ab636eec`；raw SHA-256 為 `a7294c0826e45e076ef0ebbd9530baa48f7e344babcf482f74d53c4349f7c691`。獨立 Git object 核對確認四個來源 hash 與候選，以及 UI／英文／繁中 consumer revision／hash pins 相符。這是本機完整性證據，不是公開下載或完整 installer 驗收。歷史 `8e7267f323e54c7b6f7731df866f9c9a7396e214` 記錄 **868 passed、2 skipped、3 warnings，422.92 秒**，UTC 13:32:03–13:39:11，另行核對 bootstrap `2ab108a6`／source `c8d32664`／raw SHA-256 `54d7027effd8fa36f0ef5b424ca543b96142a9dd145e8f0e1bdc6778ddf47f84`。該較早結果不驗收後續 runner 修改。
 
-Coordinator 提供的 live 7652 原生證據確認 Gemini 連續 B、C 訊息：human sequence 55 → native reply 56，再 human 57 → native reply 58，均為 attempt 1，網站送出至回覆約 14、15 秒。兩則均使用實際 native `chat_read` 與 `chat_reply`，網站送出與回覆之間沒有手動 model prompt。Native UI、Hub replied 收據與兩筆 durable replied journal attempts 一致。此限定 fixture 的**連續原生收訊 passed**，不驗收後續候選修正。
+限定合成 fixture 的**正式 Codex → Claude → Gemini 順序交接 passed**：三次 fresh native admission、兩次結構化 handoff 及最終 Gemini checkpoint。唯一允許的 plan 檔維持 fixture commit `baa1df5ee146009ea993368f1d2915a442e7f765`；三個 clean workspace 獨立核對均為 1,725 bytes、SHA-256 `b82f94f67342c5c42d12282ed657bf3d0e6221690aceb5737ad7d6fa42d37bb4`。Native reports 記錄完整 source、既有 artifact（1,393 chars／1,725 UTF-8 bytes）及 attachment（解碼後 1,725 bytes）讀取，server digest 相符。Coordinator 觀察原生前段工具呼叫及最終輸出，再於網站核對最終 checkpoint entry 與兩次 handoff；未獨立展開每項工具回應。精確最終 checkpoint ID 由 native 回報，保存的網站證據呈現其敘述。Codex native Git／hash computation 仍 **not_run**，與 operator 核對分開。Task 仍 open；不代表產品、merge 或 release 驗收。**同時三客戶端 chat 仍 not_run。**
 
-**同 binding idle restart failed／incomplete**：切換 config 未重啟 host plugin；owned receiver 退出後，deadline 前未出現替代 receiver，不宣稱第三則回覆。獨立 deadline guard 已關閉新 fixture：寫入 STOP、移除 owned plugin／config、停用 binding，無 owned receiver 存活，cursor 58、turns 2 of 3、最新 delivery replied。較早的 permission-wait fixture 也已關閉，保留到期回覆失敗與原 journal，未重播。觀察到的 UI 與 bundled guidance 不同，支援的 live plugin reload／安裝路徑仍未驗證。
+Recovery inspector source `71deeb8fc322160a5b49523e8cbc12e28542a4d1` 的 online／offline CLI 報告維持 client bytes／mtime 不變，但 receipt 預設 state path 未讀到 custom crash fixture，回報沒有本機 delivery；此負面結果保留。另以程式化方式讀取實際 custom state，搭配一次 own-worker status GET，回報 `server-read`，仍缺 `native_exit_unconfirmed` 與 `hub_reply_record`；before／after state snapshots 相符。不授予 retry、不證明 native exit，也不驗收 CLI custom-state 支援、server-replied 或自動恢復。該精確版本觀察不自動驗收較新 inspector revision。
 
-Gemini 正式 task／source／artifact／attachment 交接 **not_run**；同時三客戶端驗收 **not_run**。Cloud 自動事件在較早一輪仍為 **failed**，與 Gemini 本機原生 passed 分開。本補充不推進 live deployment、更廣 crash recovery 或 overall product acceptance。
+先前 live 7652 的 Gemini B、C 訊息連續 passed：human sequence 55 → native reply 56，再 human 57 → native reply 58，均為 attempt 1，網站送出至回覆約 14、15 秒。兩則使用實際 native `chat_read`／`chat_reply`，送出與回覆間沒有手動 model prompt；native UI、Hub replied 收據與兩筆 durable replied journal attempts 一致。後續同 binding idle restart **failed／incomplete**：檔案 config 切換未 reload host，到期前未出現替代 receiver。該 fixture 與較早 permission-wait 到期 fixture 均已關閉，保留舊 journal、未重播。
+
+較晚 fresh Gemini run 在臺北 22:22 收到自動通知，但 native `chat_read` 回 `chat_not_active`。Coordinator 於 22:29 的 server readback 為 `dispatched`，`read_at`／`replied_at` 皆 null；程序證據確認仍是較舊 MCP bridge，沒有對應 fresh bridge。22:30 STOP cleanup 成功：fresh binding 已停用、version 2，無 fresh receiver 存活。22:31 UI refresh 後，較舊 MCP bridge 仍運行。保留此 native-read failed 關卡；通知接受不代表 delivery，不宣稱新的 native idle-restart passed。支援的官方 host reload 仍未驗證。Cloud 自動事件在較早獨立一輪仍 **failed**，待使用者比較；這些結果不推進 live deployment、更廣 crash recovery 或 overall product acceptance。
 
 ## 現行部署來源與 installer chain
 
@@ -29,7 +31,7 @@ Coordinator 提供的 native 證據：2026-10-04 臺北 20:17，實際 official 
 
 ## 後續來源檢查與 cloud 最終驗收：2026-10-04
 
-首次較完整 CI／staging 在 `bd25c375bc6046c1cfbe488c859cde2c7e8a3421` 的安裝來源 pin 檢查失敗：修正版 receiver 與舊 bootstrap 雜湊不符。已保留失敗，未升級該候選。Bootstrap 現在固定使用 `bd25c37` 的四個來源檔；網頁產生器與雙語教學固定下載 bootstrap `31a1db36e04d304c3e2823b31d5b175ab17e87e2` 並核對 SHA-256。完整性測試仍核對檔案，可於 shallow checkout 與無 Git 的 release archive 執行。修正後的 bootstrap、產生指令及教學檢查為 **70 passed、2 warnings，47.32 秒**；最終 7652 CI／部署結果另記於上方。
+首次較完整 CI／staging 在 `bd25c375bc6046c1cfbe488c859cde2c7e8a3421` 的安裝來源 pin 檢查失敗：修正版 receiver 與舊 bootstrap 雜湊不符。已保留失敗，未升級該候選。在該歷史部署截點，bootstrap 固定使用 `bd25c37` 的四個來源檔；網頁產生器與雙語教學固定下載 bootstrap `31a1db36e04d304c3e2823b31d5b175ab17e87e2` 並核對 SHA-256。完整性測試仍核對檔案，可於 shallow checkout 與無 Git 的 release archive 執行。修正後的 bootstrap、產生指令及教學檢查為 **70 passed、2 warnings，47.32 秒**；最終 7652 CI／部署結果另記於上方。
 
 Coordinator 提供的來源證據：`07ff550c25dd0f8beb44338f943c56621762e78c` 包含 cloud trace `fd8d627c7b5856a9e03e63d5b2c826dd5e62a87e`、hard-crash fixture `a96ee30d68e54fd5e17a87b80ab374f25ff3ca24` 與 unresolved-native admission guard `07ff550`。限定 suite（`tests/test_codex_receiver_crash.py`、`tests/test_codex_chat_runner.py`、`tests/test_codex_chat_setup.py`、`tests/test_cloud_tunnel_gateway.py`）：**208 passed、1 項既有 Starlette warning，12.46 秒**。獨立來源審查：限定範圍 **GO**。該較早來源檢查截點的 live VM 為 `af79c01a24e96898125de42e8be0d596f869fb16`；上方後續 7652 promotion 已更新部署狀態。
 
