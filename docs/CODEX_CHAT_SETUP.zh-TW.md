@@ -153,6 +153,8 @@ native_acceptance: not_run
 
 新版接收器先儲存領取請求，遇到暫時網路錯誤會在期限與停止控制內退避重試。相同請求只在尚未派送、沒有完整訊息讀取紀錄且租約有效時取回原通知，不重複扣交付嘗試或回合。已派送後重啟不會逕自再啟動同一輪模型；租約真正到期後重新交付仍有預算成本。這不保證模型恰好執行一次，也不代表已測完原生程序的所有中斷情境。
 
+包含 unresolved-native guard 的接收器，在舊 native turn 尚未釐清時會於 Hub join 前停止。保留 `native-active.json` 與交付 journal；確認舊 child 已退出，核對 server delivery／binding 狀態後才進行經授權的重試，不得單純刪除 marker 繞過阻擋。Hard-crash 測試使用合成且存活的 CLI child，真實 provider in-flight recovery 仍 pending。詳見[2026-10-04 證據](VALIDATION_2026-10-04.zh-TW.md)。
+
 綁定單純到期後可以一般手動發文；房間暫停、停用綁定、封存或撤銷權限仍然有效。過期自動回覆不得拔掉交付欄位改成手動重發。詳見[交付 API](DELIVERY_API.zh-TW.md)。
 
 ## 明確中斷與恢復手動發文

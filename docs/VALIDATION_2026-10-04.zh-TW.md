@@ -2,7 +2,16 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
-候選：`6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`，基線 `ee21c2dfccba1d7f60b44563880c8b6a864bf971`。此版本已部署。本報告分開精確版本來源檢查、先前部署與最終主機／瀏覽器驗收。結果由執行 coordinator 提供，另有 Sol 6.1 只讀 source/pin 審查。本輪沒有重跑 native model/cloud 驗收，歷史證據見[2026-10-03 記錄](VALIDATION_2026-10-03.zh-TW.md)。
+先前已部署候選：`6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`，基線 `ee21c2dfccba1d7f60b44563880c8b6a864bf971`。此版本已部署。本報告分開精確版本來源檢查、先前部署與最終主機／瀏覽器驗收。結果由執行 coordinator 提供，另有 Sol 6.1 只讀 source/pin 審查。本輪沒有重跑 native model/cloud 驗收，歷史證據見[2026-10-03 記錄](VALIDATION_2026-10-03.zh-TW.md)。
+
+
+## 後續來源檢查與進行中的驗收：2026-10-04
+
+Coordinator 提供的來源證據：`07ff550c25dd0f8beb44338f943c56621762e78c` 包含 cloud trace `fd8d627c7b5856a9e03e63d5b2c826dd5e62a87e`、hard-crash fixture `a96ee30d68e54fd5e17a87b80ab374f25ff3ca24` 與 unresolved-native admission guard `07ff550`。限定 suite（`tests/test_codex_receiver_crash.py`、`tests/test_codex_chat_runner.py`、`tests/test_codex_chat_setup.py`、`tests/test_cloud_tunnel_gateway.py`）：**208 passed、1 項既有 Starlette warning，12.46 秒**。獨立來源審查：限定範圍 **GO**。Live VM 維持 `af79c01a24e96898125de42e8be0d596f869fb16`，尚未部署這些修改。
+
+合成 hard-crash 測試強制終止 receiver parent，保留存活的假 CLI child，驗證 unresolved-native fence 在 Hub join 前阻擋重啟。先前 native Codex idle restart 在觀察範圍內 passed；真實 provider in-flight recovery 仍 pending。保留 `native-active.json` 與交付 journal，確認舊 child 已退出，核對 server delivery／binding 狀態後才進行經授權的重試；單純刪除 marker 不算恢復。
+
+新的 cloud event 已收到 callback HTTP 200，但截至 **2026-10-04 臺北 19:18（UTC 11:18）** 尚無對應 native call。本次驗收在截點仍進行中，不宣稱 cloud wake／read／reply PASS。結構化 trace 分開 callback receipt、native ingress／completion；早期 native cloud 證據保留原版本界線。
 
 ## 修改與契約
 

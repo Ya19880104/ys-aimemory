@@ -153,6 +153,8 @@ Upgrade the Hub first, then stop the old receiver and use this page's current pi
 
 Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid, dispatch has not started, and no full-message read has been recorded, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
 
+Receivers containing the unresolved-native guard stop before Hub join when a prior native turn is unresolved. Preserve `native-active.json` and the delivery journal. Confirm the old child has exited and reconcile server delivery/binding state before an authorized retry; never delete the marker simply to bypass the fence. Hard-crash tests use a synthetic live CLI child, so real-provider in-flight recovery remains pending. See [2026-10-04 evidence](VALIDATION_2026-10-04.md).
+
 Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).
 
 ## Explicit disconnect and manual posting

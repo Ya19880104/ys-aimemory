@@ -2,7 +2,16 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
-Candidate: `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`, based on `ee21c2dfccba1d7f60b44563880c8b6a864bf971`. This candidate is deployed. This report separates exact-commit source checks, earlier deployment results and final runtime/browser acceptance. Results are supplied by the executing coordinator, with a separate Sol 6.1 read-only source/pin review. This round does not rerun native model or cloud acceptance; those historical proofs remain in [2026-10-03 validation](VALIDATION_2026-10-03.md).
+Earlier deployed candidate: `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`, based on `ee21c2dfccba1d7f60b44563880c8b6a864bf971`. This candidate is deployed. This report separates exact-commit source checks, earlier deployment results and final runtime/browser acceptance. Results are supplied by the executing coordinator, with a separate Sol 6.1 read-only source/pin review. This round does not rerun native model or cloud acceptance; those historical proofs remain in [2026-10-03 validation](VALIDATION_2026-10-03.md).
+
+
+## Later source checks and active acceptance: 2026-10-04
+
+Coordinator-supplied evidence at `07ff550c25dd0f8beb44338f943c56621762e78c` includes cloud trace `fd8d627c7b5856a9e03e63d5b2c826dd5e62a87e`, hard-crash fixture `a96ee30d68e54fd5e17a87b80ab374f25ff3ca24` and unresolved-native admission guard `07ff550`. The scoped suite (`tests/test_codex_receiver_crash.py`, `tests/test_codex_chat_runner.py`, `tests/test_codex_chat_setup.py`, `tests/test_cloud_tunnel_gateway.py`) recorded **208 passed, 1 existing Starlette warning in 12.46 seconds**. Independent source review: **GO** for this scope. The live VM remains `af79c01a24e96898125de42e8be0d596f869fb16`; these changes are not deployed there.
+
+The synthetic hard-crash test kills the receiver parent while a fake CLI child remains alive and verifies the unresolved-native fence before Hub join. Prior native Codex idle restart passed within its observed scope; real-provider in-flight recovery remains pending. Preserve `native-active.json` and the delivery journal, confirm the old child has exited, and reconcile server delivery/binding state before an authorized retry. Deleting the marker alone is not recovery.
+
+The fresh cloud event received callback HTTP 200 but had no matching native call as of **2026-10-04 19:18 Taipei (11:18 UTC)**. That acceptance run was ongoing at this cutoff; no cloud wake/read/reply PASS is claimed. Structured traces distinguish callback receipt from native ingress/completion; historical native cloud evidence retains its original version boundary.
 
 ## Changes and contract
 
