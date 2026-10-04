@@ -5,13 +5,27 @@
 本報告分開記錄來源檢查、部署及原生／瀏覽器驗收的版本界線。先前候選 `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`（基線 `ee21c2dfccba1d7f60b44563880c8b6a864bf971`）曾在下方較早一輪檢查中部署；後續結果見下一節。較早的原生證據保留於[2026-10-03 記錄](VALIDATION_2026-10-03.zh-TW.md)。
 
 
+## 後續候選來源與 Gemini 原生證據
+
+候選來源 `8e7267f323e54c7b6f7731df866f9c9a7396e214` 與 live `7652f1d7f04ef4c00e8860217a0f732f98dcb58e` 分開。三項限定修正通過獨立審查：CLI 建立程序失敗、尚無 child 時，僅移除本次新建的 native-active marker；receiver journal 沒有任何先前 native attempt 時，才重試到期的 stale claim，保留有歧義的舊 journal；cloud subscription 遇允許清單內的 terminal reservation conflict 時停止，未知失敗則保留 request identity。這些是來源／fixture 結果，不是已部署恢復驗收。
+
+在該精確候選僅執行一次隔離本機 Windows 完整 suite：**868 passed、2 skipped、3 warnings，422.92 秒**，exit 0，2026-10-04T13:32:03Z–13:39:11Z（臺北 21:32–21:39）。Stderr 為空，clone 維持 clean。兩項 skip 需要明確 opt-in 的可拋棄 PostgreSQL runtime；warnings 分別涉及 Starlette/httpx、Pydantic 未解析的 lifespan forward reference，以及 per-request cookies。本 suite 未執行 provider 或真實線上資料庫測試。
+
+候選 Codex bootstrap 固定為 `2ab108a6522fe77617f68e198756121e408a0677`，四個來源檔固定於 `c8d32664b4970688e42d6532533611ca8322155a`；raw SHA-256 為 `54d7027effd8fa36f0ef5b424ca543b96142a9dd145e8f0e1bdc6778ddf47f84`。獨立 Git object 核對確認四個來源 hash，以及 UI／英文／繁中 consumer 的 revision／hash pins 相符。此本機完整性檢查不證明公開下載可用或安裝器完整執行；下方已部署 installer chain 保留獨立版本界線。
+
+Coordinator 提供的 live 7652 原生證據確認 Gemini 連續 B、C 訊息：human sequence 55 → native reply 56，再 human 57 → native reply 58，均為 attempt 1，網站送出至回覆約 14、15 秒。兩則均使用實際 native `chat_read` 與 `chat_reply`，網站送出與回覆之間沒有手動 model prompt。Native UI、Hub replied 收據與兩筆 durable replied journal attempts 一致。此限定 fixture 的**連續原生收訊 passed**，不驗收後續候選修正。
+
+**同 binding idle restart failed／incomplete**：切換 config 未重啟 host plugin；owned receiver 退出後，deadline 前未出現替代 receiver，不宣稱第三則回覆。獨立 deadline guard 已關閉新 fixture：寫入 STOP、移除 owned plugin／config、停用 binding，無 owned receiver 存活，cursor 58、turns 2 of 3、最新 delivery replied。較早的 permission-wait fixture 也已關閉，保留到期回覆失敗與原 journal，未重播。觀察到的 UI 與 bundled guidance 不同，支援的 live plugin reload／安裝路徑仍未驗證。
+
+Gemini 正式 task／source／artifact／attachment 交接 **not_run**；同時三客戶端驗收 **not_run**。Cloud 自動事件在較早一輪仍為 **failed**，與 Gemini 本機原生 passed 分開。本補充不推進 live deployment、更廣 crash recovery 或 overall product acceptance。
+
 ## 現行部署來源與 installer chain
 
 Live source：`7652f1d7f04ef4c00e8860217a0f732f98dcb58e`；image：`sha256:d4d2f2800c9f9c090f631aed807e7882aa7cbdfc1b15cc2b13765c1d81d2cab4`。隔離部署主機 suite：**1,010 passed、63 skipped、3 warnings，232.17 秒**。Promotion：**454 checks passed**，2026-10-04T11:45:02.755408Z–11:45:26.279132Z。保留 schema 6；26-table 比對僅允許 `web_auth_entries` 到期清理。已檢查 backup headers／hashes，restore／off-VM acceptance **not_run**。候選 CI：Windows **268 passed、1 warning**；SQLite **817 passed、32 skipped、3 warnings**；PostgreSQL **1,043 passed、30 skipped、3 warnings**。不同環境結果分開，skip 不算 passed。
 
 現行 Codex bootstrap：`31a1db36e04d304c3e2823b31d5b175ab17e87e2`；四個來源固定為 `bd25c375bc6046c1cfbe488c859cde2c7e8a3421`；raw bootstrap SHA-256：`1a03b5a79ef9242f197962527320f5146ebdbb52b3619273afe44c2d94906e7c`。公開 raw bytes／四個 hash 均核對相符，published runner 在 join 前檢查未釐清 native state。線上 guide／clipboard 的 URL／hash 相符，仍須明確啟用。Python `setup.install` native-client preparation 路徑已測試，但下載的 PowerShell bootstrap 完整執行 **not_run**。Hash／準備通過不代表 native model delivery。Claude chain 另行保留：bootstrap `5f9400802ecdfe98f350a25a1f6848e1cf5ba1d0`、source `b168876f00f85ccb37e97bb11c3678d8cb9e6ae4`，與已部署 Claude guide 相同；不推導新的 Claude end-to-end 驗收。
 
-Coordinator 提供的 native 證據：2026-10-04 臺北 20:17，實際 official Codex CLI 到達 tool_read gate，child 仍存活。強制終止實際 receiver，以相同參數／state 重啟，於 unresolved-native guard 以 exit code 1 停止。Binding、delivery、generation、turns（1 of 3）與 attempt（1）維持不變。Owned Job 程序全部停止，新 binding 已停用，cleanup errors 為空。限定真實 provider in-flight fence **passed**；post-commit-unknown 與完整 automatic resume **not_run**。獨立複核確認 before／after、六份 state hash 與受控程序識別證據相符。準備使用程式化 setup.install，未執行 PowerShell bootstrap。Gemini native permission／continuation 仍 pending。PR18 維持 draft、#12 open，不宣稱 overall product PASS；後續 native 結果須另附精確版本補充。
+Coordinator 提供的 native 證據：2026-10-04 臺北 20:17，實際 official Codex CLI 到達 tool_read gate，child 仍存活。強制終止實際 receiver，以相同參數／state 重啟，於 unresolved-native guard 以 exit code 1 停止。Binding、delivery、generation、turns（1 of 3）與 attempt（1）維持不變。Owned Job 程序全部停止，新 binding 已停用，cleanup errors 為空。限定真實 provider in-flight fence **passed**；post-commit-unknown 與完整 automatic resume **not_run**。獨立複核確認 before／after、六份 state hash 與受控程序識別證據相符。準備使用程式化 setup.install，未執行 PowerShell bootstrap。該較早截點的 Gemini 結果仍 pending；後續限定原生證據另記於上方。PR18 維持 draft、#12 open，不宣稱 overall product PASS；後續 native 結果須另附精確版本補充。
 
 ## 後續來源檢查與 cloud 最終驗收：2026-10-04
 
