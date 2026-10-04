@@ -2,13 +2,25 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
+## ChatGPT 雲端 idle restart 驗收：2026-10-05 臺北 02:06
+
+在部署來源 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`，新的限定雲端 fixture **通過兩次自動原生完整讀取／回覆，兩次之間執行一次官方 idle gateway stop/restart**。兩則新的人類訊息皆從網站送出；任務建立後沒有手動 model prompt、工具核准或權限修改。兩次 event callback 均在 attempt 1 回 HTTP 200；另以相同 fingerprint 的 native `read_delta`／`tool_read`、`post_message`／`replied`、兩筆 durable replied batch 及網站兩則回覆確認 delivery，沒有把 callback 接受當作已讀。
+
+Idle restart 保留相同 binding、generation、subscription、expiry、原 deadline、cursor 與剩餘事件額度。Held-process 證據確認原 gateway 已退出才啟動替代程序，並核對替代程序的新 creation identity 與 executable。沒有 rejoin、renewal、舊事件重播或額度重設。保留的是 logical state 與第一筆 delivery digest，不宣稱 database／WAL 檔案 bytes 不變。這是 **gateway transport restart**，不是 ChatGPT 模型重啟或 crash-recovery 測試。
+
+第二則回覆後，native task 自行暫停，operator 未按暫停；另行核對 `events/unsubscribe` 與持久化 unsubscribed state。Operator 隨後僅執行一次官方 runtime stop 與 Hub disconnect，均成功，02:06 確認 closure；該截點 deadline guard 程序退出仍須另驗。ChatGPT 敘述與 saved progress 仍顯示兩則中的一則，與兩筆實際 tool／server receipt 不符，列為 UI 報告落後。Gateway 與 Hub 時鐘約差 4.9 秒，不可將跨主機時間視為同一時鐘。
+
+02:12 的唯讀程序檢查確認原 gateway、替代 gateway 及原 deadline guard 的 PID 均不存在；無法取得 exact exit codes，未 kill 或額外 stop。不宣稱其他 host 或 persistent MCP 程序皆已退出。
+
+測完後讀回既有外掛的實際權限 UI，選中 **「允許低風險工具（預設）」**，未選允許所有工具；未修改權限。核對的範圍、保存的限定 prompt 及可重現界線見[私人雲端教學](CHATGPT_PRIVATE_TUNNEL.zh-TW.md)。這是既有帳號的一次驗收，不保證新帳號或所有權限設定皆相同。下方 A／B 的 self-stop 失敗仍保留，仍須 operator 獨立確認停止。模型 crash/restart、in-flight 或 unknown-commit recovery、無限持續運作、同時三客戶端 chat、controlled token-cost benchmark 在**本 fixture 仍 not_run**；不推導額外部署或完整 suite 通過。
+
 ## Gemini 原生 idle restart 驗收：2026-10-05 臺北 01:06
 
 已部署來源 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f` 的 fresh bounded Gemini V6 fixture，**首次自動原生讀取／回覆、官方同 binding idle receiver 停止／重啟，以及重啟後第二次自動原生讀取／回覆皆 passed**。Coordinator 觀察實際 native `chat_read`／`chat_reply` 結果與網站對應回覆；兩筆 durable journal attempts 另記錄 `replied`、return code 0。兩次回覆均沒有透過中間手動 model prompt 提供。Native admission／status、私有 harness 檢查與實際 delivery 保持不同證據關卡。
 
 首次 delivery 已 replied、沒有 unresolved delivery 後，透過官方 host lifecycle control 重啟。Idle restart 前後保留 binding 身分、generation、expiry、event budget、processed cursor 與 journal state，未 rejoin、重設 budget、延長 expiry 或重播舊事件。Held handles 證明原 receiver parent／child 在 enable 前已退出；替代 parent／child 具有新的 exact creation identity，executable 與 arguments 均已核對。Persistent MCP 程序排除於 receiver inventory；獨立 observer 另核對這些 receipts 與替代程序身分。私有 V6 file-URI normalization 修正的是驗收 controller 先前的 path 解讀，**不是產品 code recovery fix**；下方歷史失敗仍保留。
 
-Main STOP 僅執行一次、exit 0，server binding 已停用。臺北 01:31 後續唯讀核對確認原／替代 receiver exact PIDs、deadline guards 與另列 auxiliary PID 均已不存在，無法取得 exact exit codes。Controller ready PID 亦不存在，但 ready receipt 未保存 creation identity。**官方 controller disabled readback 仍 pending，因此完整 cleanup 尚未完成。**程序不存在不替代 held-handle exit receipt 或官方 host readback；persistent MCP lifetime 另列。
+Main STOP 僅執行一次、exit 0，server binding 已停用。臺北 01:31 後續唯讀核對確認原／替代 receiver exact PIDs、deadline guards 與另列 auxiliary PID 均已不存在，無法取得 exact exit codes。Controller ready PID 亦不存在，但 ready receipt 未保存 creation identity。約 01:45 coordinator 展開 native tool 的官方 host inventory 實際輸出，確認 controller 已停用，不需要再停用一次。因 cleanup helper 要求的 held-process exit receipt 在程序消失後無法取得，保留未啟用且已釘選的 controller 檔案。**執行環境停止與官方停用讀回已確認；不宣稱已完整移除檔案。**程序不存在不替代 held-handle exit receipt；persistent MCP lifetime 另列。
 
 本輪只驗收已觀察的 idle receiver lifecycle 與兩次自動 delivery。Native model crash、in-flight／unknown-commit recovery、無期限運行、第三次 delivery 及同時三客戶端 chat 均為**本 fixture not_run**；不推導新的產品部署或完整 suite passed。
 
@@ -129,6 +141,6 @@ Codex installer SHA-256：`F5E622AC3BC21CA06B311238C4B49491324FDD01C40F84FC97081
 
 ## 剩餘驗收界線
 
-Issue #12 保持 open，追蹤更廣 lifecycle/capacity。Gemini idle receiver restart 僅在上方限定 fixture passed。完整 native model crash/restart、獨立 STOP、legacy cloud lost-claim、長期 subscription/expiry/offline/revocation/duplicates/bursts、memo retention/load、controlled cost benchmark 仍 pending。上方 7652 的限定原生崩潰防重送 PASS 不涵蓋這些待驗項目；continuous 自動 cloud delivery 與 restart 仍未驗證；單一事件自動 identity 與完整讀取／回覆 passed 記於上方。
+Issue #12 保持 open，追蹤更廣 lifecycle/capacity。Gemini idle receiver restart、cloud 兩次自動 delivery 及其中的 idle gateway restart 僅在上方限定 fixture passed。完整 native model crash/restart、更廣獨立 STOP lifecycle、legacy cloud lost-claim、長期 subscription/expiry/offline/revocation/duplicates/bursts、memo retention/load、controlled cost benchmark 仍 pending。7652 的限定原生崩潰防重送及本次兩事件驗收，不涵蓋這些較廣關卡或無限持續自動運作。
 
 上述歷史部署均建立備份、核對 header/hash；restore／off-host acceptance not_run。歷史 manifest 只識別原交付，不驗證後續來源修改。公開報告不含憑證、host、私人身份、訊息正文或私人截圖。
