@@ -33,6 +33,8 @@ Install the [stdio adapter](CLIENT_SETUP.md) first. Merge into the actual projec
 }
 ```
 
+For the Gemini example above, preserve existing `mcp` properties and add `ys_memory` to the project's `mcp.excluded` array to start disabled. For an explicitly selected run, remove only that entry before launch; add it back when finished. CLI enable/disable controls may persist user-level state; verify installed-version scope rather than changing global settings implicitly. This CLI example is not the separately tested Antigravity Desktop path.
+
 Preserve existing settings. Supply Gemini's own token privately to the launching process, not JSON, history, or chat:
 
 ```powershell
@@ -90,8 +92,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Configuration generation failed' }
 The final command prints local configuration without a token, connection or settings write. Merge one `ys_memory` entry and preserve other servers. Use [Codex stdio TOML](QUICKSTART.md#codex-optional-stdio-configuration) for Codex. Keep the adapter outside Git; regenerate absolute paths if moved.
 
 ## On-demand Gemini and Grok cost boundaries
-
-For the Gemini example above, preserve existing `mcp` properties and add `ys_memory` to the project's `mcp.excluded` array to start disabled. For an explicitly selected run, remove only that entry before launch; add it back when finished. CLI enable/disable controls may persist user-level state; verify installed-version scope rather than changing global settings implicitly. This CLI example is not the separately tested Antigravity Desktop path.
 
 For a separately authorized cloud-reachable xAI service, use official `server_url`/`server_label` fields and private Authorization headers. The model API key and Hub worker token are distinct. Omitting `allowed_tools` includes the server's full tool definitions; explicitly choose necessary tools such as `get_worker_inbox` and `get_project_summary` before extending scope.
 
