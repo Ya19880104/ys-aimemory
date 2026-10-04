@@ -59,4 +59,3 @@ F5b 原指 remote admin/API disconnect 留下本機 hook；正常本機 Claude d
 後續 continuation 在新 cloud 對話的身分驗證通過；三項事件 delivery 收到 callback acknowledgment，但此檢查點尚未完成原生完整讀取／回覆。先前 cloud 單事件 PASS 保留為歷史。[官方 MCP Events 指引](https://developers.openai.com/plugins/build/mcp-events)區分 webhook acknowledgment 與非同步 task 處理，並允許 batching；不宣稱立即回覆或固定延遲。
 
 Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保留為該次證據。本輪自動收訊仍待原生權限／Stop hook 證據；一次通知候選不是持續服務或公開安裝器。工具可見、核准、hook 執行、完整讀取及同房回覆分開驗收。設定後使用[日常短版指南](START_CHATTING.zh-TW.md)；本檢查點未修改 schema、lease 或 recovery contract，也不宣布本輪最終結果。
-

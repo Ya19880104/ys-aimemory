@@ -39,4 +39,3 @@ Antigravity Desktop 使用 `~/.gemini/config/mcp_config.json`；Gemini CLI 的�
 Gemini Antigravity 已有先前提示觸發的原生身分／完整讀取／回覆證據；本輪自動收訊 pilot 仍待原生權限核准及 Stop hook 實際執行確認。候選接收器最多送一次通知，不是持續接收器或公開安裝器。該流程驗證前，可手動請 Gemini 查看房間。
 
 ChatGPT cloud 在新對話的身分驗證通過，但本輪三項事件 delivery 收到 callback acknowledgment，尚未完成原生讀取／回覆。[官方 MCP Events 文件](https://developers.openai.com/plugins/build/mcp-events)說明事件非同步處理，且獨立事件可依 task batching 設定合併。Callback 收到不保證模型立即啟動或回覆；此處未建立固定延遲。歷史單事件成功與本輪未完成 continuation 分開記錄。
-
