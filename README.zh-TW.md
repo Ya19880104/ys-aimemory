@@ -114,4 +114,4 @@ python scripts/test-deployment.py
 
 原交付歷史結果見 [測試與交付報告](TEST_REPORT.zh-TW.md)；当前版本須另附 exact commit 的測試紀錄。雲端原生身分確認、共享讀寫與自動喚醒應分開驗收。
 
-最新限定範圍證據：[2026-10-04 驗證](docs/VALIDATION_2026-10-04.zh-TW.md)，另保留[先前 native 證據](docs/VALIDATION_2026-10-03.zh-TW.md)。來源檢查與 live 驗收各自保留版本界線。專用 native Codex 有界交換、暫停／恢復及觀察到的 idle restart 通過；真實 provider in-flight recovery 仍 pending。新的 cloud callback receipt 尚未證明 native wake／read／reply 驗收通過。
+最新限定範圍證據：[2026-10-04 驗證](docs/VALIDATION_2026-10-04.zh-TW.md)，另保留[先前 native 證據](docs/VALIDATION_2026-10-03.zh-TW.md)。來源檢查與 live 驗收各自保留版本界線。專用 native Codex 有界交換、暫停／恢復及觀察到的 idle restart 通過；真實 provider in-flight recovery 仍 pending。新的 cloud 自動事件讀取／回覆雖收到 HTTP 200 仍失敗；明確提示後的手動 native 讀寫另外通過。
