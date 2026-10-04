@@ -48,16 +48,20 @@ class OwnedChild:
                 pass
 
 
-def test_hard_parent_crash_preserves_live_child_and_never_redispatches(tmp_path):
+@pytest.mark.parametrize('remaining_budget', [False, True])
+def test_hard_parent_crash_preserves_live_child_and_never_redispatches(tmp_path, remaining_budget):
     assert Path(runner.__file__).resolve() == Path(__file__).resolve().parents[1] / 'scripts' / 'run-codex-chat.py'
-    # The fixture CLI records a synthetic server-side post, then withholds its
-    # completion event. This models a committed reply whose caller outcome is unknown.
+    # Exercise both unknown committed-post outcome and an inflight attempt
+    # before post with remaining budget and an expired/replacement lease.
+    (tmp_path / 'remaining.json').write_text(json.dumps(remaining_budget))
     cli = tmp_path / 'fixture_cli.py'
     cli.write_text('''import json, os, sys, time
 from pathlib import Path
 root = Path(sys.argv[1])
-root.joinpath('server.json').write_text(json.dumps({'attempts': 1, 'turns': 1, 'cursor': 6, 'post_count': 1}))
-root.joinpath('child.json').write_text(json.dumps({'pid': os.getpid()}))
+remaining = json.loads(root.joinpath('remaining.json').read_text())
+root.joinpath('server.json').write_text(json.dumps({'attempts': 1, 'turns': 1, 'cursor': 4 if remaining else 6, 'post_count': 0 if remaining else 1}))
+root.joinpath('child.tmp').write_text(json.dumps({'pid': os.getpid()}))
+root.joinpath('child.tmp').replace(root / 'child.json')
 time.sleep(20)
 ''', encoding='utf-8')
     parent = tmp_path / 'fixture_parent.py'
@@ -97,6 +101,13 @@ with fault_client(lambda request: httpx.Response(200, json={'status': 'ready', '
         def committed(request):
             calls.append(json.loads(request.content))
             import httpx
+            if remaining_budget:
+                # Actual service contract: admitted live replay is busy. Only
+                # after stale_claim can a new request receive a replacement lease.
+                if len(calls) == 1:
+                    return httpx.Response(409, json={'error': 'stale_claim'})
+                return httpx.Response(200, json={'status': 'ready',
+                    'delivery': DELIVERY | {'lease_id': 'f' * 32}})
             return httpx.Response(200, json={'status': 'budget_exhausted', 'delivery': None})
         with fault_client(committed) as client:
             original = client.post
@@ -104,11 +115,10 @@ with fault_client(lambda request: httpx.Response(200, json={'status': 'ready', '
                 operations.append(str(url).rsplit('/', 1)[-1])
                 return original(url, **kwargs)
             client.post = recorded_post
-            result = runner.receiver(CONFIG, client, tmp_path, now=lambda: 100,
-                                     turn=lambda *args: pytest.fail('Unknown turn was redispatched'))
-        assert result['native_turns'] == 0
+            with pytest.raises(runner.ReceiverError, match='native_exit_unconfirmed_preserve_binding'):
+                runner.receiver(CONFIG, client, tmp_path, now=lambda: 100, sleep=lambda _: None)
         assert 'dispatched' not in operations
-        assert calls == [json.loads(before['receiver-claim.json'])]
+        assert calls == []
         assert all((tmp_path / name).read_bytes() == value for name, value in before.items())
         assert not list(tmp_path.glob('receipt-*.json'))
         # Even after a successful server post, an unconfirmed live child prevents

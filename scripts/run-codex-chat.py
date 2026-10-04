@@ -488,6 +488,11 @@ def receiver(config, client, directory, *, turn=native_turn, now=time.time, slee
 
     if stop():
         return {'state': 'stopped'}
+    # A hard receiver crash can leave its native child alive. Preserve the
+    # unresolved attempt before joining, rotating a stale claim or dispatching
+    # another lease; only confirmed child cleanup may remove this fence.
+    if (directory / 'native-active.json').exists():
+        raise ReceiverError('native_exit_unconfirmed_preserve_binding')
     try:
         binding = call('join', {k: config[k] for k in ('project_id', 'session_id', 'native_session_id',
             'max_turns', 'after_sequence', 'idempotency_key')} | {'client': 'codex',
