@@ -167,14 +167,15 @@ native_acceptance: not_run
 它不在已安裝的用戶端內。請從 repository checkout 以回條中的專用 Python 執行，並記下 checkout commit：
 
 ```powershell
-& '回條中的_PYTHON_路徑' 'C:\src\ys-aimemory\scripts\inspect-codex-chat-recovery.py' --receipt '用戶端目錄\codex-install.json'
+& '回條中的_PYTHON_路徑' -B 'C:\src\ys-aimemory\scripts\inspect-codex-chat-recovery.py' --receipt '用戶端目錄\codex-install.json'
 ```
 
 它做什麼、不做什麼：
 
-- 以 `inspect_command` 所用的同一項檢查驗證回條，再以唯讀方式開啟 `state_directory` 內已知的 journal 檔。不寫入任何檔案、不取得接收器鎖，也絕不移除 `native-active.json`。
+- 以 `inspect_command` 所用的同一項檢查驗證回條，再以唯讀方式開啟 `state_directory` 內已知的 journal 檔。它不改變接收器或產品的狀態：不寫入 journal 檔、標記、執行回條或鎖檔，不取得接收器鎖，也絕不移除 `native-active.json`。指令中的 `-B` 請保留。工具會匯入安裝器、接收器與用戶端的 `bridge.py`；少了 `-B`，Python 會在這些檔案旁寫入 bytecode 快取，其中一份位於用戶端目錄內。
 - 只送出一個請求：以此 worker 自己受保護的 Token、經固定的 CA，對回條的專案與聊天室呼叫 `GET /v1/chat/status`。傳輸層會拒絕其他方法或路徑。不 join、claim、發文、disconnect，不更動租約或期限，不啟動模型，也不檢查程序。
-- journal 檔若是連結、格式錯誤或過大，一律拒絕，且不再連線 Hub。
+- 會驗證它所依據的 journal 檔：`receiver-config.json`、`receiver-binding.json`、`receiver-claim.json`、`receiver-delivery.json`、`receiver-status.json`，以及該筆交付自己的 `receipt-<delivery-id>.json`。其中任何一個是連結、格式錯誤、過大或屬於其他範圍時，報告為 `invalid-local-state` 或 `scope-mismatch`，且不再連線 Hub。
+- `native-active.json` 與 `STOP` 的處理刻意不同，因為只使用它們是否存在。標記若是連結就不會跟隨，格式錯誤或過大時不採信其內容，但仍視為存在：報告維持 native 退出未確認，並照常向 Hub 查詢。`STOP` 若是連結，會顯示為 `linked`。目錄內的其他檔案（包含其他執行回條）不會開啟。
 - 只輸出固定的狀態名稱與句子。Token、lease 與 request ID、回覆金鑰、native session ID、路徑與訊息內文都不會出現。32 字元的識別碼預設會縮短；需要私下核對時才加 `--full-ids`。
 
 選項：`--offline`（只看本機 journal，不讀 Token、不連 Hub）、`--json`、`--language zh-TW`、`--full-ids`、`--timeout 1..30`。結束代碼 `0` 表示已產生報告，不論狀態為何；`1` 表示回條、參數或 journal 位置無法通過驗證，stderr 只會有一個固定代碼。
@@ -188,7 +189,7 @@ native_acceptance: not_run
 | `disconnected` | Hub 的 binding 已釋放。 | Hub 狀態與 generation。 |
 | `unavailable` | 未取得 Hub 證據：離線、逾時、HTTP 狀態、憑證或 TLS 失敗，或清單中沒有此 binding。只顯示本機事實。 | 固定的原因代碼。 |
 | `no-delivery` | journal 內沒有已派送的交付。 | 本機 journal。 |
-| `scope-mismatch`、`invalid-local-state` | journal 或 Hub binding 屬於其他專案、聊天室或 worker，或 journal 檔不可信。請停止並交由管理員處理。 | 本機 journal 或 Hub binding。 |
+| `scope-mismatch`、`invalid-local-state` | journal 或 Hub binding 屬於其他專案、聊天室或 worker，或受驗證的 journal 檔之一不可信。請停止並交由管理員處理。 | 本機 journal 或 Hub binding。 |
 
 必須記得的限制：
 

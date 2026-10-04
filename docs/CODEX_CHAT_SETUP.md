@@ -167,14 +167,15 @@ After `native_exit_unconfirmed_preserve_binding`, a failed turn or any restart y
 It is not part of an installed client. Run it from a repository checkout with the receipt's private Python, and record the checkout commit:
 
 ```powershell
-& 'PYTHON_PATH_FROM_THE_RECEIPT' 'C:\src\ys-aimemory\scripts\inspect-codex-chat-recovery.py' --receipt 'CLIENT_DIRECTORY\codex-install.json'
+& 'PYTHON_PATH_FROM_THE_RECEIPT' -B 'C:\src\ys-aimemory\scripts\inspect-codex-chat-recovery.py' --receipt 'CLIENT_DIRECTORY\codex-install.json'
 ```
 
 What it does and does not do:
 
-- Validates the receipt with the same check `inspect_command` uses, then opens the known journal files in `state_directory` for reading only. It writes nothing, takes no receiver lock and never removes `native-active.json`.
+- Validates the receipt with the same check `inspect_command` uses, then opens the known journal files in `state_directory` for reading only. It changes no receiver or product state: it writes no journal file, marker, receipt or lock, takes no receiver lock and never removes `native-active.json`. Keep `-B` in the command. The script imports the installer, the receiver and the client's `bridge.py`, and without `-B` Python writes bytecode caches beside them, including one inside the client directory.
 - Sends one request, `GET /v1/chat/status` for the receipt's project and room, with this worker's own protected Token over the pinned CA. Its transport refuses every other method or path. There is no join, claim, post, disconnect, lease or expiry change, model start or process inspection.
-- Refuses linked, malformed or oversized journal files, and then does not contact the Hub.
+- Validates the journal files it relies on: `receiver-config.json`, `receiver-binding.json`, `receiver-claim.json`, `receiver-delivery.json`, `receiver-status.json` and the journaled delivery's own `receipt-<delivery-id>.json`. If one of these is linked, malformed, oversized or names another scope, the report is `invalid-local-state` or `scope-mismatch` and the Hub is not contacted.
+- Treats `native-active.json` and `STOP` differently, on purpose, because only their presence is used. A linked marker is not followed, and a malformed or oversized one is not trusted for its content, but it still counts as present: the report keeps native exit unconfirmed and still asks the Hub. A linked `STOP` is shown as `linked`. Other files in the directory, including other receipts, are not opened.
 - Prints fixed state names and sentences only. The Token, lease and request IDs, reply keys, native session ID, paths and message bodies never appear. 32-character identifiers are shortened unless you add `--full-ids` for private reconciliation.
 
 Options: `--offline` (local journal only; no Token read, no Hub request), `--json`, `--language zh-TW`, `--full-ids`, `--timeout 1..30`. Exit code `0` means a report was produced, whatever its state. Exit code `1` means the receipt, arguments or journal location could not be validated; stderr then carries one fixed code.
@@ -188,7 +189,7 @@ Options: `--offline` (local journal only; no Token read, no Hub request), `--jso
 | `disconnected` | The Hub binding is released. | Hub status and generation. |
 | `unavailable` | No Hub evidence was read: offline, timeout, HTTP status, credential or TLS failure, or the binding was not listed. Only local facts are shown. | A fixed reason code. |
 | `no-delivery` | The journal holds no dispatched delivery. | The local journal. |
-| `scope-mismatch`, `invalid-local-state` | The journal or Hub binding belongs to another project, room or worker, or a journal file cannot be trusted. Stop and ask the administrator. | The local journal or the Hub binding. |
+| `scope-mismatch`, `invalid-local-state` | The journal or Hub binding belongs to another project, room or worker, or one of the validated journal files cannot be trusted. Stop and ask the administrator. | The local journal or the Hub binding. |
 
 Limits to keep in mind:
 

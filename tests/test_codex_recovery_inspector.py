@@ -324,6 +324,34 @@ def test_marker_never_becomes_retry_permission_native_exit_or_process_use(tmp_pa
     assert 'grants no retry' in inspector.render(report)
 
 
+@pytest.mark.parametrize('spoil,recorded', [
+    (lambda path: path.write_text('{"state": '), 'malformed'),
+    (lambda path: path.write_text(' ' * 70000), 'too_large'),
+    (lambda path: (path.unlink(), path.mkdir()), 'not_a_file'),
+    (None, 'linked'),
+])
+def test_untrusted_marker_or_stop_still_counts_as_present_and_the_hub_is_asked(tmp_path, monkeypatch, spoil, recorded):
+    """Presence is the only fact used, so an unreadable marker must never look like an absent one."""
+    state = journal(tmp_path / 'state', marker=True, stop=True)
+    if spoil:
+        spoil(state / 'native-active.json')
+    else:
+        original = Path.is_symlink
+        monkeypatch.setattr(Path, 'is_symlink',
+                            lambda path: path.name in ('native-active.json', 'STOP') or original(path))
+    before, calls = snapshot(state), []
+    with client(hub(delivery='tool_read'), calls) as connection:
+        report = inspector.inspect(SCOPE, state, connection)
+    assert snapshot(state) == before and len(calls) == 1
+    assert report['local']['problems'] == [] and report['state'] == 'server-read'
+    assert report['local']['native_marker']['status'] == 'present'
+    assert report['local']['native_marker']['recorded_state'] == recorded
+    assert 'native_exit_unconfirmed' in report['evidence_missing']
+    assert 'marker_blocks_restart_and_disconnect' in report['next_safe_action']
+    assert report['local']['stop'] == ('linked' if spoil is None else 'present')
+    assert inspector.render(report) and inspector.render(report, 'zh-TW')
+
+
 def test_real_hub_status_payloads_name_each_step_of_one_delivery(collaboration, tmp_path):
     """The product delivery service, not a hand-written payload, answers the status route."""
     from memory_hub.session_service import SessionActor
