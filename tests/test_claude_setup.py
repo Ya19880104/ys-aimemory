@@ -230,7 +230,7 @@ def test_cli_does_not_echo_secret_exception_or_token(monkeypatch, capsys):
 
 
 @pytest.mark.skipif(os.name != 'nt', reason='Windows installer and DPAPI')
-@pytest.mark.parametrize('scenario', ['success', 'concurrent_edit', 'dependency_failure'])
+@pytest.mark.parametrize('scenario', ['success', 'concurrent_edit', 'venv_failure', 'dependency_failure', 'adapter_failure'])
 def test_install_preserves_config_and_keeps_secrets_out_of_shared_files(tmp_path, monkeypatch, scenario):
     from memory_hub.client_secret import transform
     project, bundle, clients = (tmp_path / name for name in ('project', 'bundle', 'clients'))
@@ -246,6 +246,8 @@ def test_install_preserves_config_and_keeps_secrets_out_of_shared_files(tmp_path
     changed = b'{"mcpServers":{"changed_by_user":{}}}'
 
     def subprocess_fixture(args, **kwargs):
+        if ('venv' in args and scenario == 'venv_failure') or ('--print-claude-config' in args and scenario == 'adapter_failure'):
+            raise subprocess.CalledProcessError(7, args, stderr=b'private-token https://private.example.test')
         if 'pip' in args and scenario == 'dependency_failure':
             raise subprocess.CalledProcessError(1, args, stderr=b'synthetic-private-index')
         if '--print-claude-config' in args:
@@ -263,6 +265,9 @@ def test_install_preserves_config_and_keeps_secrets_out_of_shared_files(tmp_path
         with pytest.raises((setup.SetupError, subprocess.CalledProcessError)):
             setup.install(bundle, project, pin, 'synthetic-worker-value', install_parent=clients)
         assert target.read_bytes() == (changed if scenario == 'concurrent_edit' else original)
+        if scenario.endswith('_failure'):
+            assert not list(clients.rglob('worker.dpapi'))
+            assert not list(project.glob('.mcp.setup-*.tmp'))
         return
     receipt = setup.install(bundle, project, pin, 'synthetic-worker-value', install_parent=clients)
     installed = Path(receipt['client_directory'])
@@ -274,3 +279,33 @@ def test_install_preserves_config_and_keeps_secrets_out_of_shared_files(tmp_path
     assert transform((installed / 'previous-mcp.dpapi').read_bytes(), decrypt=True) == original
     assert b'synthetic-worker-value' not in target.read_bytes()
     assert b'synthetic-backup-value' not in (installed / 'previous-mcp.dpapi').read_bytes()
+
+
+@pytest.mark.parametrize(('stderr', 'reason'), [
+    (b'CERTIFICATE_VERIFY_FAILED', 'tls'),
+    (b'No matching distribution found', 'no_distribution'),
+    (b'[WinError 5] Access is denied', 'access_denied'),
+    (b'Connection refused', 'network'),
+    (b'opaque failure', 'unknown'),
+])
+def test_installer_failure_diagnostics_are_fixed_and_propagate(stderr, reason, monkeypatch, capsys):
+    secret = b'https://user:secret@private.example.test/?token=private-token'
+    calls = []
+    def fail(command, **kwargs):
+        calls.append(command)
+        raise subprocess.CalledProcessError(23, command, output=secret, stderr=stderr + b' ' + secret)
+    monkeypatch.setattr(setup.subprocess, 'run', fail)
+    monkeypatch.setattr('sys.argv', ['setup-claude.py', '--bundle', '.', '--expected-ca', '0' * 64])
+    monkeypatch.setenv('YS_AIMEMORY_SETUP_TOKEN', 'private-token')
+    monkeypatch.setattr(setup, 'install', lambda *args: setup.run_install_stage('dependencies', ['private-command']))
+    assert setup.main() == 1
+    assert len(calls) == 1  # No automatic retry.
+    assert capsys.readouterr().err == f'setup_failed: installer_stage=dependencies exit_code=23 reason={reason}\n'
+
+
+def test_installer_stage_launch_denied_does_not_expose_path(monkeypatch):
+    def fail(*args, **kwargs):
+        raise PermissionError('private-path-and-token')
+    monkeypatch.setattr(setup.subprocess, 'run', fail)
+    with pytest.raises(setup.SetupError, match='^installer_stage=venv exit_code=not_started reason=access_denied$'):
+        setup.run_install_stage('venv', ['private-command'])

@@ -45,3 +45,9 @@ If still absent after checking setup/loading, report NOT_RUN; do not substitute 
 Verify the issued identity. Create/select a Hub conversation, copy its join instructions, and ask Claude to read the newest message and write one reply. Independently confirm author/message ID/sequence in the Hub. This manual test does not enable [automatic chat](AUTOMATIC_CHAT.md).
 
 For an existing entry review whether it already works. Missing native tools require checking project path, new chat, trust, and receipt. DPAPI requires the installing Windows user. CA errors require reverifying the pin/SAN; do not weaken TLS or add global tokens to hide project-selection errors.
+
+## Installer failure diagnostics
+
+The repository installer reports subprocess failures as `installer_stage=venv|dependencies|adapter_verification`, an `exit_code` (or `not_started`), and a fixed `reason`: `tls`, `network`, `no_distribution`, `access_denied`, or `unknown`. These categories identify matching error text, not a confirmed root cause. Captured subprocess output, package URLs and command arguments are not printed. Setup stops without retrying; these failures occur before writing the worker secret or committing `.mcp.json`.
+
+Check Python 3.12 for `venv`, package availability/network or file permissions for `dependencies`, and the trusted CA/adapter for `adapter_verification`. `unknown` requires local investigation without sharing raw logs containing secrets. An immutable bootstrap may still download an earlier installer that reports only `CalledProcessError`; this diagnostic change does not advance its pins or prove a previous failure's cause.

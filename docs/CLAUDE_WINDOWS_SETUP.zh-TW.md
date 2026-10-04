@@ -61,13 +61,19 @@ py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-
 | `ys_memory already exists` | 本專案已有設定；先確認是不是已可用。換裝前備份並只處理這一個項目，不刪整份設定。 |
 | `Invalid public bundle asset` | 重新解壓五個檔案，不要拿少了 README 的測試目錄。 |
 | `FileNotFoundError` | 核對 bundle 和 project 都是這台電腦的實際資料夾。 |
-| `CalledProcessError` | Python 環境、依賴安裝或 adapter 驗證失敗；核對 Python 3.12、套件下載網路及公開 CA。收據尚未完成前不要假定已連線。 |
+| `installer_stage=...` | 依下方階段診斷核對；收據尚未完成前不要假定已連線。舊版固定 bootstrap 可能仍只顯示 `CalledProcessError`。 |
 | 工具找不到 | 確認新的 Local 工作選了同一個資料夾，核對 MCP 啟動路徑與核准狀態。 |
 | `credential_launcher_stopped` | 確認使用原安裝的 Windows 帳號與電腦；DPAPI 密文不能當成可攜 Token 檔。 |
 | `AUTH_REJECTED` | 核對 Claude worker 的 Token 和專案授權；撤銷或換 Token 後需重新配置。 |
 | `TLS_VERIFY_FAILED` | 核對可信 CA 指紋、主機名與有效期，不關閉驗證。 |
 
 換電腦、CA 輪替或 Token 更換時，在新環境重新安裝並更新這個專案的 `ys_memory` 設定；本版不自動輪替。停止載入時，只移除該專案 `.mcp.json` 的 `ys_memory` 項目並重新開啟工作；要使舊身分失效，另到 Hub 撤銷 Token。
+
+## 安裝失敗診斷
+
+本 repository 安裝器的子程序失敗會顯示 `installer_stage=venv|dependencies|adapter_verification`、`exit_code`（或 `not_started`），以及固定 `reason`：`tls`、`network`、`no_distribution`、`access_denied` 或 `unknown`。分類只表示符合的錯誤文字，不是已確認根因；不輸出擷取的子程序內容、套件 URL 或命令參數。失敗會停止，不自動重試；這些階段都在寫入 worker 密文與提交 `.mcp.json` 前。
+
+`venv` 核對 Python 3.12；`dependencies` 核對套件供應、網路及檔案權限；`adapter_verification` 核對可信 CA 與 adapter。`unknown` 需在本機調查，不分享可能含秘密的原始紀錄。固定 bootstrap 仍可能下載只回報 `CalledProcessError` 的舊安裝器；本次診斷修改不更新其 pins，也不證明先前失敗原因。
 
 ## Token 成本與此次範圍
 

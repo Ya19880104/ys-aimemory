@@ -36,6 +36,32 @@ class SetupError(ValueError):
     """Only fixed, non-secret guidance may be included in these messages."""
 
 
+def run_install_stage(stage, command, **kwargs):
+    """Propagate subprocess failure without exposing captured output or argv."""
+    try:
+        return subprocess.run(command, check=True, capture_output=True, **kwargs)
+    except subprocess.CalledProcessError as exc:
+        output = exc.stderr or b''
+        if isinstance(output, bytes):
+            output = output.decode('utf-8', errors='replace')
+        output = output.lower()
+        reason = 'unknown'
+        for category, markers in (
+            ('tls', ('certificate verify failed', 'certificate_verify_failed', 'sslerror')),
+            ('no_distribution', ('no matching distribution found', 'could not find a version that satisfies')),
+            ('access_denied', ('permission denied', 'access is denied', 'access denied', 'winerror 5')),
+            ('network', ('connection refused', 'connection reset', 'connection timed out',
+                         'read timed out', 'name resolution', 'network is unreachable', 'proxyerror')),
+        ):
+            if any(marker in output for marker in markers):
+                reason = category
+                break
+        raise SetupError(f'installer_stage={stage} exit_code={int(exc.returncode)} reason={reason}') from None
+    except OSError as exc:
+        reason = 'access_denied' if isinstance(exc, PermissionError) else 'unknown'
+        raise SetupError(f'installer_stage={stage} exit_code=not_started reason={reason}') from None
+
+
 class SetupParser(argparse.ArgumentParser):
     def error(self, message):
         # A mistakenly supplied Token/URL must not be reflected into stderr.
@@ -203,15 +229,13 @@ def install(bundle: Path, project: Path, expected_ca: str, token: str, *, instal
     if not launcher.is_file():
         launcher = Path(__file__).resolve().parents[1] / 'memory_hub' / 'client_secret.py'
     shutil.copyfile(launcher, directory / 'launcher.py')
-    subprocess.run([sys.executable, '-m', 'venv', str(directory / '.venv')],
-                   check=True, capture_output=True)
+    run_install_stage('venv', [sys.executable, '-m', 'venv', str(directory / '.venv')])
     python = directory / '.venv' / 'Scripts' / 'python.exe'
-    subprocess.run([str(python), '-m', 'pip', 'install', '--disable-pip-version-check', '-q',
-                    '-r', str(directory / 'requirements.lock')], check=True,
-                   capture_output=True, cwd=directory)
+    run_install_stage('dependencies', [str(python), '-m', 'pip', 'install', '--disable-pip-version-check', '-q',
+                    '-r', str(directory / 'requirements.lock')], cwd=directory)
     # Verify real certificate/pin with the installed adapter before committing configuration.
-    result = subprocess.run([str(python), str(directory / 'bridge.py'), '--compact', '--print-claude-config'],
-                            capture_output=True, check=True, cwd=directory)
+    result = run_install_stage('adapter_verification',
+        [str(python), str(directory / 'bridge.py'), '--compact', '--print-claude-config'], cwd=directory)
     entry = json.loads(result.stdout)['mcpServers']['ys_memory']
     entry['args'][1] = str(directory / 'launcher.py')
     entry.pop('env', None)
