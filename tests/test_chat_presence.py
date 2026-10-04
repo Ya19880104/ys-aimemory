@@ -57,4 +57,3 @@ def test_expiry_moves_to_history_without_status_change(tmp_path):
     v=json.loads(r.stdout)
     assert 'Current receivers shown: 1' in v['before']
     assert 'Current receivers shown: 0' in v['after'] and v['history']=='details'
-

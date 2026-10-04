@@ -2,6 +2,16 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
+## Installation and presence follow-up: 2026-10-05, 04:10 Taipei
+
+The Hub remains deployed at `bda71b26c7f6ed4d4532050167731373d284d3d0`. Its isolated deployment suite passed **1,157 tests**, with **65 skips and 3 warnings**; promotion passed **460 checks**, with no failed checks. These results do not establish native client acceptance.
+
+On that deployment, a fresh dedicated Codex installation passed separate **native identity** and **empty incremental room-read** checks. Actual MCP calls, exact worker/scope, completed native turns and owned process exit were verified. Earlier `ordinary_native_scope_changed` and `native_incomplete` attempts remain failures; a separate SDK initialization/catalog success is not a native pass. A fresh Gemini connection passed only its native pre-join status check. The new simultaneous three-client automatic exchange and handoff remain **not_run**.
+
+The remote Claude install failed while installing dependencies. A subsequent bounded diagnostic found Windows `errno 2` and pip's long-path hint; this hint is not proof of the root cause. A shorter-path recovery is prepared but unexecuted. The remote UI is blocked by an unrelated OS permission dialog, which was left unchanged.
+
+Candidate `162a64b087724bd9484d30e7be6934152534003f` adds fixed, sanitized installer stage diagnostics and separates current receivers from collapsed inactive history. Connection heartbeat is explicitly distinct from a model read or reply. **218 focused tests passed**, with **2 existing dependency warnings**, in **123.73 seconds** on Windows/Python 3.12.13. An actual browser using the shipped renderer/styles with synthetic data displayed 12 inactive bindings as 0 current/0 online, and a mixed fixture as 3 current/2 online. English/Traditional Chinese and expanded-history preservation across refresh were checked. This is a local component preview, not full-page or live delivery acceptance. The updated public bootstrap chain uses source `b2c193e12988bcaacd07423e2aeac17b0442c455` and bootstrap revision `cf1ac9956681a36146fdf83b3a9c7bb1961d16b1`; both guide languages and UI pins match Git blob hashes. This candidate has not been deployed, and these source tests do not certify a fresh public installation.
+
 ## ChatGPT cloud idle-restart acceptance: 2026-10-05, 02:06 Taipei
 
 On deployed source `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`, a fresh bounded cloud fixture **passed two automatic native full read/replies with an official idle gateway stop/restart between them**. Each new human message came from the website. No manual model prompt, approval or permission change occurred after task creation. Both event callbacks returned HTTP 200 on attempt 1; separate matching native `read_delta` / `tool_read` and `post_message` / `replied` receipts, two durable replied batches and two website replies established delivery. Callback acceptance alone was not counted.

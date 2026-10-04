@@ -2,6 +2,16 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
+## 安裝與接收狀態後續驗證：2026-10-05 臺北 04:10
+
+Hub 仍部署於 `bda71b26c7f6ed4d4532050167731373d284d3d0`。該版本的隔離部署測試 **1,157 passed、65 skipped、3 warnings**；正式部署 **460 項檢查通過、0 failed**。這些結果不代表原生客戶端驗收通過。
+
+在該部署上，新建的專屬 Codex 安裝分別通過 **原生身分確認**及**空結果的增量房間讀取**，核對了實際 MCP 呼叫、正確 worker／範圍、完成的原生回合與所屬程序退出。先前 `ordinary_native_scope_changed` 和 `native_incomplete` 仍保留為失敗；另一次 SDK 初始化／工具目錄成功不算原生通過。新的 Gemini 連線只通過原生加入前狀態查詢。本輪三方同時自動對話與交接仍為 **not_run**。
+
+遠端 Claude 安裝在相依套件階段失敗；後續限定診斷看到 Windows `errno 2` 與 pip 長路徑提示，但該提示不能證明根因。已準備較短路徑的恢復方式，尚未執行。遠端介面被無關的作業系統權限視窗擋住，未變更該權限。
+
+候選 `162a64b087724bd9484d30e7be6934152534003f` 增加固定且不含敏感資料的安裝階段診斷，並將目前接收器與收合的非作用中紀錄分開，明確區分接線心跳與模型已讀／回覆。在 Windows／Python 3.12.13，**218 項針對測試 passed、2 項既有相依套件 warnings**，耗時 **123.73 秒**。另在實際瀏覽器以產品 renderer／樣式及合成資料，確認 12 筆非作用中綁定顯示為目前 0／在線 0，混合情境顯示目前 3／在線 2，並檢查英／繁中及刷新後保持歷史展開。此項是本機元件預覽，不是完整頁面或線上送達驗收。更新的公開安裝鏈使用來源 `b2c193e12988bcaacd07423e2aeac17b0442c455`、啟動腳本版本 `cf1ac9956681a36146fdf83b3a9c7bb1961d16b1`；雙語教學與介面 pins 均符合 Git blob hash。此候選尚未部署，來源測試也不代表全新公開安裝已驗收。
+
 ## ChatGPT 雲端 idle restart 驗收：2026-10-05 臺北 02:06
 
 在部署來源 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`，新的限定雲端 fixture **通過兩次自動原生完整讀取／回覆，兩次之間執行一次官方 idle gateway stop/restart**。兩則新的人類訊息皆從網站送出；任務建立後沒有手動 model prompt、工具核准或權限修改。兩次 event callback 均在 attempt 1 回 HTTP 200；另以相同 fingerprint 的 native `read_delta`／`tool_read`、`post_message`／`replied`、兩筆 durable replied batch 及網站兩則回覆確認 delivery，沒有把 callback 接受當作已讀。
