@@ -181,6 +181,19 @@ def test_queue_rechecks_scope_before_each_send(rig):
     execute.assert_not_called()
 
 
+@pytest.mark.parametrize('failure', [OSError('offline'), subprocess.TimeoutExpired('agentapi',10),
+                                     Mock(returncode=0,stdout=b'not-json')])
+def test_metadata_failure_recovers_without_notification(rig, failure):
+    config, event, binding, client, calls, directory = rig
+    config.update(admission_mode='official_host_queue',native_project_id='native-project')
+    good = Mock(returncode=0,stdout=json.dumps({'response':{'conversationMetadata':{'metadata':{
+        'workspaceUris':[directory.resolve().as_uri()],'projectId':'native-project'}}}}).encode())
+    execute = Mock(side_effect=[failure,good])
+    assert official_metadata_admission(config,'agentapi',execute=execute) is None
+    assert official_metadata_admission(config,'agentapi',execute=execute)['scope_verified']
+    assert all(call.args[0][1]=='get-conversation-metadata' for call in execute.call_args_list)
+
+
 def test_real_rest_contract_claim_dispatch_and_restart_no_resend(collaboration, tmp_path):
     from fastapi.testclient import TestClient
     from memory_hub.app import create_app

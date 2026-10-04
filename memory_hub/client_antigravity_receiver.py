@@ -170,6 +170,13 @@ def run(config, client, directory, executable, admission, *, now=time.time,
 
 def official_metadata_admission(config, executable, *, now=time.time, execute=subprocess.run):
     """Official CLI metadata only; discard raw output, never query histories/RPC."""
+    try:
+        return _official_metadata(config, executable, now=now, execute=execute)
+    except (OSError, subprocess.TimeoutExpired, ValueError, TypeError, KeyError):
+        return None
+
+
+def _official_metadata(config, executable, *, now, execute):
     result = execute([executable, 'get-conversation-metadata', config['native_session_id']],
         shell=False, capture_output=True, timeout=10,
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
