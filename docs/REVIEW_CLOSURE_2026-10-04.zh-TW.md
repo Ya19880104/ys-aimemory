@@ -4,6 +4,12 @@
 
 本文件記錄 Claude F1–F5 findings 的修正及此檢查點已有證據，不代表所有生命週期或原生客戶端情境均已完成。
 
+## 最新狀態
+
+- Codex：已記錄的原生接收／讀取／回覆及明確斷線驗收通過。
+- Gemini：手動啟用單回合自動原生讀取／回覆通過，pilot 已斷線並停止；原生 Stop hook 啟用、持續多輪及重啟恢復仍 NOT RUN。
+- 新 cloud continuation：NOT PASSED，task／訂閱及私人 runtime 已停止；歷史單事件 PASS 分開保留。
+
 ## 來源與安裝器身分
 
 - 生命週期來源檢查點：`3b6e3aa`。
@@ -58,7 +64,7 @@ F5b 原指 remote admin/API disconnect 留下本機 hook；正常本機 Claude d
 
 後續 continuation 在新 cloud 對話的身分驗證通過；三項事件 delivery 收到 callback acknowledgment，但此檢查點尚未完成原生完整讀取／回覆。先前 cloud 單事件 PASS 保留為歷史。[官方 MCP Events 指引](https://developers.openai.com/plugins/build/mcp-events)區分 webhook acknowledgment 與非同步 task 處理，並允許 batching；不宣稱立即回覆或固定延遲。
 
-Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保留為該次證據。本輪自動收訊仍待原生權限／Stop hook 證據；一次通知候選不是持續服務或公開安裝器。工具可見、核准、hook 執行、完整讀取及同房回覆分開驗收。設定後使用[日常短版指南](START_CHATTING.zh-TW.md)；本檢查點未修改 schema、lease 或 recovery contract，也不宣布本輪最終結果。
+Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保留為該次證據。當時自動收訊仍待原生權限／Stop hook 證據，已由下述單回合結果更新；一次通知候選不是持續服務或公開安裝器。工具可見、核准、hook 執行、完整讀取及同房回覆分開驗收。設定後使用[日常短版指南](START_CHATTING.zh-TW.md)；本檢查點未修改 schema、lease 或 recovery contract，也不宣布本輪最終結果。
 
 ### 後續診斷檢查點（非原生驗收）
 
@@ -66,7 +72,7 @@ Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保�
 
 新的短版 cloud task 約 12:33 啟用，模型 GPT 6.1 Sol／Light；12:36:33 留下新合成管理者訊息。此檢查點的原生讀取／回覆結果仍 pending。前述 delivery 次數是歷史觀察，不是此 task 的最終結果。
 
-## 本輪最後檢查點 — NOT PASSED
+## Cloud continuation 結果 — NOT PASSED
 
 新的乾淨 cloud 對話身分驗證通過，但訂閱仍卡在未讀的舊 batch。該 batch 派送三次，完整讀取與回覆仍無，processed cursor 未前進，因此新管理者 marker 未建立新的自動原生讀取／回覆。Task metadata 顯示某次執行比 first lease expiry 晚約六秒，這只是相關，不證明根因或該次執行處理哪個事件。
 
@@ -74,15 +80,15 @@ Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保�
 
 本輪 continuation 為 **NOT PASSED**，不是 cloud 生命週期驗收完成。協調者約臺北時間 12:45 開始停止 task；此檢查點的 unsubscribe 確認及私人 runtime 停止仍 **PENDING**。歷史單事件 PASS 保留。
 
-Gemini 仍待使用者原生工具核准；私人 Windows observer 引號修正通過離線命令 probe，但真正原生 Stop hook 執行仍 **NOT RUN**。不宣稱 Gemini 自動 Hub 驗收、持續或公開接收器。本文件更新未改 schema、lease 或 recovery semantics。
+當時 Gemini 仍待使用者原生工具核准；私人 Windows observer 引號修正通過離線命令 probe，但當時真正原生 Stop hook 執行仍 **NOT RUN**。該檢查點不支持 Gemini 自動 Hub 驗收；後續手動單回合 PASS 亦不代表持續或公開接收器。本文件更新未改 schema、lease 或 recovery semantics。
 
 ### 臺北時間 12:46 cleanup 已確認
 
 原生 task UI 顯示繼續控制，確認處於 paused；訂閱三次 delivery 後已確認 unsubscribed。綁定 disabled 且 disconnected，generation／version 8，processed cursor 仍未前進。私人 runtime 停止回條確認 `stopped=true`、`process_running=false`。此更新覆蓋前述 cleanup PENDING，但本輪 **NOT PASSED** 結果不變。該 cleanup 檢查點的 Gemini 仍待授權且 sidecar 未啟用；下述啟動問題更新覆蓋當時等待核准狀態。
 
-### 後續 Gemini 啟動問題（原生重試尚未執行）
+### 歷史 Gemini 啟動問題 — 12:49–13:16（已由下文更新）
 
-使用者確認 12:49 核准後原生 `chat_status` 已完成，回傳 `chat_operation_unavailable`。來源分析發現 pilot adapter 缺少 `chat-binding.json`，在任何 HTTP 請求前即發生 file-not-found。這是未綁定啟動失敗，不是憑證或 CA 驗證遭拒的證據。13:16 已準備僅身分用途的 inactive config（`expires_at=0`），但原生重試草稿尚未送出，恢復仍未確認。真正 Stop hook 尚未觀察到，自動收訊未驗收通過。聚焦來源測試（13 bridge checks、24 targeted checks）不能取代待執行的原生重試。
+使用者確認 12:49 核准後原生 `chat_status` 已完成，回傳 `chat_operation_unavailable`。來源分析發現 pilot adapter 缺少 `chat-binding.json`，在任何 HTTP 請求前即發生 file-not-found。這是未綁定啟動失敗，不是憑證或 CA 驗證遭拒的證據。13:16 已準備僅身分用途的 inactive config（`expires_at=0`），但原生重試草稿尚未送出，當時恢復仍未確認，已由下述原生狀態 PASS 更新。當時真正 Stop hook 尚未觀察到，自動收訊未驗收通過；見後續手動單回合結果。聚焦來源測試（13 bridge checks、24 targeted checks）不能取代待執行的原生重試。
 
 ### Gemini 手動啟用的單回合自動回覆 — PASS
 

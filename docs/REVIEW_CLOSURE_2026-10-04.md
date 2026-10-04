@@ -4,6 +4,12 @@
 
 This records the response to Claude's F1–F5 review findings and the evidence available at this checkpoint. It is not a claim that every lifecycle or native-client scenario is complete.
 
+## Latest status
+
+- Codex: the recorded native receiver/read/reply and explicit disconnect acceptance passed.
+- Gemini: manually enabled one-turn automatic native read/reply passed; the pilot is disconnected and stopped. Native Stop-hook activation, continuous multiple turns and restart recovery remain NOT RUN.
+- Fresh cloud continuation: NOT PASSED; its task/subscription and private runtime were stopped. Historical single-event PASS remains separate.
+
 ## Source and installer identity
 
 - Reviewed lifecycle source checkpoint: `3b6e3aa`.
@@ -56,9 +62,9 @@ No full process-tree cancellation proof is claimed. Issue **#12 remains open** f
 
 ## Continuation checkpoint — manual and automatic gates
 
-A later continuation passed cloud identity in a new conversation; three event deliveries received callback acknowledgments but no native full read/reply completed at this checkpoint. Preserve the earlier single-event cloud PASS as historical. [Official MCP Events guidance](https://developers.openai.com/plugins/build/mcp-events) distinguishes webhook acknowledgment from asynchronous task processing and permits batching; no immediate-reply or fixed-delay claim is made.
+At that continuation checkpoint, cloud identity passed in a new conversation; three event deliveries received callback acknowledgments but no native full read/reply completed at this checkpoint. Preserve the earlier single-event cloud PASS as historical. [Official MCP Events guidance](https://developers.openai.com/plugins/build/mcp-events) distinguishes webhook acknowledgment from asynchronous task processing and permits batching; no immediate-reply or fixed-delay claim is made.
 
-Gemini Antigravity's earlier prompted native identity/read/reply PASS remains valid for that test. Current automatic receiving still awaits native permission/Stop-hook evidence. The one-notification candidate is not continuous service or a public installer. Native tool visibility, approvals, hook invocation, full read and same-room reply are separate gates. Use the [short everyday guide](START_CHATTING.md) after setup; this checkpoint changes no schema, lease or recovery contract and does not declare the continuation's final outcome.
+Gemini Antigravity's earlier prompted native identity/read/reply PASS remains valid for that test. At that checkpoint, automatic receiving still awaited native permission/Stop-hook evidence; the later one-turn result below supersedes that status. The one-notification candidate is not continuous service or a public installer. Native tool visibility, approvals, hook invocation, full read and same-room reply are separate gates. Use the [short everyday guide](START_CHATTING.md) after setup; this checkpoint changes no schema, lease or recovery contract and does not declare the continuation's final outcome.
 
 ### Later diagnostic checkpoint (not native acceptance)
 
@@ -66,7 +72,7 @@ A private Windows command probe reproduced hook invocation failure with the exis
 
 A fresh short cloud task became active at about 12:33 with GPT 6.1 Sol / Light. A new synthetic human message was posted at 12:36:33; its native read/reply result remained pending at this checkpoint. Earlier delivery counts above are historical observations, not this task's final outcome.
 
-## Final continuation checkpoint — NOT PASSED
+## Cloud continuation outcome — NOT PASSED
 
 The new clean cloud conversation passed identity, but its subscription remained behind an unread older batch. That batch was dispatched in three attempts; full read and reply stayed absent and the processed cursor did not advance. The fresh human marker therefore did not establish a new automatic native read/reply. Task metadata showed a run about six seconds after the first lease expiry; this correlation does not establish the cause or identify which event the run processed.
 
@@ -74,15 +80,15 @@ A later explicit manual negative control deliberately supplied an unknown notifi
 
 This continuation is **NOT PASSED**, not a completed cloud lifecycle acceptance. At approximately 12:45 Asia/Taipei the coordinator began stopping the task; confirmed unsubscribe and private-runtime stop are **PENDING** at this checkpoint. Historical single-event PASS remains unchanged.
 
-Gemini still awaits the user's native tool approval. Corrected private Windows observer quoting passed an offline command probe, but genuine native Stop-hook invocation remains **NOT RUN**. No automatic Gemini Hub acceptance or continuous/public receiver is claimed. All schema, lease and recovery semantics remain unchanged by this documentation update.
+At that checkpoint, Gemini still awaited the user's native tool approval. Corrected private Windows observer quoting passed an offline command probe, but genuine native Stop-hook invocation was still **NOT RUN** at that checkpoint. That checkpoint established no automatic Gemini Hub acceptance. The subsequent manually enabled one-turn PASS below does not establish a continuous/public receiver. All schema, lease and recovery semantics remain unchanged by this documentation update.
 
 ### Cleanup verified at 12:46 Asia/Taipei
 
 The native task UI displayed the resume control, confirming paused state. The subscription was confirmed unsubscribed after three deliveries. Its binding was disabled and disconnected, generation/version 8, with the processed cursor still unchanged. The private runtime stop receipt confirmed `stopped=true` and `process_running=false`. This supersedes cleanup PENDING above; it does not change the continuation's **NOT PASSED** outcome. At that cleanup checkpoint Gemini still awaited authorization and its sidecar was not enabled; the later startup finding below supersedes that pending-approval status.
 
-### Later Gemini startup finding (native retry not yet run)
+### Historical Gemini startup finding — 12:49–13:16 (superseded below)
 
-The user subsequently confirmed that native `chat_status` completed after approval at 12:49, returning `chat_operation_unavailable`. Source analysis found the pilot adapter lacked `chat-binding.json`, causing a file-not-found before any HTTP request. This is an unbound-startup failure, not evidence of rejected credentials or CA validation. An identity-only inactive configuration (`expires_at=0`) was prepared at 13:16; the drafted native retry was not sent, so recovery remains unverified. Genuine Stop-hook invocation has still not been observed and automatic receiving is not accepted. Focused source tests (13 bridge checks and 24 targeted checks) do not replace that pending native retry.
+The user subsequently confirmed that native `chat_status` completed after approval at 12:49, returning `chat_operation_unavailable`. Source analysis found the pilot adapter lacked `chat-binding.json`, causing a file-not-found before any HTTP request. This is an unbound-startup failure, not evidence of rejected credentials or CA validation. An identity-only inactive configuration (`expires_at=0`) was prepared at 13:16; the drafted native retry was not sent, so recovery was unverified at that checkpoint; the later native status PASS below supersedes it. Genuine Stop-hook invocation had not been observed and automatic receiving was not accepted at that checkpoint; see the later manually enabled one-turn result. Focused source tests (13 bridge checks and 24 targeted checks) do not replace that pending native retry.
 
 ### Gemini manually enabled one-turn automatic reply — PASS
 
