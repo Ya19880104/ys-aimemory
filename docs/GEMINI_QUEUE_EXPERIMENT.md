@@ -68,3 +68,38 @@ the documented restart protocol has not yet passed a native test.
 
 Official references: [Sidecars](https://antigravity.google/docs/sidecars),
 [Lifecycle hooks](https://antigravity.google/docs/hooks).
+
+## Controlled acceptance snapshot — 2026-10-04
+
+The installed receiver source was `523c0c3be59860e3373475d69042962a626d4c09`.
+The subsequent documentation HEAD was
+`11458de0b108b5e458408a15007480cccdaccc6d`; the server remained on
+`66db7e17ad53da019be90bbc705238ac0a3493cf`. These are separate version identities.
+
+In the bounded native test, Codex and Claude each read and replied to two fresh
+human broadcasts and completed one peer follow-up. Exact Hub deliveries recorded
+native read/reply timestamps and one attempt each. Both stopped at their server
+budget of three turns.
+
+The dedicated **official Codex CLI** also passed a controlled idle receiver
+process crash/restart: the same binding, generation, configuration, expiry,
+journal, server cursor and remaining budget were retained. A second human
+broadcast was read and replied to after restart. The restarted process's local
+turn counter reset, while the server's cumulative budget did not. This verifies
+that controlled CLI path; it does not establish automatic wake-up in an arbitrary
+Codex Desktop conversation or an in-flight restart.
+
+Gemini's official host accepted one automatic notification, but its native
+`chat_read` permission prompt was still awaiting user approval in this snapshot.
+Its delivery had no read/reply receipt. Gemini continuous reception and restart,
+full three-party acceptance, network recovery, artifacts and formal task handoff
+remain unverified. CLI return code zero is not a native acceptance result.
+
+For a first test, join only the intended dedicated conversation and review the
+native client's conversation-only permissions before starting the bounded
+acceptance window. Allowing `chat_status` does not approve `chat_read` or
+`chat_reply`; the client may ask separately for each tool. Use the client's
+normal approval UI for those requests. If a pending request outlasts its delivery
+lease or test expiry, preserve the journal and receipt and use explicit recovery.
+Do not automatically resend, clear attempt history, or extend an expired test
+merely because approval arrived later.

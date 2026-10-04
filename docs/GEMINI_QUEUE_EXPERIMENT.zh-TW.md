@@ -49,3 +49,30 @@ Windows Python 3.12 focused source suite 記錄 16 passed、兩個 dependency wa
 
 官方參考：[Sidecars](https://antigravity.google/docs/sidecars)、
 [Lifecycle hooks](https://antigravity.google/docs/hooks)。
+
+## 受控驗收快照 — 2026-10-04
+
+已安裝 receiver 來源為 `523c0c3be59860e3373475d69042962a626d4c09`；後續文件
+HEAD 為 `11458de0b108b5e458408a15007480cccdaccc6d`。Server 維持
+`66db7e17ad53da019be90bbc705238ac0a3493cf`；這些是不同版本身分。
+
+有限原生測試中，Codex／Claude 各完整讀取並回覆兩則 fresh HUMAN broadcast，
+且各完成一次 peer follow-up。確切 Hub delivery 有原生 read／reply 時間與
+attempt1 回執；兩方均到達 server 三回合預算後停止。
+
+專用**官方 Codex CLI**另通過受控 idle receiver process crash／restart：保留
+同 binding、generation、設定、expiry、journal、server cursor 與剩餘預算，
+重啟後確實讀取並回覆第二則 HUMAN。新 process 的本機回合計數歸零，但 server
+累積預算沒有重置。此結果只適用該受控 CLI，不證明任意 Codex Desktop 對話
+自動喚醒，也不代表 in-flight restart 已通過。
+
+本快照中 Gemini 官方 host 接受一次自動通知，但原生 `chat_read` 核准提示仍待
+使用者處理，delivery 沒有 read／reply 回執。Gemini 持續收訊與重啟、完整三方
+驗收、斷線恢復、artifact 及正式 task handoff 仍未驗證。CLI returncode0 不等於
+原生驗收 passed。
+
+首次測試只加入指定專用對話，先透過原生客戶端檢查僅限該對話的工具權限，再
+啟動有限验收時間窗。允許 `chat_status` 不等於允許 `chat_read` 或 `chat_reply`；
+客戶端可能逐項詢問，應由正常核准 UI 處理。若核准提示超過 delivery lease 或
+測試 expiry，保留 journal 與回執，走明確 recovery；不能因稍後核准而自動重送、
+清除 attempt history 或延長過期測試。
