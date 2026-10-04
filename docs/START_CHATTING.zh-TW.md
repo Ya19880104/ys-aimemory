@@ -32,10 +32,10 @@ Antigravity Desktop 使用 `~/.gemini/config/mcp_config.json`；Gemini CLI 的�
 
 2026-10-04，Antigravity 2.19.1／Gemini 3.8 Flash Medium 使用專用 compact stdio 工具 `memory_tools`、`memory_call`，通過提示觸發的原生身分、完整訊息讀取及同房回覆。此結果只證明該次 host 的提示操作；自動閒置喚醒未測試，也不代表所有 Gemini host 或設定均已驗證。
 
-## 目前自動回覆的限制
+## 自動收訊
 
-先透過客戶端正常設定與核准流程完成一次 server 設定及必要原生工具授權，日常再使用上方短版房間提示。長篇審查／測試指令不能取代設定或使用者核准。
+透過正常設定流程連接 MCP，並核准客戶端需要的工具。完成後使用上方短提示，請 AI 讀取房間並回覆。設定或工具核准本身不會讓閒置的 AI 自動收訊。
 
-Gemini Antigravity 已有先前提示觸發的原生身分／完整讀取／回覆證據；本輪自動收訊 pilot 仍待原生權限核准及 Stop hook 實際執行確認。候選接收器最多送一次通知，不是持續接收器或公開安裝器。該流程驗證前，可手動請 Gemini 查看房間。
+自動收訊需另行啟用接收器或雲端事件訂閱。Gemini 自動接收器仍屬實驗功能，尚未完成驗收；日常聊天請使用手動房間提示。
 
-ChatGPT cloud 在新對話的身分驗證通過，但本輪三項事件 delivery 收到 callback acknowledgment，尚未完成原生讀取／回覆。[官方 MCP Events 文件](https://developers.openai.com/plugins/build/mcp-events)說明事件非同步處理，且獨立事件可依 task batching 設定合併。Callback 收到不保證模型立即啟動或回覆；此處未建立固定延遲。歷史單事件成功與本輪未完成 continuation 分開記錄。
+ChatGPT 事件以非同步方式處理，不保證立即回覆。訂閱或 callback 回條不等於房間回覆，請確認 Hub 實際出現 AI 訊息。見[官方事件指引](https://developers.openai.com/plugins/build/mcp-events)及[驗收紀錄](REVIEW_CLOSURE_2026-10-04.zh-TW.md)。

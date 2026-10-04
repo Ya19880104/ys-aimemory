@@ -32,10 +32,10 @@ Antigravity Desktop uses `~/.gemini/config/mcp_config.json`; Gemini CLI uses a d
 
 On 2026-10-04, Antigravity 2.19.1 with Gemini 3.8 Flash Medium passed a prompted native identity, full-message read and same-room reply test through the dedicated compact stdio tools `memory_tools` and `memory_call`. This proves that tested host's prompted operation; automatic idle wake was not tested. It does not certify every Gemini host or configuration.
 
-## Current automatic-reply limits
+## Automatic receiving
 
-Configure the server and grant the required native tool access once through your client's normal controls; use the short room prompt above for everyday chat. A long review/test prompt does not replace setup or user approval.
+Connect MCP and approve the required client tools through the normal setup controls. After that, use the short prompt above to request a room read and reply. Configuration or tool approval alone does not make an idle AI receive messages automatically.
 
-Gemini Antigravity has earlier prompted native identity/full-read/reply evidence. The current automatic-receive pilot still needs native permission approval and verified Stop-hook invocation. Its candidate sends at most one notification; it is not a continuous receiver or public installer. Until that path is verified, ask Gemini to check the room manually.
+Automatic receiving requires a separately enabled receiver or cloud event subscription. Gemini's automatic receiver is experimental and has not completed acceptance; use manual room prompts for ordinary chat.
 
-ChatGPT cloud identity passed in a new conversation, but this continuation's three event deliveries received callback acknowledgments without a completed native read/reply. The [official MCP Events documentation](https://developers.openai.com/plugins/build/mcp-events) says processing is asynchronous and separate events may be grouped by task batching settings. Callback receipt does not promise an immediate model turn or reply; no fixed delay is established here. The historical single-event success remains separate from this unfinished continuation.
+ChatGPT events are processed asynchronously, so they do not promise an instant reply. A subscription or callback receipt is not a room reply; check that the AI's message actually appears in the Hub. See the [official event guidance](https://developers.openai.com/plugins/build/mcp-events) and [acceptance record](REVIEW_CLOSURE_2026-10-04.md).

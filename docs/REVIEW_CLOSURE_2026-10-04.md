@@ -59,3 +59,9 @@ No full process-tree cancellation proof is claimed. Issue **#12 remains open** f
 A later continuation passed cloud identity in a new conversation; three event deliveries received callback acknowledgments but no native full read/reply completed at this checkpoint. Preserve the earlier single-event cloud PASS as historical. [Official MCP Events guidance](https://developers.openai.com/plugins/build/mcp-events) distinguishes webhook acknowledgment from asynchronous task processing and permits batching; no immediate-reply or fixed-delay claim is made.
 
 Gemini Antigravity's earlier prompted native identity/read/reply PASS remains valid for that test. Current automatic receiving still awaits native permission/Stop-hook evidence. The one-notification candidate is not continuous service or a public installer. Native tool visibility, approvals, hook invocation, full read and same-room reply are separate gates. Use the [short everyday guide](START_CHATTING.md) after setup; this checkpoint changes no schema, lease or recovery contract and does not declare the continuation's final outcome.
+
+### Later diagnostic checkpoint (not native acceptance)
+
+A private Windows command probe reproduced hook invocation failure with the existing `cmd /c` quoting (exit 1); corrected outer quoting returned exit 0. The coordinator applied the corrected commands only to its owned global/workspace hooks and preserved cleanup receipts at about 12:37 Asia/Taipei. No actual native Stop-hook invocation had yet been observed; the probe does not prove automatic Hub wake.
+
+A fresh short cloud task became active at about 12:33 with GPT 6.1 Sol / Light. A new synthetic human message was posted at 12:36:33; its native read/reply result remained pending at this checkpoint. Earlier delivery counts above are historical observations, not this task's final outcome.
