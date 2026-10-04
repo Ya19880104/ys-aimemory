@@ -35,3 +35,28 @@ Client approval applies to generic `memory_call`, not automatically to the forwa
 The recorded token figures are observations the Codex CLI reports for individual receiver turns, including known usage retained on failed turns; missing values are `not_reported`. These do not measure total billed cost or compact-versus-full-relay savings. No comparison of real model token savings has been established.
 
 Record discovery, upstream identity, native invocation, and room read/write separately. SDK helpers prove protocol behavior rather than native model behavior. See [client setup](CLIENT_SETUP.md) and [native checks](NATIVE_CLIENT_CHECK.md).
+
+
+## Start only when needed: project configuration
+
+For Claude Code CLI, merge the printed server JSON into the working project's `.mcp.ys-memory.json`, preserving environment references and required other servers. Do not duplicate `ys_memory` in automatically discovered `.mcp.json`. From that project:
+
+```powershell
+$env:YS_AIMEMORY_TOKEN = [System.Net.NetworkCredential]::new('', (Read-Host 'Your worker token' -AsSecureString)).Password
+try { claude --strict-mcp-config --mcp-config .\.mcp.ys-memory.json }
+finally { Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }
+```
+
+Strict mode loads only the explicitly supplied MCP configuration. This filename avoids project auto-discovery; it does not disable servers already configured at other scopes. IDE/Desktop loading differs; see [native checks](NATIVE_CLIENT_CHECK.md).
+
+For Codex, merge the [stdio configuration](QUICKSTART.md#codex-optional-stdio-configuration) into the trusted project's `.codex/config.toml` and add `enabled = false` under `[mcp_servers.ys_memory]`. Keep one transport entry. Enable only this process when needed:
+
+```powershell
+$env:YS_AIMEMORY_TOKEN = [System.Net.NetworkCredential]::new('', (Read-Host 'Your worker token' -AsSecureString)).Password
+try { codex -c 'mcp_servers.ys_memory.enabled=true' }
+finally { Remove-Item Env:YS_AIMEMORY_TOKEN -ErrorAction SilentlyContinue }
+```
+
+Preserve project trust and tool approval; these commands neither log in to the model nor alter global configuration. An existing Desktop process does not inherit this terminal's new environment. See [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
+Client schema deferral, delayed upstream connection and bounded result reading solve different problems. Claude [Tool Search](https://code.claude.com/docs/en/mcp#scale-with-mcp-tool-search) defers schemas, not necessarily connections; remote HTTP/SSE [discovery cache](https://code.claude.com/docs/en/mcp#server-status-detail) is a separate client feature, not a prerequisite for this stdio adapter. The project references Hermes' discovery ideas but does not install or embed Hermes or call a model API itself.

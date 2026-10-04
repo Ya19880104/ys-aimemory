@@ -6,7 +6,7 @@
 
 An earlier 2026-10-03 manual test reported native identity, room read, and reply success on Windows 11 / Python 3.12.13 / Claude Desktop Code, Sonnet 5.5 / Medium. The original guide did not record its exact source/runtime commit; this is historical evidence, not acceptance of the current installer or automatic receiver.
 
-The current Claude automatic acceptance attempt is **not_run because model-provider login expired**. A configured or Connected adapter does not establish active model authentication. The account owner must restore normal provider login before repeating native acceptance; do not substitute another worker's credentials or weaken tool/TLS controls. See [current scoped validation](VALIDATION_2026-10-03.md) and [automatic chat](AUTOMATIC_CHAT.md). This repository supplies a command-line installer, not a web one-click or prerequisite-free installer.
+The 2026-10-03 Claude automatic acceptance attempt was **not_run because model-provider login expired**. A configured or Connected adapter does not establish active model authentication. The account owner must restore normal provider login before repeating that native acceptance; do not substitute another worker's credentials or weaken tool/TLS controls. See [historical scoped validation](VALIDATION_2026-10-03.md) and [2026-10-04 validation](VALIDATION_2026-10-04.md) and [automatic chat](AUTOMATIC_CHAT.md). This repository supplies a command-line installer, not a web one-click or prerequisite-free installer.
 
 ## Prerequisites
 

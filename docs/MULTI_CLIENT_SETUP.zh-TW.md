@@ -11,7 +11,7 @@
 | 使用方式 | 接法 | 目前驗證界線 |
 | --- | --- | --- |
 | Claude Code / Codex 的本機 CLI 或 IDE host | 專案限定 HTTPS，或本機 compact stdio adapter → HTTPS | 已有套件、協定/SDK 測試；每台原生 host 的登入、工具核准及模型呼叫仍需驗收 |
-| Gemini CLI | 專案 `.gemini/settings.json` 啟動同一個 compact stdio adapter | 官方支援 stdio；以下是相容設定範例，Gemini 原生模型呼叫 `not_run` |
+| Gemini CLI | 專案 `.gemini/settings.json` 啟動同一個 compact stdio adapter | 官方支援 stdio；以下是相容設定範例，此 CLI 範例的原生模型呼叫 `not_run`，不包含另行驗收的 Antigravity Desktop |
 | Gemini 網頁聊天介面 | 依該產品自己的 connector 功能 | 本專案尚未驗證，不能套用 CLI 步驟就宣稱可用 |
 | Grok / xAI API Remote MCP | xAI 雲端連到可達的 HTTPS MCP URL | 官方支援，但本專案端到端 `not_run`；一般內網 IP 與私有 CA 不能直接當作雲端可用服務 |
 | 本機程式使用 Grok 模型並執行 MCP | 本機程式負責 MCP、模型 API 與工具核准 | 可作為未來整合方向；本庫沒有提供此 agent host，不是現成 Grok 安裝器 |
@@ -50,6 +50,7 @@ if ($LASTEXITCODE -ne 0) { throw '建立 Python 環境失敗' }
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
 if ($LASTEXITCODE -ne 0) { throw '安裝依賴失敗' }
 .\.venv\Scripts\python.exe .\bridge.py --compact --print-claude-config
+if ($LASTEXITCODE -ne 0) { throw '設定產生失敗' }
 ```
 
 最後一行只列印本機路徑，不需要 Token、不連 Hub、不寫客戶端設定。Claude 使用輸出的項目；Codex 的 TOML 請依[快速指南](QUICKSTART.zh-TW.md#codex可選-stdio-設定)手動合併。保留既有 MCP，只有一個 `ys_memory` 項目。安裝目錄不加入 Git；移動後須重新產生絕對路徑。不要從瀏覽器安全警告跳過驗證下載。
@@ -123,3 +124,8 @@ Grok 雲端 API 使用者先完成網路與 TLS 架構確認，再採用[官方�
 ## 最低驗收
 
 依序確認：本機程序啟動 → MCP 工具列表 → 真實 Hub 身分／專案 → 原生模型工具呼叫 → 另一個 AI 獨立回覆新的驗收碼。每層留證據；Connected、SDK 成功、網頁能登入都不能代替後面幾層。共享對話會讓授權成員與管理員看到內容；與只有收發雙方可見的私訊不同，見[共享對話](SHARED_SESSIONS.zh-TW.md)。
+
+
+## Desktop 列出工具但既有對話尚未載入
+
+2026-10-04 的 Antigravity Desktop 觀察中，新加入的 MCP server 已在 Settings → Customizations → Installed MCP Servers 顯示綠色與三個工具，但既有對話仍表示尚未載入。操作者點選 Refresh MCP servers 並送出新提示後，客戶端提供原生狀態工具呼叫與權限流程。這是該 host 的已觀察排查步驟，不保證所有客戶端都能如此重新載入，也不代表工具結果已成功；仍需核對實際原生結果與 Hub 身分。CLI 與 Desktop 的配置、驗收保持分開。

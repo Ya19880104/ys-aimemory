@@ -9,13 +9,13 @@ Claude stdio 安裝包下載為 HTTPS 的
 `/downloads/ys-memory-stdio-1.1.1.zip`；公開手冊與後台提供入口。
 
 部署需設定 `HUB_WEB_ROLE=admin`、`HUB_WEB_MCP_ENABLED=true`，以及固定的
-`HUB_WEB_OWNER_ID` UUID。這個 UUID 代表本安裝的單一網頁管理帳號，
+`HUB_WEB_OWNER_ID` UUID。這個 UUID 是本安裝環境 bootstrap 管理者的穩定 owner 身分，
 不隨使用者名稱或密碼變更；備份、還原或改名時必須保留。
 `HUB_PUBLIC_BASE_URL` 必須是正確的 HTTPS origin；設定範本不信任傳入的 Host。
 
 原本 `HUB_WEB_PROJECTS` 範圍繼續有效；啟用管理的 admin 額外取得由該
 owner UUID 建立的記憶庫。唯讀帳號不會取得這個額外範圍。既有未授權
-記憶庫不能被重新建立或認領。此功能沒有新增多帳號或密碼管理介面。
+記憶庫不能被重新建立或認領。目前另有「設定 → 使用者管理」與密碼管理；帳號管理權限不等於所有專案的存取權，見[網頁帳號](WEB_DASHBOARD.zh-TW.md)。
 
 每個管理型 token 只對一個記憶庫授予 worker 角色。原始值只在簽發或
 輪替的 POST 回應顯示一次，資料庫只存 SHA-256；重新整理不會重送原值。
@@ -24,8 +24,8 @@ owner UUID 建立的記憶庫。唯讀帳號不會取得這個額外範圍。既
 
 Claude stdio 安裝包使用官方 Python MCP SDK 將本機 stdio 轉送到此 Hub 的
 HTTPS `/mcp`，保留 CA pin、憑證鏈與 hostname／name constraints 驗證。
-本環境 Claude CLI 2.1.278 直接 HTTP 已遇到 `UNSUPPORTED_CONSTRAINT_TYPE`；
-`NODE_EXTRA_CA_CERTS` 不能保證修復 TLS runtime 的限制，不可關閉 TLS。
+歷史實測中，Claude CLI 2.1.278 直接 HTTP 曾遇到 `UNSUPPORTED_CONSTRAINT_TYPE`；
+`NODE_EXTRA_CA_CERTS` 不能保證修復 TLS runtime 的限制，不可關閉 TLS；此結果只適用該次版本與環境，不代表所有客戶端的目前狀態。
 Codex 的 HTTP 範本繼續提供；[按需 MCP](EFFICIENT_MCP.zh-TW.md) 另有專案限定 stdio 範例。設定範本不代表原生客戶端已驗收。
 
 ZIP 包含 `bridge.py`、`connection.json`、公開 CA、`requirements.lock`、

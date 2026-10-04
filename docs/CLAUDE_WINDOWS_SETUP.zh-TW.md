@@ -6,18 +6,26 @@
 
 2026-10-03 較早的手動測試回報原生身分、共享對話讀取與寫回成功，環境為 Windows 11／Python 3.12.13／Claude Desktop Code，Sonnet 5.5／Medium。原指南沒有記錄該次確切來源／runtime commit；這是歷史證據，不是目前安裝器或自動接收程式的驗收。
 
-目前 Claude 自動模式驗收因模型供應商登入過期而維持 **not_run**。adapter 已設定或 Connected 不證明模型登入有效；帳號擁有人需先恢復正常登入，再重做原生驗收，不借用其他 worker 憑證或放寬工具／TLS 控制。詳見[目前限定驗證](VALIDATION_2026-10-03.zh-TW.md)與[自動對話](AUTOMATIC_CHAT.zh-TW.md)。本庫提供命令列安裝器，不是網頁一鍵或免前置準備的安裝包。
+2026-10-03 的 Claude 自動模式驗收因模型供應商登入過期而記錄為 **not_run**。adapter 已設定或 Connected 不證明模型登入有效；帳號擁有人需先恢復正常登入，再重做原生驗收，不借用其他 worker 憑證或放寬工具／TLS 控制。詳見[歷史限定驗證](VALIDATION_2026-10-03.zh-TW.md)與[2026-10-04 驗證](VALIDATION_2026-10-04.zh-TW.md)與[自動對話](AUTOMATIC_CHAT.zh-TW.md)。本庫提供命令列安裝器，不是網頁一鍵或免前置準備的安裝包。
 
 ## 先準備四樣東西
 
 1. 這台電腦已登入 Claude Desktop，在 **Code → Local** 選擇工作專案。記下這個資料夾；安裝時選同一個，否則新對話讀不到設定。不需要另登入 CLI。
 2. Windows 已安裝 **Python 3.12**，並已下載本 GitHub 專案。安裝只需要 Python 標準函式庫，會自行建立獨立環境及安裝 adapter 依賴，不必先部署 Hub。
-3. 從自己的 Hub「MCP 接入」下載 **`ys-memory-stdio-1.1.1.zip`**，解壓到新資料夾。必須有 `bridge.py`、`connection.json`、`ys-ai-memory-ca.crt`、`requirements.lock`、`README.txt` 五個檔案。先由可信通道核對公開 CA 的 **DER SHA-256** 指紋，並透過已驗證 HTTPS 下載；不能略過憑證警告。
+3. 使用下方 URL 安裝器時由安裝器下載安裝包；若選擇手動 bundle 安裝，從自己的 Hub「MCP 接入」下載 **`ys-memory-stdio-1.1.1.zip`**，解壓到新資料夾。必須有 `bridge.py`、`connection.json`、`ys-ai-memory-ca.crt`、`requirements.lock`、`README.txt` 五個檔案。先由可信通道核對公開 CA 的 **DER SHA-256** 指紋，並透過已驗證 HTTPS 下載；不能略過憑證警告。
 4. 在 Hub 為這台 Claude 產生自己的 worker Token，授權需要的專案。網頁密碼、Claude 登入、worker Token 是三種不同用途；不要拿另一位 AI 的 Token 共用。
 
 ## 執行一個安裝命令
 
-在 PowerShell 執行，將三個範例值換成自己的資料：
+優先使用 checkout 中的 URL 安裝器，將 origin、公開 CA 指紋與工作專案換成自己的資料：
+
+```powershell
+& 'C:\src\ys-aimemory\scripts\connect-claude.ps1' -Url 'https://memory.example.internal:8443' -ExpectedCa 'YOUR_64_HEX_DER_SHA256' -Project 'C:\work\my-project'
+```
+
+此腳本從固定 revision 下載兩個公開來源檔並核對 SHA-256；升級時先審查其 pins。可用 `-PythonPath` 指定既有 Python 3.12，不修改 execution policy、系統 CA、全域設定、模型登入或工具核准。
+
+若已透過驗證 HTTPS 下載並解壓 bundle，也可使用以下替代命令：
 
 ```powershell
 py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-memory-client" --project "C:\work\my-project" --expected-ca "管理員提供的64位DER_SHA256指紋"
@@ -63,6 +71,6 @@ py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-
 
 ## Token 成本與此次範圍
 
-compact 啟動只提供兩個入口，明確要求用記憶時才取得指定 schema；讀歷史使用 `after_sequence`、`limit`、`max_bytes` 控制。本次 Claude 用 7 個工具步驟完成搜尋、三個 schema 與三次操作，沒有持續輪詢。這不能推算模型帳單節省比例；整個對話仍包含 Claude 自身工具與其他專案上下文。
+compact 啟動只提供兩個入口，明確要求用記憶時才取得指定 schema；讀歷史使用 `after_sequence`、`limit`、`max_bytes` 控制。上述歷史手動實測的 Claude 用 7 個工具步驟完成搜尋、三個 schema 與三次操作，沒有持續輪詢。這不能推算模型帳單節省比例；整個對話仍包含 Claude 自身工具與其他專案上下文。
 
-已跑的是**本機原生接入及單輪讀寫**，沒有把 SDK 檢查當作原生模型結果。自動喚醒、跨電腦 DPAPI、Gemini/Grok 原生端與網頁一鍵入口不在這次通過範圍。Claude Desktop 的專案設定方式以[官方共用設定說明](https://code.claude.com/docs/en/desktop#shared-configuration)為依據。
+上述歷史手動實測跑的是**本機原生接入及單輪讀寫**，沒有把 SDK 檢查當作原生模型結果。自動喚醒、跨電腦 DPAPI、Gemini/Grok 原生端與網頁一鍵入口不在這次通過範圍。Claude Desktop 的專案設定方式以[官方共用設定說明](https://code.claude.com/docs/en/desktop#shared-configuration)為依據。

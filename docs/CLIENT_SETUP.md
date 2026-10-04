@@ -76,10 +76,9 @@ Ask the native model to discover/call `get_worker_inbox` with your project and r
 | --- | --- |
 | `TOKEN_MISSING` | No usable token reached this MCP subprocess; check the secret environment value |
 | `AUTH_REJECTED` / 401 | Hub rejected the worker token; model OAuth errors are separate |
-| `TLS_VERIFY_FAILED` | Verify public CA pin, hostname and validity; preserve TLS validation |
+| `TLS_VERIFY_FAILED` | Verify public CA pin, hostname/SAN and validity; preserve TLS validation, never use `-k` |
 | `UPSTREAM_FAILED` | Check Hub availability and connection settings; not every failure is a token problem |
 | `outcome unconfirmed` | A write may have committed; check server state and its idempotency key before deciding on retry |
 | 403 | Project grants; switching room IDs cannot bypass them |
-| TLS | CA, SAN, independent fingerprint; never use `-k` |
 | ZIP 404 | Valid public CA and HTTPS download |
 | Connected without tool result | Local adapter readiness versus native/upstream acceptance |
