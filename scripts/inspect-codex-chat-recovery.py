@@ -2,7 +2,7 @@
 
 Compares the receiver's local journal with the Hub's own status route and names
 what each record shows and what is still missing. It never joins, claims, posts,
-disconnects, starts a model, inspects or stops a process, or writes a file.
+disconnects, starts a model, inspects or stops a process, or changes receiver or product state.
 The report supports an operator's decision; it performs no recovery, grants no
 retry and does not establish that a native process has exited.
 """
@@ -351,7 +351,7 @@ def present(value, full_ids=False):
 
 
 TEXT = {
-    'title': ('Codex chat recovery report (read-only; nothing was changed)', 'Codex 對話恢復報告（唯讀，未變更任何資料）'),
+    'title': ('Codex chat recovery report (read-only; receiver and product state unchanged)', 'Codex 對話恢復報告（唯讀，接收器與產品狀態未變更）'),
     'scope': ('Scope: project {project_id}, room {session_id}, worker {worker_id}', '範圍：專案 {project_id}、聊天室 {session_id}、worker {worker_id}'),
     'state': ('State: {state}', '狀態：{state}'),
     'local': ('Local journal', '本機 journal'),
