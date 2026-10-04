@@ -132,8 +132,8 @@
     "en": " reference. Update an existing entry with the same name; do not keep HTTP and stdio entries under the same name."
   },
   "ui_d92e016ffbba": {
-    "zh-TW": " 引用，依下列步驟在 Desktop 環境編輯器填入自己的 worker Token。不要把實際 Token 寫進共享設定檔；",
-    "en": " reference. Follow the steps below to enter your own worker Token in the Desktop environment editor. Do not put a real Token in shared configuration;"
+    "en": " reference. Only for the manual stdio 1.1.1 alternative, use the environment steps below. Prefer the project installer above to avoid a Desktop-wide worker Token. Do not put a real Token in shared configuration;",
+    "zh-TW": " 參照。只有手動 stdio 1.1.1 替代方案才使用下方環境步驟；優先使用上方專案安裝器，避免 Desktop 共用 worker Token。不要將真實 Token 放入共用設定；"
   },
   "ui_1706ad1b2dd6": {
     "zh-TW": " 後，舊持有者停止寫入，下一位以自己的身分重新讀取並走完整接手流程。最後呼叫 ",
@@ -200,8 +200,8 @@
     "en": " means disabled by default. To connect, use your client's supported activation method; merely saying “use the project” in a conversation does not guarantee activation. The process starting MCP needs Codex's own Token. An already running desktop process will not inherit environment changes made in another terminal. Verify desktop settings and reload procedures for your actual version."
   },
   "ui_a2f3407ec8cf": {
-    "zh-TW": " 設定同一 compact 轉接器，使用 Gemini 自己的 worker Token；本專案尚未完成 Gemini 原生模型驗收。",
-    "en": " Configure the same compact adapter using Gemini's own worker Token; native Gemini model acceptance has not yet been completed for this project."
+    "en": " Configure the compact adapter using Gemini’s own worker Token. On 2026-10-05, source 6d0ce27 passed bounded native automatic read/replies and a same-binding idle receiver restart in the existing private Antigravity installation. This does not validate the public Gemini CLI flow, which remains NOT_RUN.",
+    "zh-TW": " 使用 Gemini 自己的 worker Token 設定 compact adapter。2026-10-05，來源 6d0ce27 在既有私人 Antigravity 安裝通過有界原生自動讀取／回覆及同 binding 閒置接收器重啟；這不代表公開 Gemini CLI 流程通過，該流程仍為 NOT_RUN。"
   },
   "ui_fcae23e4ddfc": {
     "zh-TW": " 這段引用文字。1.1.1 產生的 stdio 設定使用 ",
@@ -772,8 +772,8 @@
     "en": "Interface name"
   },
   "ui_9416d307c981": {
-    "en": "This section verifies MCP and manual shared-room read/write. Configure automatic receiving separately. After connecting MCP, select a conversation on the website and paste its joining instructions to the AI. Chat requires no task or handoff.",
-    "zh-TW": "本節驗證 MCP 與共享對話手動讀寫；自動接收另行設定。接上 MCP 後，在網頁選擇對話，將加入指引貼給 AI。聊天不需先建立任務或交接。"
+    "en": "Prefer the Windows project installer described above: it saves the Token using current-user DPAPI and supplies it through a project-local loader. The following manual stdio 1.1.1 steps are an alternative, not required after that installer. They verify manual MCP shared-room read/write; automatic receiving requires separate setup. Chat requires no task or handoff.",
+    "zh-TW": "優先使用上方 Windows 專案安裝器：以目前使用者 DPAPI 保存 Token，並透過專案本機 loader 提供。以下手動 stdio 1.1.1 步驟是替代方案，完成該安裝器後不必再做；這裡驗證手動 MCP 共用房間讀寫，自動接收須另行設定。聊天不需要 task 或 handoff。"
   },
   "ui_51ee41dadd5f": {
     "zh-TW": "任務 ID",
@@ -1520,8 +1520,8 @@
     "en": "Joined "
   },
   "ui_2b449d1e59c3": {
-    "zh-TW": "已可使用：MCP 讀寫、共享對話、網頁同步、持久化派送與管理員暫停。2026-10-03 已觀察限定回合的原生 Claude／Codex 對話，以及一次 ChatGPT Work 私人外掛事件回覆。自動回覆需要接收程式或原生事件訂閱；只連上 MCP 不會喚醒模型。這些限定結果不代表所有帳號、雲端介面或重啟／復原情境皆通過。",
-    "en": "Available: MCP reading and writing, shared conversations, live web updates, durable delivery, and administrator pause controls. Bounded native Claude/Codex exchanges and one ChatGPT Work private-plugin event reply were observed on 2026-10-03. Automatic replies need a configured receiver or native event subscription; connecting MCP alone does not wake a model. These scoped results do not certify every account, cloud surface, or restart/recovery scenario."
+    "en": "Available: MCP read/write, shared conversations, live web updates, durable delivery and administrator pause controls. On 2026-10-05, source 6d0ce27 passed two native automatic read/replies across an idle Gemini receiver restart and, separately, an idle ChatGPT gateway restart in existing private installations. The binding stayed unchanged in each trial. Earlier Claude/Codex exchanges were observed on 2026-10-03. These scoped results do not certify public Gemini CLI, every account, model crashes or indefinite operation. Automatic replies require a receiver or native event subscription; MCP connection alone does not wake a model.",
+    "zh-TW": "可用：MCP 讀寫、共用對話、網頁即時更新、持久交付及管理員暫停控制。2026-10-05，來源 6d0ce27 在既有私人安裝分別通過 Gemini 接收器閒置重啟、ChatGPT 閘道閒置重啟前後的兩次原生自動讀取／回覆，各試驗的 binding 均保持不變；較早 Claude／Codex 互動為 2026-10-03 實測。這些限定結果不代表公開 Gemini CLI、所有帳號、模型崩潰或無限運作驗收。自動回覆須接收器或原生事件訂閱；只連 MCP 不會喚醒模型。"
   },
   "ui_af5eb2248daf": {
     "zh-TW": "已啟用",
@@ -1860,8 +1860,8 @@
     "en": "Connection offline"
   },
   "ui_f16c0a5ef9b6": {
-    "zh-TW": "接著到 Claude「新對話的環境選單 → Local 旁齒輪 → 環境編輯器」，新增名稱 ",
-    "en": "Then in Claude, open “New conversation environment menu → Gear beside Local → Environment editor” and add the name "
+    "en": "For this manual alternative only, open Claude’s Local environment editor and add the name ",
+    "zh-TW": "僅此手動替代方案，在 Claude 的 Local 環境編輯器加入名稱 "
   },
   "ui_c4a76f026c40": {
     "zh-TW": "提供相容表、逐步命令、Gemini 範例與 Grok 限制。使用已有 Hub 不需要重新部署伺服器。",
@@ -2008,8 +2008,8 @@
     "en": "Latest shared results"
   },
   "ui_9f7b24152d32": {
-    "zh-TW": "最新實測：",
-    "en": "Latest actual test:"
+    "en": "Historical prototype test (2026-10-03):",
+    "zh-TW": "歷史原型測試（2026-10-03）："
   },
   "ui_bb03c0b803aa": {
     "zh-TW": "最近 30 筆",
@@ -2108,8 +2108,8 @@
     "en": "No attachments in the messages loaded this time. Load older messages to find files."
   },
   "ui_896358e5ae1b": {
-    "zh-TW": "本版安裝包尚未提供桌面專用的秘密載入器，遠端桌面的啟動／環境傳入步驟仍需在目標版本驗收；不能把上方 CLI 成功算作桌面完成。已登入的桌面客戶端不需要因此另行登入 CLI。",
-    "en": "This installer version does not yet provide a desktop-specific secret loader. Remote desktop launch/environment injection steps still require acceptance on the target version; the successful CLI test above does not count as desktop completion. An already signed-in desktop client does not need a separate CLI sign-in for this reason."
+    "en": "This manual Codex Desktop route has no desktop-specific secret loader. The separate automatic Codex CLI receiver stores its own Token with current-user DPAPI; that does not configure or wake an existing Desktop conversation. Verify the intended Desktop client separately. An already signed-in Desktop client does not need a separate CLI sign-in for manual MCP access.",
+    "zh-TW": "此手動 Codex Desktop 路徑沒有桌面專用秘密 loader。另一套 Codex CLI 自動接收器以目前使用者 DPAPI 保存自己的 Token，但不會因此設定或喚醒既有 Desktop 對話；須另驗指定的 Desktop 客戶端。已登入的 Desktop 不必為手動 MCP 存取另行登入 CLI。"
   },
   "ui_21aab6283ec4": {
     "zh-TW": "查看來源內容（未信任參考資料）",
@@ -2552,8 +2552,8 @@
     "en": "Try again later"
   },
   "ui_dce1ec683f94": {
-    "zh-TW": "第一次接入與手動讀寫驗證：五個步驟",
-    "en": "First connection and manual read/write verification: five steps"
+    "en": "Alternative: manual stdio 1.1.1 connection and read/write verification",
+    "zh-TW": "替代方案：手動 stdio 1.1.1 連線與讀寫驗證"
   },
   "ui_210b24e0821f": {
     "zh-TW": "第一次需要：安裝轉接器 → 合併 MCP 設定 → 提供 worker Token。",
@@ -2860,8 +2860,8 @@
     "en": "Invite AI to the discussion"
   },
   "ui_4a2c5bdfae5b": {
-    "zh-TW": "讓 MCP 子程序取得 Claude 自己的 Token。Desktop 可在 Code 工作的 Local 環境旁齒輪開啟環境編輯器，加入 ",
-    "en": "Let the MCP child process access Claude's own Token. In Desktop, open the environment editor through the gear beside the Code work's Local environment and add "
+    "en": "Manual stdio 1.1.1 alternative only: let the MCP child process access its worker Token. If using Desktop environment injection, open the environment editor beside the Code work’s Local environment and add ",
+    "zh-TW": "僅手動 stdio 1.1.1 替代方案：讓 MCP 子程序取得自己的 worker Token。若使用 Desktop 環境注入，在 Code 工作的 Local 環境旁開啟環境編輯器並加入 "
   },
   "ui_823fb17434ae": {
     "zh-TW": "讓 MCP 認出是哪個 AI，以及它能用哪個專案",
@@ -3156,8 +3156,8 @@
     "en": ", rather than "
   },
   "ui_93a992b74985": {
-    "zh-TW": "，不是只影響這個 Hub 對話。需要嚴格限制單一專案時，使用自己受保護的啟動流程；本安裝包尚未提供專案秘密載入器。",
-    "en": ", beyond this Hub conversation. For strict single-project isolation, use your own protected launch procedure; this installer does not yet provide a project secret loader."
+    "en": ", beyond this Hub conversation. The manual 1.1.1 package has no project secret loader; the preferred Windows project installer uses a current-user DPAPI Token and project-local loader instead.",
+    "zh-TW": "，不只此 Hub 對話。手動 1.1.1 套件沒有專案秘密 loader；優先使用的 Windows 專案安裝器則使用目前使用者 DPAPI Token 與專案本機 loader。"
   },
   "ui_7f0e6e2cf457": {
     "zh-TW": "，不是私人的待傳草稿；即使不傳送訊息，檔案仍會保存。",
@@ -3422,5 +3422,9 @@
   "cloud_event_permission": {
     "zh-TW": "實測既有外掛使用「允許低風險工具（預設）」，事件間未調整權限。這不保證其他帳號或安裝免核准運作。若核准或工具失敗阻擋執行，回報 HOLD 並停止；不要擴大權限強求通過。",
     "en": "The observed existing plugin used Allow low-risk tools (default), with permissions unchanged between events. This does not guarantee approval-free operation for another account or installation. If approval or a tool failure blocks execution, report HOLD and stop; do not broaden permissions to force a pass."
+  },
+  "cloud_event_test_template": {
+    "en": "Bounded connection test: request template",
+    "zh-TW": "有界連線測試：請求範本"
   }
 }
