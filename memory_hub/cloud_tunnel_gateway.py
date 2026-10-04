@@ -161,7 +161,7 @@ class HubClient:
 
     def _request(self, method, path, **kwargs):
         with self.http.stream(method, self.config['hub_url'] + path, **kwargs) as response:
-            if response.status_code not in (200, 422):
+            if response.status_code not in (200, 409, 422):
                 raise GatewayError('Hub request unavailable', -32001)
             body = bytearray()
             for chunk in response.iter_bytes():
@@ -169,13 +169,14 @@ class HubClient:
                 if len(body) > 65536:
                     raise GatewayError('Hub response too large', -32001)
             if response.status_code != 200:
-                # Only this allowlisted code is useful for a bounded read retry.
                 try:
-                    budget = json.loads(body).get('error') == 'response_budget_too_small'
+                    reason = json.loads(body).get('error')
                 except (ValueError, AttributeError):
-                    budget = False
+                    reason = None
+                allowed = ({'reservation_expired', 'reservation_fenced', 'reservation_cursor'}
+                           if response.status_code == 409 else {'response_budget_too_small'})
                 raise GatewayError('Hub request unavailable', -32001,
-                                   'response_budget_too_small' if budget else None)
+                                   reason if isinstance(reason, str) and reason in allowed else None)
             return json.loads(body)
 
     def _tool(self, name, **arguments):
@@ -688,8 +689,17 @@ class Gateway:
                     with self.db:
                         self.db.execute('INSERT OR IGNORE INTO meta VALUES(?,?)', (meta_key, reservation_key))
                     reservation_key = self.db.execute('SELECT value FROM meta WHERE key=?', (meta_key,)).fetchone()[0]
-                    queued = self.hub.relay('reserve', binding_id=binding['binding_id'],
-                        generation=binding['generation'], request_id=reservation_key, queue_seconds=1800)
+                    try:
+                        queued = self.hub.relay('reserve', binding_id=binding['binding_id'],
+                            generation=binding['generation'], request_id=reservation_key, queue_seconds=1800)
+                    except GatewayError as exc:
+                        if exc.reason not in {'reservation_expired', 'reservation_fenced', 'reservation_cursor'}:
+                            raise
+                        # A rejected saved reservation is terminal, never a new range.
+                        with self.db:
+                            self.db.execute('DELETE FROM meta WHERE key=?', (meta_key,))
+                            self.db.execute('UPDATE subscriptions SET status=? WHERE id=?', (exc.reason, sub['id']))
+                        continue
                     if queued['status'] != 'queued':
                         with self.db:
                             self.db.execute('DELETE FROM meta WHERE key=?', (meta_key,))

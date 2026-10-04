@@ -228,3 +228,73 @@ def test_real_rest_contract_claim_dispatch_and_restart_no_resend(collaboration, 
         assert run(config, client, tmp_path, 'agentapi', lambda: event, now=lambda: started+301,
                    execute=execute) == 'unresolved'
         assert execute.call_count == 1
+
+
+@pytest.mark.parametrize('attempts', [[], [{'delivery_id':'old', 'lease_until':99, 'state':'replied'}]])
+def test_stale_claim_rotates_only_without_any_native_attempt(rig, attempts):
+    import httpx
+    config, event, binding, client, calls, directory = rig
+    event.update(kind='native_stop', fullyIdle=True, terminationReason='model_stop')
+    scope = {key: config[key] for key in ('project_id','session_id','binding_id','generation','native_session_id')}
+    durable(directory/'receiver-journal.json', {'scope':scope, 'attempts':attempts, 'used_events':[], 'claim_request':'saved-request'})
+    original = client.post
+    keys = []
+    def post(path, **kwargs):
+        if path.endswith('/claim'):
+            keys.append(kwargs['json']['request_id'])
+            response = httpx.Response(409, json={'error':'stale_claim'}, request=httpx.Request('POST','https://hub.example.test/claim'))
+            return response
+        return original(path, **kwargs)
+    client.post = post
+    execute = Mock()
+    clock = [110]
+    def sleep(_): clock[0] = 401
+    result = run(config, client, directory, 'agentapi', lambda:event, now=lambda:clock[0], sleep=sleep, execute=execute)
+    journal = json.loads((directory/'receiver-journal.json').read_text())
+    assert result == ('expired' if not attempts else 'unresolved')
+    assert journal['claim_request'] == (None if not attempts else 'saved-request')
+    assert journal['attempts'] == attempts and journal['used_events'] == []
+    assert keys == ['saved-request']
+    execute.assert_not_called()
+
+
+@pytest.mark.parametrize('status,body', [(409,{'error':'other'}),(500,{'error':'stale_claim'}),(409,[])])
+def test_other_claim_errors_preserve_request_and_do_not_send(rig,status,body):
+    import httpx
+    config,event,binding,client,calls,directory=rig
+    original=client.post
+    def failed(path,**kwargs):
+        if path.endswith('/claim'):
+            return httpx.Response(status,json=body,request=httpx.Request('POST','https://hub.example.test/claim'))
+        return original(path,**kwargs)
+    client.post=failed
+    execute=Mock()
+    with pytest.raises(httpx.HTTPStatusError):
+        run(config,client,directory,'agentapi',lambda:event,now=lambda:110,execute=execute)
+    journal=json.loads((directory/'receiver-journal.json').read_text())
+    assert journal['claim_request'] and not journal['attempts'] and not journal['used_events']
+    execute.assert_not_called()
+
+
+
+def test_stale_unattempted_claim_recovery_uses_new_key_once(rig):
+    import httpx
+    config,event,binding,client,calls,directory=rig
+    original=client.post
+    keys=[]
+    def post(path,**kwargs):
+        if path.endswith('/claim'):
+            keys.append(kwargs['json']['request_id'])
+            if len(keys)==1:
+                return httpx.Response(409,json={'error':'stale_claim'},request=httpx.Request('POST','https://hub.example.test/claim'))
+        return original(path,**kwargs)
+    client.post=post
+    def execute(*args,**kwargs):
+        (directory/'STOP').touch()
+        return Mock(returncode=0)
+    send=Mock(side_effect=execute)
+    result=run(config,client,directory,'agentapi',lambda:event,now=lambda:110,sleep=lambda _:None,execute=send)
+    assert result=='stopped' and len(keys)==2 and keys[0]!=keys[1] and send.call_count==1
+    journal=json.loads((directory/'receiver-journal.json').read_text())
+    assert len(journal['attempts'])==1 and journal['attempts'][0]['state']=='returned'
+    assert journal['claim_request'] is None and journal['used_events']==['initial']

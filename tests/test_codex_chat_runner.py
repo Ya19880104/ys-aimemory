@@ -723,3 +723,25 @@ def test_stopped_exclusive_does_not_retry_oserror_inside_body(tmp_path, monkeypa
         with runner.stopped_exclusive(tmp_path):
             raise PermissionError('status write denied')
     assert entries == [tmp_path]
+
+
+@pytest.mark.parametrize('error', [FileNotFoundError('synthetic missing'), PermissionError('synthetic denied')])
+def test_failed_native_start_removes_only_unlaunched_marker(monkeypatch, tmp_path, error):
+    def failed(*args, **kwargs):
+        raise error
+    monkeypatch.setattr(runner.subprocess, 'Popen', failed)
+    with pytest.raises(type(error)):
+        runner.native_turn(CONFIG, DELIVERY, tmp_path, lambda: {'status':'processing'}, lambda: False)
+    assert not (tmp_path / 'native-active.json').exists()
+    assert (tmp_path / 'native-scope.json').exists()
+
+
+
+def test_native_start_preserves_preexisting_unknown_marker(monkeypatch,tmp_path):
+    raw=b'{"state":"starting","synthetic":"prior"}'
+    (tmp_path/'native-active.json').write_bytes(raw)
+    calls=[]
+    monkeypatch.setattr(runner.subprocess,'Popen',lambda *a,**k:calls.append(True))
+    with pytest.raises(runner.ReceiverError,match='native_exit_unconfirmed'):
+        runner.native_turn(CONFIG,DELIVERY,tmp_path,lambda:{'status':'processing'},lambda:False)
+    assert (tmp_path/'native-active.json').read_bytes()==raw and calls==[]

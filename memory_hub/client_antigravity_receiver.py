@@ -11,6 +11,8 @@ import time
 import uuid
 from urllib.parse import unquote, urlsplit
 
+import httpx
+
 from .client_watch import exclusive, reminder
 
 
@@ -123,8 +125,24 @@ def run(config, client, directory, executable, admission, *, now=time.time,
                 journal['claim_request'] = uuid.uuid4().hex
                 durable(path, journal)
             call('heartbeat', ref)
-            claimed = call('claim', ref | {'generation': config['generation'],
-                           'request_id': journal['claim_request'], 'lease_seconds': 300})
+            try:
+                claimed = call('claim', ref | {'generation': config['generation'],
+                               'request_id': journal['claim_request'], 'lease_seconds': 300})
+            except httpx.HTTPStatusError as exc:
+                try:
+                    stale = exc.response.status_code == 409 and exc.response.json().get('error') == 'stale_claim'
+                except (ValueError, AttributeError):
+                    stale = False
+                if not stale:
+                    raise
+                # Legacy journals cannot associate prior attempts with this key:
+                # rotate only when no native intent has ever been journaled.
+                if journal['attempts']:
+                    return 'unresolved'
+                journal['claim_request'] = None
+                durable(path, journal)
+                sleep(min(3, max(0, config['expires_at'] - now())))
+                continue
             if claimed['status'] == 'idle':
                 sleep(min(3, max(0, config['expires_at'] - now())))
                 continue

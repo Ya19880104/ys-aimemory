@@ -400,9 +400,14 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
     if active.exists():
         raise ReceiverError('native_exit_unconfirmed_preserve_binding')
     save(active, {'state': 'starting'})
-    proc = subprocess.Popen(args, cwd=working, env=environment(), stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', errors='replace',
-        shell=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    try:
+        proc = subprocess.Popen(args, cwd=working, env=environment(), stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', errors='replace',
+            shell=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    except OSError:
+        # CreateProcess failed: no child exists. Do not clear any later unknown exit.
+        active.unlink()
+        raise
     events = queue.Queue(maxsize=100)
     finished = threading.Event()
 

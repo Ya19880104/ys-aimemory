@@ -986,3 +986,98 @@ def test_trace_retry_recovery_reuses_fingerprint_and_does_not_redeliver(pilot, c
     assert capsys.readouterr().err == ''
     assert tuple(pilot.gateway.db.execute('SELECT state, attempts FROM outbox').fetchone()) == ('received', 2)
     assert len(pilot.sent) == 3
+
+
+@pytest.mark.parametrize('reason', ['reservation_expired', 'reservation_fenced', 'reservation_cursor'])
+def test_rejected_saved_reservation_terminalizes_without_new_request(pilot, reason):
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    original = pilot.hub.relay
+    keys = []
+    def fail(operation, **args):
+        if operation == 'reserve':
+            keys.append(args['request_id'])
+            raise cloud.GatewayError('Hub request unavailable', -32001, reason)
+        return original(operation, **args)
+    pilot.hub.relay = fail
+    before = active_binding(pilot)
+    pilot.gateway.tick()
+    pilot.gateway.tick()
+    assert len(keys) == 1
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0] == reason
+    assert not pilot.gateway.db.execute("SELECT 1 FROM meta WHERE key LIKE 'reserve:%'").fetchone()
+    assert pilot.gateway.db.execute('SELECT count(*) FROM batches').fetchone()[0] == 0
+    after = original('heartbeat', binding_id=before['binding_id'])
+    assert after['processed_sequence'] == before['processed_sequence'] and after['turns_used'] == 0
+    assert len(pilot.sent) == 1
+
+
+@pytest.mark.parametrize('status,body,expected', [
+    (409, {'error':'reservation_expired'}, 'reservation_expired'),
+    (409, {'error':'reservation_fenced'}, 'reservation_fenced'),
+    (409, {'error':'reservation_cursor'}, 'reservation_cursor'),
+    (409, {'error':'stale_claim'}, None),
+    (409, {'error':['reservation_fenced']}, None),
+    (422, {'error':'reservation_fenced'}, None),
+    (422, {'error':'response_budget_too_small'}, 'response_budget_too_small'),
+])
+def test_hub_error_reason_is_status_specific_allowlist(status, body, expected):
+    client = object.__new__(cloud.HubClient)
+    client.config = {'hub_url':'https://hub.example.test'}
+    with httpx.Client(transport=httpx.MockTransport(lambda request:httpx.Response(status,json=body))) as client.http:
+        with pytest.raises(cloud.GatewayError) as error:
+            client._request('POST','/v1/chat/reserve')
+    assert error.value.reason == expected
+
+
+def test_lost_real_reservation_then_pause_resume_terminal_without_poll_replay(pilot):
+    from memory_hub.store import HubError
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    relay = pilot.hub.relay
+    keys = []
+    def lost(operation, **args):
+        if operation == 'reserve':
+            keys.append(args['request_id'])
+        try:
+            result = relay(operation, **args)
+        except HubError as exc:
+            raise cloud.GatewayError('Hub request unavailable', -32001, exc.code) from None
+        if operation == 'reserve' and len(keys) == 1:
+            raise cloud.GatewayError('Synthetic lost response', -32001)
+        return result
+    pilot.hub.relay = lost
+    with pytest.raises(cloud.GatewayError): pilot.gateway.tick()
+    binding = active_binding(pilot)
+    from memory_hub.session_service import SessionActor
+    admin = SessionActor('human', 'operator', 'Fixture operator', ('pilot',), 'admin')
+    pilot.hub.real.delivery.call('pause', {'project_id':'pilot','session_id':pilot.config['session_id'],
+        'paused':True,'expected_version':1}, admin)
+    pilot.hub.real.delivery.call('pause', {'project_id':'pilot','session_id':pilot.config['session_id'],
+        'paused':False,'expected_version':2}, admin)
+    pilot.gateway.tick()
+    pilot.gateway.tick()
+    assert len(keys)==2 and keys[0]==keys[1]
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0]=='reservation_fenced'
+    assert pilot.gateway.db.execute('SELECT count(*) FROM batches').fetchone()[0]==0
+    assert len(pilot.sent)==1
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used']==0
+
+
+def test_nonterminal_reservation_failure_preserves_saved_key(pilot):
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    keys=[]
+    relay=pilot.hub.relay
+    def failed(operation, **args):
+        if operation=='reserve':
+            keys.append(args['request_id'])
+            raise cloud.GatewayError('Synthetic unavailable', -32001)
+        return relay(operation, **args)
+    pilot.hub.relay=failed
+    for _ in range(2):
+        with pytest.raises(cloud.GatewayError): pilot.gateway.tick()
+    assert keys[0]==keys[1]
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0]=='active'
+    assert pilot.gateway.db.execute("SELECT count(*) FROM meta WHERE key LIKE 'reserve:%'").fetchone()[0]==1
