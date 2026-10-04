@@ -4,7 +4,8 @@
 `official_host_queue` admission mode，僅供專用、有限預算的 Antigravity 測試
 對話。一般 installer 與預設原生 idle admission 維持既有行為。
 
-一次原生實驗使用官方 sidecar，間隔 200 ms 提交兩則合成訊息。UI 顯示第一則
+一次原生實驗使用官方 sidecar，在第一個命令返回後等待 200 ms，再提交第二則
+合成訊息。UI 顯示第一則
 完整回覆，再顯示第二則 system notification 與回覆。這只證明當次觀察到的
 原生 queue 順序；尚未證明持續 Hub 聊天、receiver 重啟、一般忙碌工作階段安全
 或三方验收。

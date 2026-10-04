@@ -4,8 +4,8 @@
 `official_host_queue` admission mode for a dedicated, bounded Antigravity test
 conversation. Ordinary installers and default native-idle admission are unchanged.
 
-In one native experiment, the official sidecar submitted two synthetic messages
-200 ms apart. The UI showed the first complete response followed by the second
+In one native experiment, the official sidecar waited 200 ms after the first
+command returned before submitting the second synthetic message. The UI showed the first complete response followed by the second
 system notification and its response. This is evidence for that observed native
 queue sequence only. Continuous Hub chat, receiver restart, general busy-session
 safety, and three-party acceptance are not certified by this experiment.
