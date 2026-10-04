@@ -7,6 +7,8 @@
 
 ## 後續來源檢查與 cloud 最終驗收：2026-10-04
 
+首次較完整 CI／staging 在 `bd25c375bc6046c1cfbe488c859cde2c7e8a3421` 的安裝來源 pin 檢查失敗：修正版 receiver 與舊 bootstrap 雜湊不符。已保留失敗，未升級該候選。Bootstrap 現在固定使用 `bd25c37` 的四個來源檔；網頁產生器與雙語教學固定下載 bootstrap `31a1db36e04d304c3e2823b31d5b175ab17e87e2` 並核對 SHA-256。完整性測試仍核對檔案，可於 shallow checkout 與無 Git 的 release archive 執行。修正後的 bootstrap、產生指令及教學檢查為 **70 passed、2 warnings，47.32 秒**；最終 CI／部署結果須另外核對。
+
 Coordinator 提供的來源證據：`07ff550c25dd0f8beb44338f943c56621762e78c` 包含 cloud trace `fd8d627c7b5856a9e03e63d5b2c826dd5e62a87e`、hard-crash fixture `a96ee30d68e54fd5e17a87b80ab374f25ff3ca24` 與 unresolved-native admission guard `07ff550`。限定 suite（`tests/test_codex_receiver_crash.py`、`tests/test_codex_chat_runner.py`、`tests/test_codex_chat_setup.py`、`tests/test_cloud_tunnel_gateway.py`）：**208 passed、1 項既有 Starlette warning，12.46 秒**。獨立來源審查：限定範圍 **GO**。Live VM 維持 `af79c01a24e96898125de42e8be0d596f869fb16`，尚未部署這些修改。
 
 合成 hard-crash 測試強制終止 receiver parent，保留存活的假 CLI child，驗證 unresolved-native fence 在 Hub join 前阻擋重啟。先前 native Codex idle restart 在觀察範圍內 passed；真實 provider in-flight recovery 仍 pending。保留 `native-active.json` 與交付 journal，確認舊 child 已退出，核對 server delivery／binding 狀態後才進行經授權的重試；單純刪除 marker 不算恢復。
