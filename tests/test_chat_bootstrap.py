@@ -23,7 +23,7 @@ ORIGIN = 'https://hub.example.test'
 
 def test_bootstrap_pins_exact_required_files_and_preserves_layout(tmp_path):
     revision = re.search(r"\$SourceRevision = '([0-9a-f]{40})'", SOURCE).group(1)
-    assert revision == '3b6e3aace065c67f336192c993b74757268b8b83'
+    assert revision == 'b168876f00f85ccb37e97bb11c3678d8cb9e6ae4'
     entries = re.findall(r"Source = '([^']+)'; Sha256 = '([0-9a-f]{64})'", SOURCE)
     assert len(entries) == 5
     assert {name for name, _ in entries} == {
