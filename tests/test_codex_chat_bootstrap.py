@@ -14,13 +14,14 @@ SOURCE = SCRIPT.read_text(encoding='utf-8')
 
 
 def test_pins_cover_installer_receiver_secret_and_bundle_primitive(tmp_path):
-    assert "$SourceRevision = '3b6e3aace065c67f336192c993b74757268b8b83'" in SOURCE
+    assert "$SourceRevision = 'bd25c375bc6046c1cfbe488c859cde2c7e8a3421'" in SOURCE
     entries = re.findall(r"Source = '([^']+)'; Sha256 = '([0-9a-f]{64})'", SOURCE)
     assert len(entries) == 4
     assert {name for name, _ in entries} == {'scripts/setup-codex-chat.py',
         'scripts/setup-claude.py', 'scripts/run-codex-chat.py', 'memory_hub/client_secret.py'}
     for name, digest in entries:
-        body = (ROOT / name).read_bytes().replace(b'\r\n', b'\n')
+        # Verify immutable Git blob bytes; the local checkout may differ.
+        body = subprocess.check_output(['git', 'show', 'bd25c375bc6046c1cfbe488c859cde2c7e8a3421:' + name], cwd=ROOT)
         assert hashlib.sha256(body).hexdigest() == digest
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
