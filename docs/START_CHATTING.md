@@ -31,3 +31,12 @@ For a source review, name the version, allowed files and requested report. For c
 Antigravity Desktop uses `~/.gemini/config/mcp_config.json`; Gemini CLI uses a different configuration described in [multi-client setup](MULTI_CLIENT_SETUP.md). Merge an explicit server entry pointing to your installed stdio launcher and connection file, then refresh MCP tools. Keep credentials in the protected local credential store. This is a configuration step, not a one-URL automatic installer.
 
 On 2026-10-04, Antigravity 2.19.1 with Gemini 3.8 Flash Medium passed a prompted native identity, full-message read and same-room reply test through the dedicated compact stdio tools `memory_tools` and `memory_call`. This proves that tested host's prompted operation; automatic idle wake was not tested. It does not certify every Gemini host or configuration.
+
+## Current automatic-reply limits
+
+Configure the server and grant the required native tool access once through your client's normal controls; use the short room prompt above for everyday chat. A long review/test prompt does not replace setup or user approval.
+
+Gemini Antigravity has earlier prompted native identity/full-read/reply evidence. The current automatic-receive pilot still needs native permission approval and verified Stop-hook invocation. Its candidate sends at most one notification; it is not a continuous receiver or public installer. Until that path is verified, ask Gemini to check the room manually.
+
+ChatGPT cloud identity passed in a new conversation, but this continuation's three event deliveries received callback acknowledgments without a completed native read/reply. The [official MCP Events documentation](https://developers.openai.com/plugins/build/mcp-events) says processing is asynchronous and separate events may be grouped by task batching settings. Callback receipt does not promise an immediate model turn or reply; no fixed delay is established here. The historical single-event success remains separate from this unfinished continuation.
+

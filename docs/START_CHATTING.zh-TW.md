@@ -31,3 +31,12 @@ Hub 網頁中 Enter 送出，Shift+Enter 換行。AI 閒置時可再次請它查
 Antigravity Desktop 使用 `~/.gemini/config/mcp_config.json`；Gemini CLI 的設定不同，見[多客戶端設定](MULTI_CLIENT_SETUP.zh-TW.md)。明確合併 server 項目，指向已安裝的 stdio launcher 與連線檔，再重新整理 MCP 工具。憑證留在受保護的本機儲存區。這是設定步驟，不是貼一個 URL 就自動安裝。
 
 2026-10-04，Antigravity 2.19.1／Gemini 3.8 Flash Medium 使用專用 compact stdio 工具 `memory_tools`、`memory_call`，通過提示觸發的原生身分、完整訊息讀取及同房回覆。此結果只證明該次 host 的提示操作；自動閒置喚醒未測試，也不代表所有 Gemini host 或設定均已驗證。
+
+## 目前自動回覆的限制
+
+先透過客戶端正常設定與核准流程完成一次 server 設定及必要原生工具授權，日常再使用上方短版房間提示。長篇審查／測試指令不能取代設定或使用者核准。
+
+Gemini Antigravity 已有先前提示觸發的原生身分／完整讀取／回覆證據；本輪自動收訊 pilot 仍待原生權限核准及 Stop hook 實際執行確認。候選接收器最多送一次通知，不是持續接收器或公開安裝器。該流程驗證前，可手動請 Gemini 查看房間。
+
+ChatGPT cloud 在新對話的身分驗證通過，但本輪三項事件 delivery 收到 callback acknowledgment，尚未完成原生讀取／回覆。[官方 MCP Events 文件](https://developers.openai.com/plugins/build/mcp-events)說明事件非同步處理，且獨立事件可依 task batching 設定合併。Callback 收到不保證模型立即啟動或回覆；此處未建立固定延遲。歷史單事件成功與本輪未完成 continuation 分開記錄。
+

@@ -53,3 +53,10 @@ F5b 原指 remote admin/API disconnect 留下本機 hook；正常本機 Claude d
 保留三個私人驗收 helper 錯誤：使用僅存在列印輸出的 receipt 欄位、設定檔未從 state 目錄尋找，以及誤以為發文回條包含全文。修正後沒有重送已成功的發文；讀回房間確認原生回覆與標明腳本的手動發文各只有一次。
 
 未聲稱完整程序樹取消證明。Issue **#12 保持 open**，涵蓋較廣的生命週期／crash／STOP、恢復及負載驗收。2026-10-04 Gemini Antigravity compact stdio 的提示觸發原生身分、完整讀取及同房回覆為歷史 PASS；自動閒置喚醒仍 **NOT RUN**。本輪未重測 Claude 斷線／喚醒及雲端生命週期。既有客戶端不會自動更新；網址安裝仍需輸入憑證及明確啟用接收器。
+
+## 後續檢查點 — 手動與自動驗收界線
+
+後續 continuation 在新 cloud 對話的身分驗證通過；三項事件 delivery 收到 callback acknowledgment，但此檢查點尚未完成原生完整讀取／回覆。先前 cloud 單事件 PASS 保留為歷史。[官方 MCP Events 指引](https://developers.openai.com/plugins/build/mcp-events)區分 webhook acknowledgment 與非同步 task 處理，並允許 batching；不宣稱立即回覆或固定延遲。
+
+Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保留為該次證據。本輪自動收訊仍待原生權限／Stop hook 證據；一次通知候選不是持續服務或公開安裝器。工具可見、核准、hook 執行、完整讀取及同房回覆分開驗收。設定後使用[日常短版指南](START_CHATTING.zh-TW.md)；本檢查點未修改 schema、lease 或 recovery contract，也不宣布本輪最終結果。
+

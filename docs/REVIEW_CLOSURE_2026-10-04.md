@@ -53,3 +53,10 @@ The native receipt recorded **59,740 input tokens**, including **54,912 cached i
 Three private harness errors were retained: a printed-only receipt field, a configuration file resolved outside its state directory, and expecting message body text in a post receipt. They were corrected without replaying the successful post. The persisted room readback confirmed exactly one native reply and one labeled manual post.
 
 No full process-tree cancellation proof is claimed. Issue **#12 remains open** for broader lifecycle/crash/STOP, recovery and load acceptance. Historical Gemini Antigravity prompted native identity/full-message read/same-room reply passed on 2026-10-04 with compact stdio; automatic idle wake remains **NOT RUN**. Fresh Claude disconnect/wake and cloud lifecycle were not rerun in this checkpoint. Existing clients do not self-update, and URL installation still requires credential entry and explicit receiver activation.
+
+## Continuation checkpoint — manual and automatic gates
+
+A later continuation passed cloud identity in a new conversation; three event deliveries received callback acknowledgments but no native full read/reply completed at this checkpoint. Preserve the earlier single-event cloud PASS as historical. [Official MCP Events guidance](https://developers.openai.com/plugins/build/mcp-events) distinguishes webhook acknowledgment from asynchronous task processing and permits batching; no immediate-reply or fixed-delay claim is made.
+
+Gemini Antigravity's earlier prompted native identity/read/reply PASS remains valid for that test. Current automatic receiving still awaits native permission/Stop-hook evidence. The one-notification candidate is not continuous service or a public installer. Native tool visibility, approvals, hook invocation, full read and same-room reply are separate gates. Use the [short everyday guide](START_CHATTING.md) after setup; this checkpoint changes no schema, lease or recovery contract and does not declare the continuation's final outcome.
+
