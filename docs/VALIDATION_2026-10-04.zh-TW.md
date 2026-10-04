@@ -12,6 +12,8 @@ Hub 仍部署於 `bda71b26c7f6ed4d4532050167731373d284d3d0`。該版本的隔離
 
 候選 `162a64b087724bd9484d30e7be6934152534003f` 增加固定且不含敏感資料的安裝階段診斷，並將目前接收器與收合的非作用中紀錄分開，明確區分接線心跳與模型已讀／回覆。在 Windows／Python 3.12.13，**218 項針對測試 passed、2 項既有相依套件 warnings**，耗時 **123.73 秒**。另在實際瀏覽器以產品 renderer／樣式及合成資料，確認 12 筆非作用中綁定顯示為目前 0／在線 0，混合情境顯示目前 3／在線 2，並檢查英／繁中及刷新後保持歷史展開。此項是本機元件預覽，不是完整頁面或線上送達驗收。更新的公開安裝鏈使用來源 `b2c193e12988bcaacd07423e2aeac17b0442c455`、啟動腳本版本 `cf1ac9956681a36146fdf83b3a9c7bb1961d16b1`；雙語教學與介面 pins 均符合 Git blob hash。此候選尚未部署，來源測試也不代表全新公開安裝已驗收。
 
+`7c2f0f6` 的完整 CI 發現生成指令測試中兩個預期 hash 仍固定舊值：SQLite **2 failed、940 passed、34 skipped**，PostgreSQL **2 failed、1,201 passed、32 skipped**，各 3 warnings；Windows **334 passed、1 warning**。公開下載與生成指令的 hash 相符，是測試預期仍指向舊 bootstrap。修正後改以獨立交付的啟動腳本 bytes 核對生成指令，相關本機測試 **68 passed、2 warnings**，耗時 **51.04 秒**。原 CI 失敗保留；修正後確切 commit 的完整 CI 需另行確認。
+
 ## ChatGPT 雲端 idle restart 驗收：2026-10-05 臺北 02:06
 
 在部署來源 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`，新的限定雲端 fixture **通過兩次自動原生完整讀取／回覆，兩次之間執行一次官方 idle gateway stop/restart**。兩則新的人類訊息皆從網站送出；任務建立後沒有手動 model prompt、工具核准或權限修改。兩次 event callback 均在 attempt 1 回 HTTP 200；另以相同 fingerprint 的 native `read_delta`／`tool_read`、`post_message`／`replied`、兩筆 durable replied batch 及網站兩則回覆確認 delivery，沒有把 callback 接受當作已讀。
