@@ -2,7 +2,7 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
-先前已部署候選：`6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`，基線 `ee21c2dfccba1d7f60b44563880c8b6a864bf971`。此版本已部署。本報告分開精確版本來源檢查、先前部署與最終主機／瀏覽器驗收。結果由執行 coordinator 提供，另有 Sol 6.1 只讀 source/pin 審查。本輪沒有重跑 native model/cloud 驗收，歷史證據見[2026-10-03 記錄](VALIDATION_2026-10-03.zh-TW.md)。
+本報告分開記錄來源檢查、部署及原生／瀏覽器驗收的版本界線。先前候選 `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`（基線 `ee21c2dfccba1d7f60b44563880c8b6a864bf971`）曾在下方較早一輪檢查中部署；後續結果見下一節。較早的原生證據保留於[2026-10-03 記錄](VALIDATION_2026-10-03.zh-TW.md)。
 
 
 ## 後續來源檢查與 cloud 最終驗收：2026-10-04

@@ -2,7 +2,7 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
-Earlier deployed candidate: `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`, based on `ee21c2dfccba1d7f60b44563880c8b6a864bf971`. This candidate is deployed. This report separates exact-commit source checks, earlier deployment results and final runtime/browser acceptance. Results are supplied by the executing coordinator, with a separate Sol 6.1 read-only source/pin review. This round does not rerun native model or cloud acceptance; those historical proofs remain in [2026-10-03 validation](VALIDATION_2026-10-03.md).
+This report retains separate version boundaries for source checks, deployment and native/browser acceptance. The earlier candidate `6ea3ca51a8863b38d0c8d85c1beb2c1f7392858f`, based on `ee21c2dfccba1d7f60b44563880c8b6a864bf971`, was deployed during the earlier checks below. Later results follow in the next section. Earlier native evidence remains in [2026-10-03 validation](VALIDATION_2026-10-03.md).
 
 
 ## Later source checks and final cloud acceptance: 2026-10-04
