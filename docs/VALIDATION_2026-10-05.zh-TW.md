@@ -2,13 +2,25 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-證據截至台北時間16:18:27。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
+證據截至台北時間16:39:29.778。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
 
-## 收據與客戶端修正候選版
+## 已部署的收據與客戶端修正
 
-以下兩項修正與下方14:19部署版本分開。來源 `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26` 只在真正的讀取額度錯誤時重試一次較大讀取，並先驗證自動雲端回覆收據，再記錄完成。成功訊息內提到錯誤不會觸發重試；收據不符時保留原始請求意圖，不標示成功或自動重送。
+最終來源 **`fadee9d36025d6309c59859d48bacc86e9bcaacd`** 已於台北時間 **16:39:07.131–16:39:29.778** 執行一次promotion，**22.647秒 passed**。映像 `sha256:328c1dc26ef3fb91388085b0e4844a744d27aef2940288630bff47a1498c32e8`；**469項promotion checks全部passed**，備份、schema6、26tables、資料及package／image guards均已核對。封裝符合 **194個raw Git來源成員**。
 
-Windows本機檢查通過：bridge／runner **127項**、gateway **120項**、客戶端／bootstrap bundle **52項**、web／help／language **153項**。這是獨立套件，不相加為整體驗收數。新安裝鏈固定上述來源與bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`。此候選版的公開下載核對、部署主機隔離測試、promotion及全新互動安裝，在本檢查點仍為 **not_run**。這兩項修正不能解釋或消除雲端試驗缺少原生事件工具呼叫的問題。
+Product修正來自來源 `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`：只在真正read-budget錯誤時重試一次較大讀取，先驗證自動Cloud回覆收據再記錄完成。成功訊息提到錯誤不會觸發retry；收據不符時保留原請求意圖，不假稱成功或自動重送。這些修正不能解釋或證明已解決Cloud試驗缺少native event-tool呼叫的問題。
+
+| 最終來源關卡 | 結果 | 範圍 |
+| --- | --- | --- |
+| CI Windows | 358 passed | Windows安裝器檢查 |
+| CI SQLite | 1,017 passed／34 skipped／3 warnings | 獨立CI資料庫環境 |
+| CI PostgreSQL | 1,296 passed／32 skipped／3 warnings | 獨立CI資料庫環境 |
+| 部署主機隔離套件 | 1,254 passed／74 skipped／3 warnings；242.51秒 | Isolated stage，不是native client驗收 |
+| 公開發布檔案 | 兩個bootstrap URL及九筆source entries均HTTP200，精確raw-byte hashes相符 | 公開位元組，不是安裝執行 |
+
+安裝鏈固定上述product來源及bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`。此checkpoint的全新公開互動installer端到端仍 **not_run**。不同環境的counts不相加；skip及warning均保留。
+
+先前 `7087bbf` CI在各環境都因過期bootstrap source assertion失敗：Windows **357 passed／1 failed**、SQLite **1,016 passed／1 failed**、PostgreSQL **1,295 passed／1 failed**。首次失敗與最終passing runs分別保留。原本local checks也分開：bridge／runner **127項**、gateway **120項**、client／bootstrap bundle **52項**、web／help／language **153項**。Deployment不將下方歷史native／Cloud結果升格成新版本驗收。
 
 ## 已部署無回覆完成與有界原生試驗
 

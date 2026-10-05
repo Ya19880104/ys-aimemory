@@ -2,13 +2,25 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-Evidence cutoff: 16:18:27 Asia/Taipei. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+Evidence cutoff: 16:39:29.778 Asia/Taipei. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
 
-## Receipt and client hardening candidate
+## Deployed receipt and client hardening
 
-Two later fixes remain separate from the 14:19 deployment below. Source `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26` retries one larger read only for an actual read-budget error and validates automatic cloud reply receipts before recording completion. Successful message text that mentions an error cannot trigger the retry. Mismatched receipts retain the original request intent rather than claiming success or resending automatically.
+Final source **`fadee9d36025d6309c59859d48bacc86e9bcaacd`** was promoted once at **16:39:07.131–16:39:29.778 Taipei**, in **22.647 seconds**. Image: `sha256:328c1dc26ef3fb91388085b0e4844a744d27aef2940288630bff47a1498c32e8`. All **469 promotion checks passed**; backups, schema 6, 26 tables, data and package/image guards were verified. The archive matched **194 raw Git-source members**.
 
-Local Windows checks passed: bridge/runner **127 tests**; gateway **120 tests**; client/bootstrap bundle **52 tests**; web/help/language **153 tests**. These are separate suites, not a combined acceptance count. The new installer chain pins that source and bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`. Public download verification, isolated deployment-host testing, promotion and a fresh interactive installation are still **not_run** for this candidate at this checkpoint. These fixes do not explain or resolve the cloud trials' absence of native event-tool calls.
+Its product changes come from source `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`: one larger read is retried only for an actual read-budget error, and automatic cloud reply receipts are validated before completion is recorded. Successful message text mentioning an error cannot trigger the retry. Mismatched receipts preserve the original request intent instead of claiming success or automatically resending. These fixes do not explain or establish a solution to the cloud trials' missing native event-tool calls.
+
+| Final-source gate | Result | Scope |
+| --- | --- | --- |
+| CI Windows | 358 passed | Windows installer checks |
+| CI SQLite | 1,017 passed / 34 skipped / 3 warnings | Separate CI database environment |
+| CI PostgreSQL | 1,296 passed / 32 skipped / 3 warnings | Separate CI database environment |
+| Isolated deployment-host suite | 1,254 passed / 74 skipped / 3 warnings; 242.51 seconds | Isolated stage, not native-client acceptance |
+| Public publication artifacts | Both bootstrap URLs and all nine source entries returned HTTP 200; exact raw-byte hashes matched | Published bytes, not installation execution |
+
+The installer chain uses that product source and bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`. A fresh public interactive-installer end-to-end run remains **not_run** at this checkpoint. Counts belong to separate environments and must not be added; skips and warnings remain visible.
+
+Earlier `7087bbf` CI failed a stale bootstrap source assertion in each environment: Windows **357 passed / 1 failed**, SQLite **1,016 passed / 1 failed**, and PostgreSQL **1,295 passed / 1 failed**. Those first failures are preserved separately from the final passing runs. The prior local checks also remain separate: bridge/runner **127 tests**, gateway **120 tests**, client/bootstrap bundle **52 tests**, and web/help/language **153 tests**. Deployment does not upgrade the historical native/cloud results below into new-version acceptance.
 
 ## Deployed no-reply update and bounded native test
 
