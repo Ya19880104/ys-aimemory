@@ -54,7 +54,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 
 預設 `-Print` 會安裝並核對授權，不啟動模型。於隱藏提示輸入 Token 後，依下方「啟動專用接收器」複製收據的完整 `start_command`。明確使用 `-Run` 則會安裝後立即啟動有限額接收器，兩個開關不可同時使用。`-PythonPath` 可指定既有 Python 3.12；`-TurnTimeout` 預設 90 秒。不需要填本機專案資料夾：接收器會建立私有空白工作目錄進行對話回合。
 
-啟動腳本核對來源版本 `a614e2d24e35734bfb0c64b1158a629689b30441` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
+啟動腳本核對來源版本 `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
 
 ### 替代方式：從 checkout 安裝
 
@@ -63,7 +63,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach a614e2d24e35734bfb0c64b1158a629689b30441
+git checkout --detach 7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```

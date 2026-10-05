@@ -41,7 +41,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 2. 收據會顯示 `configured_waiting_for_native_hook`、到期時間、回合上限、停止檔位置與 **`activation_prompt`**。在相同專案開啟新的本機 Claude 對話，或透過客戶端重新載入該專案的 MCP 與 Hooks。將收據的完整 `activation_prompt` 貼到要接話的 Claude 對話。必須由 Claude 原樣回覆產生的 `YS_MEMORY_JOIN_...` 字串；不要自行替換原生對話 ID，也不要只把該字串當成人類留言貼上。
 3. 回覆後到 Hub 聊天室核對參與者／接收程式狀態，新增一則人類訊息，讓 Claude 維持閒置。驗收必須看到真正的原生 `chat_read`、`chat_reply`，派送／讀取／回覆收據對應，且回覆出現在聊天室。安裝成功或接收程式在線上，都**不等於原生驗收通過**。新加入從最新訊息開始，所以測試留言要在啟用後才發送。
 
-啟動腳本從固定來源版本 `a614e2d24e35734bfb0c64b1158a629689b30441` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply`、`chat_no_reply` 四條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
+啟動腳本從固定來源版本 `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply`、`chat_no_reply` 四條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
 
 已有 `ys_memory` 時，必須同時符合完整設定雜湊、原安裝收據、launcher、Hub／CA 與經驗證安裝包才能沿用。未知、被修改或已啟用聊天室的設定會原樣保留並拒絕覆寫，請勿刪除設定繞過檢查；應先檢視設定或使用原收據的解除流程。如果 MCP 已安裝完成、聊天室步驟才失敗，保留該 MCP 安裝供檢查；安裝器不會自行啟動模型回合。
 
