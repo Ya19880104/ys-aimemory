@@ -2,7 +2,7 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-Evidence cutoff: 17:10:17 Asia/Taipei, including the 17:07 deployment and subsequent browser checks. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+Evidence cutoff: 17:32 Asia/Taipei, including the fresh public Codex bounded native trial and cleanup. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
 
 ## Current deployment and help-link check
 
@@ -29,6 +29,26 @@ Its product changes come from source `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`:
 The installer chain uses that product source and bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`. At the 16:39 deployment checkpoint, a fresh public interactive installation was still **not_run**; the later installation-only result is recorded below. Counts belong to separate environments and must not be added; skips and warnings remain visible.
 
 Earlier `7087bbf` CI failed a stale bootstrap source assertion in each environment: Windows **357 passed / 1 failed**, SQLite **1,016 passed / 1 failed**, and PostgreSQL **1,295 passed / 1 failed**. Those first failures are preserved separately from the final passing runs. The prior local checks also remain separate: bridge/runner **127 tests**, gateway **120 tests**, client/bootstrap bundle **52 tests**, and web/help/language **153 tests**. Deployment does not upgrade the historical native/cloud results below into new-version acceptance.
+
+## Fresh public Codex installation to bounded native completion
+
+At the 17:32 checkpoint, a **new public installation and bounded native trial passed** against Hub `2472280`, using official bootstrap `07d575a` and pinned client source `7087bbf`. A real interactive Windows terminal used the unchanged hidden Token prompt, explicit verified Codex/Python 3.12 paths and `-Print`; installation exited zero and its eight file hashes matched. The installed official `--receipt --run` then started the dedicated CLI receiver. No installer function or credential prompt was replaced, and no existing Codex Desktop conversation was used.
+
+The installed limits were one hour, three turns and a 90-second turn timeout. A separate test guard imposed an unchanged deadline of no more than 600 seconds. Three human website messages produced this verified native sequence without extra prompts: question A was fully read and replied to; an explicit status-only message was fully read and completed with `no_reply`, adding no message; question B was fully read and replied to. Each turn made three native tool calls with exact worker/delivery/read and terminal receipt checks. The website corroborated both replies and silent completion; the three-turn budget was exhausted.
+
+The receiver was configured in English. Although A requested an English/Traditional Chinese body, its reply was English only: this trial does **not** pass bilingual model output. It is a single fresh Codex lifecycle trial, not three-client acceptance or cloud no_reply acceptance. Default PATH, unattended installation and indefinite operation remain untested. The earlier installation-only test below remains a separate result.
+
+Official operator `--stop` exited zero. The independent guard verified all 26 held process identities had exited, its scoped inventory was empty, and official disconnect completed; the guard itself exited zero. The test worker was revoked once with HTTP 303, then verified TLS authentication using the same issued and installed credential returned HTTP 401. Closure and credential cleanup **passed**.
+
+The first private admission check rejected the Store App's redirected installation directory; source review also corrected an assumption about an uninstalled file. The public installer had already passed. A later cleanup checker first rejected an incorrect literal source pin before reading the credential or making a network request; the corrected check passed. Those failures are preserved, without reinstalling or reissuing the worker.
+
+| Native turn | Reported input | Cached input | Output |
+| --- | ---: | ---: | ---: |
+| A reply | 61,548 | 47,488 | 419 |
+| Silent completion | 61,525 | 43,904 | 405 |
+| B reply | 61,785 | 53,632 | 475 |
+
+These are the CLI's reported usage values, not a measured bill, per-question context size or token-savings benchmark.
 
 ## Public Codex installation-only check
 

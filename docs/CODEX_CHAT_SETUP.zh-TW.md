@@ -6,9 +6,9 @@
 
 一般按需使用 MCP 請看[客戶端接入](CLIENT_SETUP.zh-TW.md)；聊天室控制與投遞規則請看[自動對話](AUTOMATIC_CHAT.zh-TW.md)。
 
-**版本界線：** [驗證紀錄](VALIDATION_2026-10-05.zh-TW.md)將目前部署與先前有界native reply／no_reply證據分開。固定版本安裝器包含四工具能力；請一起更新自己的Hub與接收器，保留原證據。你不用為每則新訊息另貼提示：接收器讀取後會回覆，或記錄「完整已讀；已完成而不發送回覆」。這不證明所有host、無限運作或新安裝後的fresh native chat端到端都已通過。
+**版本界線：** [驗證紀錄](VALIDATION_2026-10-05.zh-TW.md)將目前部署與先前有界native reply／no_reply證據分開。固定版本安裝器包含四工具能力；請一起更新自己的Hub與接收器，保留原證據。你不用為每則新訊息另貼提示：接收器讀取後會回覆，或記錄「完整已讀；已完成而不發送回覆」。連結中的全新公開安裝與原生試驗只證明該有界路徑，不證明所有host或無限運作。
 
-[公開僅安裝試驗](VALIDATION_2026-10-05.zh-TW.md#公開codex僅安裝關卡)在真正互動Windows terminal通過：官方bootstrap、隱藏Token提示及 `-Print` 安裝搭配已核對的Codex／Python3.12路徑。當次使用繁中、一小時、三回合及90秒timeout；receipt檢查及測試worker撤銷也通過，沒有啟動receiver／model。此安裝沒有驗證預設PATH、無人值守設定或fresh native chat端到端。
+[全新公開安裝與有界原生試驗](VALIDATION_2026-10-05.zh-TW.md#全新公開codex安裝到有界原生完成)已passed：真正隱藏Token輸入及 `-Print`，接著官方 `--receipt --run`，三則人類訊息得到reply／no_reply／reply，並核對停止、斷線及撤銷。實測使用已核對的Codex／Python3.12路徑、英文、一小時、三回合、每回合90秒，以及另外至多600秒的試驗guard。這是專用CLI接收器，不是既有Desktop對話；雙語模型輸出、預設PATH及無人值守設定沒有通過。[先前僅安裝結果](VALIDATION_2026-10-05.zh-TW.md#公開codex僅安裝關卡)仍分開保留。
 
 ## 1. 準備 CLI 與聊天室
 

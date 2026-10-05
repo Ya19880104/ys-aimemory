@@ -2,7 +2,7 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-證據截至台北時間17:10:17，包含17:07部署及隨後的瀏覽器核對。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
+證據截至台北時間17:32，包含全新公開Codex有界原生試驗及清理。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
 
 ## 目前部署與說明連結核對
 
@@ -29,6 +29,26 @@ Product修正來自來源 `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`：只在真
 安裝鏈固定上述product來源及bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`。16:39部署checkpoint時，全新公開互動安裝仍 **not_run**；之後的installation-only結果另記於下方。不同環境的counts不相加；skip及warning均保留。
 
 先前 `7087bbf` CI在各環境都因過期bootstrap source assertion失敗：Windows **357 passed／1 failed**、SQLite **1,016 passed／1 failed**、PostgreSQL **1,295 passed／1 failed**。首次失敗與最終passing runs分別保留。原本local checks也分開：bridge／runner **127項**、gateway **120項**、client／bootstrap bundle **52項**、web／help／language **153項**。Deployment不將下方歷史native／Cloud結果升格成新版本驗收。
+
+## 全新公開Codex安裝到有界原生完成
+
+17:32 checkpoint，全新的**公開安裝與有界原生試驗passed**：使用官方bootstrap `07d575a`、固定client來源 `7087bbf`，連向Hub `2472280`。真正互動Windows terminal使用原本的隱藏Token提示、明確核對的Codex／Python3.12路徑及 `-Print`；安裝exit0，八個檔案hash相符。之後以installed官方 `--receipt --run` 啟動專用CLI接收器。沒有替換安裝函式或憑證提示，也沒有借用既有Codex Desktop對話。
+
+安裝限制為一小時、三回合及90秒turn timeout；另外的試驗guard採固定、不延長的至多600秒期限。網站三則人類訊息、不另貼模型提示，得到已核對的原生序列：問題A全文已讀並回覆；明確只供狀態參考的訊息全文已讀，以 `no_reply` 完成而沒有新增訊息；問題B全文已讀並回覆。每回合三次native工具呼叫，worker／delivery／讀取及終端收據均相符；網站也核對兩次回覆與silent完成，三回合預算耗盡。
+
+接收器設定為英文。A雖要求英繁內容，實際回覆只有英文；本次**不算雙語模型輸出通過**。這是單一全新Codex生命週期試驗，不是三客戶端或Cloud no_reply驗收；預設PATH、無人值守安裝及無限運作仍未測。下方先前的僅安裝試驗仍是獨立結果。
+
+操作員使用官方 `--stop`，exit0。獨立guard確認26個持有程序身分全部退出、限定路徑清單為空並完成官方斷線，guard本身也exit0。測試worker只撤銷一次，回HTTP303；再用同一issued及installed憑證，經核對TLS做authentication回HTTP401。退出與憑證清理 **passed**。
+
+首次私有驗收檢查拒絕Store App重新導向的安裝目錄；來源審查也更正對未安裝檔案的假設。公開安裝器當時已passed。後續cleanup checker首次因literal source pin寫錯，在讀憑證或發出網路請求前拒絕；更正後通過。首次失敗保留，沒有重裝或重新核發worker。
+
+| 原生回合 | 回報input | Cached input | Output |
+| --- | ---: | ---: | ---: |
+| A回覆 | 61,548 | 47,488 | 419 |
+| 無回覆完成 | 61,525 | 43,904 | 405 |
+| B回覆 | 61,785 | 53,632 | 475 |
+
+這是CLI回報的usage，不是實測帳單、單題context大小或Token節省基準。
 
 ## 公開Codex僅安裝關卡
 
