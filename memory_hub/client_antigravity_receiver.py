@@ -2,11 +2,14 @@
 
 Caller supplies an authenticated scoped HTTP client and fresh native admission.
 No provider credentials, histories, global configuration, or model APIs are read.
+On Windows each official CLI call runs in an owned job and returns only after
+its whole process tree has exited; an unconfirmed exit is never retried.
 """
 import json
 import os
 from pathlib import Path
 import subprocess
+import threading
 import time
 import uuid
 from urllib.parse import unquote, urlsplit
@@ -18,6 +21,210 @@ from .client_watch import exclusive, reminder
 
 TERMINAL = {'paused', 'disabled', 'disconnected', 'expired', 'revoked', 'archived',
             'budget_exhausted', 'failed'}
+CREATE_SUSPENDED = 0x4
+EXIT_CONFIRM_SECONDS = 10
+OUTPUT_LIMIT = 1 << 20
+
+
+class NativeContainmentError(OSError):
+    """Fixed launch-phase code; raised only after every started process is gone."""
+
+
+class TreeExitUnconfirmed(RuntimeError):
+    """Owned native processes may survive: never infer a reply, exit or retry."""
+    code = 'native_tree_exit_unconfirmed'
+
+    def __init__(self):
+        super().__init__(self.code)
+
+
+class WindowsJob:
+    """Unnamed, non-inheritable KILL_ON_JOB_CLOSE job; this object owns its only handle."""
+    def __init__(self):
+        import ctypes
+        from ctypes import wintypes
+        self.ctypes, self.handle = ctypes, None
+        api = self.api = ctypes.WinDLL('kernel32', use_last_error=True)
+        class BasicLimits(ctypes.Structure):
+            _fields_ = [('user_time', ctypes.c_int64), ('job_time', ctypes.c_int64),
+                ('flags', wintypes.DWORD), ('minimum', ctypes.c_size_t), ('maximum', ctypes.c_size_t),
+                ('active_limit', wintypes.DWORD), ('affinity', ctypes.c_size_t),
+                ('priority', wintypes.DWORD), ('scheduling', wintypes.DWORD)]
+        class Counters(ctypes.Structure):
+            _fields_ = [(name, ctypes.c_uint64) for name in
+                ('reads', 'writes', 'other', 'read_bytes', 'write_bytes', 'other_bytes')]
+        class Limits(ctypes.Structure):
+            _fields_ = [('basic', BasicLimits), ('io', Counters)] + [(name, ctypes.c_size_t)
+                for name in ('process_memory', 'job_memory', 'peak_process', 'peak_job')]
+        class Accounting(ctypes.Structure):
+            _fields_ = [(name, ctypes.c_int64) for name in
+                ('user_time', 'kernel_time', 'period_user', 'period_kernel')] + [(name, wintypes.DWORD)
+                for name in ('page_faults', 'total_processes', 'active_processes', 'terminated_processes')]
+        class Thread(ctypes.Structure):  # THREADENTRY32
+            _fields_ = [('size', wintypes.DWORD), ('usage', wintypes.DWORD), ('thread', wintypes.DWORD),
+                ('owner', wintypes.DWORD), ('base', wintypes.LONG), ('delta', wintypes.LONG),
+                ('flags', wintypes.DWORD)]
+        self.Accounting, self.Thread = Accounting, Thread
+        api.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        api.CreateJobObjectW.restype = wintypes.HANDLE
+        api.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        api.QueryInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p,
+                                                  wintypes.DWORD, ctypes.c_void_p]
+        api.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        api.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        api.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+        api.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        api.Thread32First.argtypes = api.Thread32Next.argtypes = [wintypes.HANDLE, ctypes.POINTER(Thread)]
+        api.OpenThread.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        api.OpenThread.restype = wintypes.HANDLE
+        api.ResumeThread.argtypes = [wintypes.HANDLE]
+        api.ResumeThread.restype = wintypes.DWORD
+        api.CloseHandle.argtypes = [wintypes.HANDLE]
+        self.handle = api.CreateJobObjectW(None, None)  # Not inheritable; no named/global job.
+        if not self.handle:
+            raise NativeContainmentError('native_job_create_failed')
+        limits = Limits()
+        limits.basic.flags = 0x2000  # KILL_ON_JOB_CLOSE, without either breakaway flag.
+        if not api.SetInformationJobObject(self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
+            self.close()
+            raise NativeContainmentError('native_job_limits_failed')
+
+    def assign(self, proc):
+        # Still suspended: the CLI has not executed a single instruction yet.
+        if not self.api.AssignProcessToJobObject(self.handle, int(proc._handle)):
+            raise NativeContainmentError('native_job_assignment_failed')
+
+    def resume(self, proc):
+        """Resume the only initial thread; our open process handle pins this PID."""
+        ctypes, api = self.ctypes, self.api
+        snapshot = api.CreateToolhelp32Snapshot(4, 0)  # TH32CS_SNAPTHREAD
+        if snapshot in (None, ctypes.c_void_p(-1).value):
+            raise NativeContainmentError('native_resume_failed')
+        threads, entry = [], self.Thread()
+        entry.size = ctypes.sizeof(entry)
+        try:
+            found = api.Thread32First(snapshot, ctypes.byref(entry))
+            while found:
+                if entry.owner == proc.pid:
+                    threads.append(entry.thread)
+                found = api.Thread32Next(snapshot, ctypes.byref(entry))
+        finally:
+            api.CloseHandle(snapshot)
+        thread = api.OpenThread(2, False, threads[0]) if len(threads) == 1 else None  # SUSPEND_RESUME
+        if not thread:
+            raise NativeContainmentError('native_resume_failed')
+        try:
+            if api.ResumeThread(thread) != 1:  # Exactly our CREATE_SUSPENDED count.
+                raise NativeContainmentError('native_resume_failed')
+        finally:
+            api.CloseHandle(thread)
+
+    def active_processes(self):
+        info = self.Accounting()
+        if not self.api.QueryInformationJobObject(self.handle, 1, self.ctypes.byref(info),
+                                                  self.ctypes.sizeof(info), None):
+            raise TreeExitUnconfirmed()
+        return info.active_processes
+
+    def finish(self):
+        # A returned root or pipe EOF never proves that its descendants have exited.
+        if not self.api.TerminateJobObject(self.handle, 1):
+            raise TreeExitUnconfirmed()
+        deadline = time.monotonic() + EXIT_CONFIRM_SECONDS
+        while self.active_processes() != 0:
+            if time.monotonic() >= deadline:
+                raise TreeExitUnconfirmed()
+            time.sleep(.02)
+
+    def close(self):
+        handle, self.handle = self.handle, None
+        return not handle or bool(self.api.CloseHandle(handle))
+
+
+def _settle(job, proc, assigned, reader):
+    """True only when every started process is gone and the job handle is closed."""
+    settled = closed = False
+    try:
+        if proc is not None:
+            if assigned:
+                job.finish()
+            else:
+                proc.kill()  # Suspended outside the job: it never executed.
+            proc.wait(timeout=EXIT_CONFIRM_SECONDS)
+        if reader is not None:
+            reader.join(EXIT_CONFIRM_SECONDS)  # EOF once no pipe holder remains.
+        settled = reader is None or not reader.is_alive()
+    except Exception:
+        pass
+    finally:
+        closed = job is None or job.close()  # KILL_ON_JOB_CLOSE ends any unconfirmed member.
+    if settled and proc is not None:
+        proc.stdout.close()
+    return settled and closed
+
+
+def contained_run(args, *, timeout, creationflags=0, shell=False, capture_output=True,
+                  limit=OUTPUT_LIMIT):
+    """subprocess.run subset for one Windows CLI call inside an owned job.
+
+    Created suspended, assigned, then resumed, so no descendant starts outside
+    the job. Root exit or timeout ends the whole job; pipe EOF is never awaited
+    first. Bounded stdout only; stderr is discarded. Raises TreeExitUnconfirmed
+    unless zero active job members, root exit and pipe EOF are all observed.
+    """
+    if shell or not capture_output:
+        raise ValueError('contained_run_requires_argv_capture')
+    deadline, chunks, size = time.monotonic() + timeout, [], [0]
+    job = proc = reader = error = None
+    assigned = timed_out = False
+
+    def read():
+        try:
+            while data := proc.stdout.read1(65536):
+                size[0] += len(data)
+                if size[0] <= limit:
+                    chunks.append(data)
+        except (OSError, ValueError):
+            pass  # Completion is judged by job accounting, never by this pipe.
+
+    try:
+        job = WindowsJob()
+        proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, shell=False, close_fds=True,
+            creationflags=creationflags | CREATE_SUSPENDED)
+        job.assign(proc)
+        assigned = True
+        job.resume(proc)
+        reader = threading.Thread(target=read, daemon=True)
+        reader.start()
+        try:
+            proc.wait(timeout=max(0, deadline - time.monotonic()))
+        except subprocess.TimeoutExpired:
+            timed_out = True
+    except BaseException as exc:
+        error = exc
+    if not _settle(job, proc, assigned, reader):
+        raise TreeExitUnconfirmed() from error
+    if error is None and timed_out:
+        error = subprocess.TimeoutExpired(args[0], timeout)
+    if error is not None:
+        error.containment, error.tree_exit_verified = 'windows_job', True
+        raise error
+    result = subprocess.CompletedProcess(args, proc.returncode,
+                                         b''.join(chunks) if size[0] <= limit else None)
+    result.containment, result.tree_exit_verified = 'windows_job', True
+    return result
+
+
+default_execute = contained_run if os.name == 'nt' else subprocess.run  # POSIX: offline fixtures only.
+
+
+def tree_evidence(value):
+    """Exact owned-job proof only; injected or POSIX executors claim no tree exit."""
+    if (getattr(value, 'containment', None) == 'windows_job' and
+            getattr(value, 'tree_exit_verified', None) is True):
+        return {'containment': 'windows_job', 'tree_exit_verified': True}
+    return {'containment': 'none'}
 
 
 def durable(path, value):
@@ -55,11 +262,12 @@ def admitted(config, event, now):
 
 
 def run(config, client, directory, executable, admission, *, now=time.time,
-        sleep=time.sleep, execute=subprocess.run, on_state=lambda state: None):
+        sleep=time.sleep, execute=default_execute, on_state=lambda state: None):
     """Resume same binding only. `admission()` returns observed metadata, never guesses.
 
     Manual admission admits only the initial send. Later sends need fresh native
     Stop metadata. The callable must supply unique event_id values for real events.
+    An attempt whose native tree exit is unconfirmed fences every later claim.
     """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -79,6 +287,8 @@ def run(config, client, directory, executable, admission, *, now=time.time,
             'scope': scope, 'attempts': [], 'used_events': [], 'claim_request': None}
         if journal['scope'] != scope:
             return 'scope_mismatch'
+        if any(item.get('tree_exit_verified') is False for item in journal['attempts']):
+            return 'unresolved'  # Possibly live native tree: explicit recovery only.
 
         def call(operation, data):
             response = (client.get('/v1/chat/status', params=data) if operation == 'status'
@@ -179,15 +389,26 @@ def run(config, client, directory, executable, admission, *, now=time.time,
                     shell=False, capture_output=True, timeout=max(.001, min(10,
                     config['expires_at'] - now(), delivery['lease_until'] - now())),
                     creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-                journal['attempts'][-1].update(state='returned', returncode=result.returncode)
+                journal['attempts'][-1].update(state='returned', returncode=result.returncode,
+                                               **tree_evidence(result))
+            except TreeExitUnconfirmed as exc:
+                # Neither reply nor exit is claimed; the durable fence blocks restarts too.
+                journal['attempts'][-1].update(state='unknown', error_code=exc.code,
+                                               containment='windows_job', tree_exit_verified=False)
+                durable(path, journal)
+                return 'unresolved'
             except (OSError, subprocess.TimeoutExpired) as exc:
-                journal['attempts'][-1].update(state='unknown', error_type=type(exc).__name__)
+                journal['attempts'][-1].update(state='unknown', error_type=type(exc).__name__,
+                                               **tree_evidence(exc))
             durable(path, journal)
         return 'stopped' if (directory / 'STOP').exists() else 'expired'
 
 
-def official_metadata_admission(config, executable, *, now=time.time, execute=subprocess.run):
-    """Official CLI metadata only; discard raw output, never query histories/RPC."""
+def official_metadata_admission(config, executable, *, now=time.time, execute=default_execute):
+    """Official CLI metadata only; discard raw output, never query histories/RPC.
+
+    An unconfirmed native tree exit is raised, never treated as a retryable miss.
+    """
     try:
         return _official_metadata(config, executable, now=now, execute=execute)
     except (OSError, subprocess.TimeoutExpired, ValueError, TypeError, KeyError):

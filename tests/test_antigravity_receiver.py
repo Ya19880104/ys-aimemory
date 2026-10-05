@@ -1,10 +1,13 @@
+import inspect
 import json
+import os
 import subprocess
 import time
 from unittest.mock import Mock
 
 import pytest
 
+from memory_hub import client_antigravity_receiver as receiver
 from memory_hub.client_antigravity_receiver import durable, run
 from memory_hub.client_antigravity_receiver import official_metadata_admission, admitted
 from memory_hub.client_watch import exclusive
@@ -301,3 +304,64 @@ def test_stale_unattempted_claim_recovery_uses_new_key_once(rig):
     journal=json.loads((directory/'receiver-journal.json').read_text())
     assert len(journal['attempts'])==1 and journal['attempts'][0]['state']=='returned'
     assert journal['claim_request'] is None and journal['used_events']==['initial']
+
+
+def contained(value):
+    value.containment, value.tree_exit_verified = 'windows_job', True
+    return value
+
+
+@pytest.mark.parametrize('outcome,fields', [
+    (lambda: contained(subprocess.CompletedProcess(['agentapi'], 0)),
+     {'state': 'returned', 'returncode': 0, 'containment': 'windows_job', 'tree_exit_verified': True}),
+    (lambda: contained(subprocess.TimeoutExpired('agentapi', 10)),
+     {'state': 'unknown', 'error_type': 'TimeoutExpired', 'containment': 'windows_job', 'tree_exit_verified': True}),
+    # Injected/POSIX executors carry no owned-tree proof: no exit claim is recorded.
+    (lambda: Mock(returncode=0), {'state': 'returned', 'returncode': 0, 'containment': 'none'}),
+    (lambda: subprocess.TimeoutExpired('agentapi', 10),
+     {'state': 'unknown', 'error_type': 'TimeoutExpired', 'containment': 'none'})])
+def test_attempt_records_only_exact_owned_tree_exit_evidence(rig, outcome, fields):
+    config, event, binding, client, calls, directory = rig
+    def execute(*args, **kwargs):
+        (directory / 'STOP').touch()
+        value = outcome()
+        if isinstance(value, BaseException):
+            raise value
+        return value
+    assert run(config, client, directory, 'agentapi', lambda: event, now=lambda: 110,
+               execute=execute) == 'stopped'
+    attempt = json.loads((directory / 'receiver-journal.json').read_text())['attempts'][0]
+    assert attempt == {'delivery_id': 'delivery', 'lease_until': 300} | fields
+
+
+def test_unconfirmed_tree_exit_stays_unresolved_and_fences_restart(rig):
+    config, event, binding, client, calls, directory = rig
+    def execute(*args, **kwargs):
+        # Even a later replied receipt cannot clear a possibly live native tree.
+        binding['latest_delivery'] = {'delivery_id': 'delivery', 'status': 'replied'}
+        raise receiver.TreeExitUnconfirmed()
+    send = Mock(side_effect=execute)
+    assert run(config, client, directory, 'agentapi', lambda: event, now=lambda: 110,
+               execute=send) == 'unresolved'
+    journal = json.loads((directory / 'receiver-journal.json').read_text())
+    assert journal['attempts'] == [{'delivery_id': 'delivery', 'lease_until': 300, 'state': 'unknown',
+        'error_code': 'native_tree_exit_unconfirmed', 'containment': 'windows_job',
+        'tree_exit_verified': False}]
+    calls.clear()
+    assert run(config, client, directory, 'agentapi', lambda: event, now=lambda: 110,
+               execute=send) == 'unresolved'
+    assert calls == [] and send.call_count == 1
+    assert json.loads((directory / 'receiver-journal.json').read_text()) == journal
+
+
+def test_metadata_unconfirmed_tree_exit_is_raised_not_a_retryable_miss(rig):
+    config = rig[0]
+    execute = Mock(side_effect=receiver.TreeExitUnconfirmed())
+    with pytest.raises(receiver.TreeExitUnconfirmed, match='^native_tree_exit_unconfirmed$'):
+        official_metadata_admission(config, 'agentapi', execute=execute)
+
+
+def test_default_executor_is_owned_windows_job():
+    expected = receiver.contained_run if os.name == 'nt' else subprocess.run
+    for function in (run, official_metadata_admission):
+        assert inspect.signature(function).parameters['execute'].default is expected
