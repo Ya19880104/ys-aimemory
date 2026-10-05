@@ -37,7 +37,9 @@ class OwnedChild:
         if self.handle:
             try:
                 if self.alive():
-                    assert self.api.TerminateProcess(self.handle, 1)
+                    # Job termination can race this exact held fixture cleanup.
+                    if not self.api.TerminateProcess(self.handle, 1):
+                        assert self.api.WaitForSingleObject(self.handle, 5000) == 0
                 assert self.api.WaitForSingleObject(self.handle, 5000) == 0
             finally:
                 self.api.CloseHandle(self.handle)
@@ -49,7 +51,7 @@ class OwnedChild:
 
 
 @pytest.mark.parametrize('remaining_budget', [False, True])
-def test_hard_parent_crash_preserves_live_child_and_never_redispatches(tmp_path, remaining_budget):
+def test_hard_parent_crash_preserves_unknown_fence_and_never_redispatches(tmp_path, remaining_budget):
     assert Path(runner.__file__).resolve() == Path(__file__).resolve().parents[1] / 'scripts' / 'run-codex-chat.py'
     # Exercise both unknown committed-post outcome and an inflight attempt
     # before post with remaining budget and an expired/replacement lease.
@@ -68,16 +70,17 @@ time.sleep(20)
     tests = Path(__file__).resolve().parent
     parent.write_text('''import json, sys
 from pathlib import Path
-sys.path.insert(0, sys.argv[1])
+sys.path[:0] = json.loads(sys.argv[1])
 from test_codex_chat_runner import CONFIG, DELIVERY, fault_client, runner
 import httpx
 root = Path(sys.argv[2])
+root.joinpath('owner.json').write_text(json.dumps({'pid': __import__('os').getpid()}))
 runner.command = lambda *args: [sys.executable, str(root / 'fixture_cli.py'), str(root)]
 runner.environment = lambda: dict(__import__('os').environ)
 with fault_client(lambda request: httpx.Response(200, json={'status': 'ready', 'delivery': DELIVERY})) as client:
-    runner.receiver(CONFIG, client, root, now=lambda: 100)
+    runner.receiver(CONFIG | {'python': sys.executable}, client, root, now=lambda: 100)
 ''', encoding='utf-8')
-    proc = subprocess.Popen([sys.executable, str(parent), str(tests), str(tmp_path)],
+    proc = subprocess.Popen([sys._base_executable, '-I', '-S', str(parent), json.dumps(sys.path), str(tmp_path)],
                             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     child = None
     try:
@@ -88,6 +91,7 @@ with fault_client(lambda request: httpx.Response(200, json={'status': 'ready', '
             if time.monotonic() > deadline:
                 pytest.fail('Fixture CLI did not start in 10 seconds')
             time.sleep(.02)
+        assert json.loads((tmp_path / 'owner.json').read_text())['pid'] == proc.pid
         child = OwnedChild(json.loads((tmp_path / 'child.json').read_text())['pid'])
         assert child.alive()
         before = {name: (tmp_path / name).read_bytes() for name in
@@ -95,7 +99,10 @@ with fault_client(lambda request: httpx.Response(200, json={'status': 'ready', '
         # Hard terminate only our parent, bypassing its Python finally.
         proc.kill()
         proc.wait(timeout=5)
-        assert child.alive()
+        if os.name == 'nt':
+            assert child.api.WaitForSingleObject(child.handle, 5000) == 0
+        else:
+            assert child.alive()
         calls = []
         operations = []
         def committed(request):
@@ -121,8 +128,8 @@ with fault_client(lambda request: httpx.Response(200, json={'status': 'ready', '
         assert calls == []
         assert all((tmp_path / name).read_bytes() == value for name, value in before.items())
         assert not list(tmp_path.glob('receipt-*.json'))
-        # Even after a successful server post, an unconfirmed live child prevents
-        # release; no local receipt may be invented from server cursor alone.
+        # Even after Windows kills the job, a crashed parent has not recorded
+        # confirmed cleanup. Keep its unknown fence; server cursor is not proof.
         (tmp_path / 'STOP').touch()
         with fault_client(committed) as client, pytest.raises(
                 runner.ReceiverError, match='native_exit_unconfirmed_preserve_binding'):
@@ -137,3 +144,128 @@ with fault_client(lambda request: httpx.Response(200, json={'status': 'ready', '
         proc.stderr.close()
         if child is not None:
             child.close()
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Real Windows Job Object regression')
+@pytest.mark.parametrize('assignment_delay', [0, .3])
+def test_native_root_exit_does_not_clear_marker_with_live_descendant(tmp_path, monkeypatch, assignment_delay):
+    """An offline CLI exits after spawning a child; no model/tools/network."""
+    import threading
+    cli = tmp_path / 'exiting_cli.py'
+    cli.write_text("""import json, subprocess, sys, time
+from pathlib import Path
+root = Path(sys.argv[1])
+child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'],
+    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+root.joinpath('child.json').write_text(json.dumps({'pid': child.pid}))
+limit = time.monotonic() + 10
+while not root.joinpath('child-held').exists():
+    if time.monotonic() > limit: raise RuntimeError('fixture_handle_timeout')
+    time.sleep(.01)
+""", encoding='utf-8')
+    children, errors = [], []
+    def hold_child():
+        try:
+            limit = time.monotonic() + 10
+            while not (tmp_path / 'child.json').exists():
+                if time.monotonic() > limit: raise RuntimeError('fixture_child_timeout')
+                time.sleep(.01)
+            children.append(OwnedChild(json.loads((tmp_path / 'child.json').read_text())['pid']))
+            (tmp_path / 'child-held').touch()
+        except Exception as error:
+            errors.append(error)
+    observer = threading.Thread(target=hold_child, daemon=True)
+    observer.start()
+    assign = runner.WindowsNativeJob.assign
+    def delayed_assignment(job, proc):
+        # Deliberately give a venv redirector time to spawn before assignment.
+        time.sleep(assignment_delay)
+        assign(job, proc)
+    monkeypatch.setattr(runner.WindowsNativeJob, 'assign', delayed_assignment)
+    monkeypatch.setattr(runner, 'command', lambda *args: [sys.executable, str(cli), str(tmp_path)])
+    monkeypatch.setattr(runner, 'environment', lambda: dict(os.environ))
+    try:
+        with pytest.raises(runner.ReceiverError, match='native_acceptance_incomplete'):
+            runner.native_turn(CONFIG | {'python': sys.executable, 'turn_timeout': 15}, DELIVERY,
+                               tmp_path, lambda: {'status': 'processing'}, lambda: False)
+        observer.join(timeout=10)
+        assert not errors and len(children) == 1
+        marker = (tmp_path / 'native-active.json').exists()
+        assert children[0].api.WaitForSingleObject(children[0].handle, 5000) == 0, (
+            f'Native root exited; descendant alive; active_marker={marker}')
+        assert not marker
+    finally:
+        observer.join(timeout=1)
+        for child in children:
+            child.close()
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Real Windows supervisor gate regression')
+def test_parent_crash_before_job_assignment_never_starts_native(tmp_path):
+    parent = tmp_path / 'unassigned_parent.py'
+    parent.write_text('''import json, os, sys, time
+from pathlib import Path
+sys.path[:0] = json.loads(sys.argv[1])
+from test_codex_chat_runner import runner
+root = Path(sys.argv[2])
+root.joinpath('owner.json').write_text(json.dumps({'pid': __import__('os').getpid()}))
+def pending(job, proc):
+    root.joinpath('supervisor.json').write_text(json.dumps({'pid': proc.pid}))
+    time.sleep(30)
+runner.WindowsNativeJob.assign = pending
+runner.environment = lambda: dict(os.environ)
+runner.launch_native([sys.executable, '-c',
+    'from pathlib import Path; Path(' + repr(str(root / 'unexpected-native')) + ').touch()'],
+    root, sys.executable)
+''', encoding='utf8')
+    proc = subprocess.Popen([sys._base_executable, '-I', '-S', str(parent), json.dumps(sys.path), str(tmp_path)],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    supervisor = None
+    try:
+        limit = time.monotonic() + 10
+        while not (tmp_path / 'supervisor.json').exists():
+            if proc.poll() is not None:
+                pytest.fail(proc.stderr.read().decode())
+            if time.monotonic() > limit:
+                pytest.fail('Supervisor launch did not reach assignment gate')
+            time.sleep(.01)
+        assert json.loads((tmp_path / 'owner.json').read_text())['pid'] == proc.pid
+        supervisor = OwnedChild(json.loads((tmp_path / 'supervisor.json').read_text())['pid'])
+        time.sleep(.3)  # It can initialize but must stay behind exact GO.
+        assert supervisor.alive() and not (tmp_path / 'unexpected-native').exists()
+        proc.kill()
+        proc.wait(timeout=5)
+        assert supervisor.api.WaitForSingleObject(supervisor.handle, 5000) == 0
+        assert not (tmp_path / 'unexpected-native').exists()
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait(timeout=5)
+        proc.stderr.close()
+        if supervisor is not None:
+            supervisor.close()
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Real Windows isolated supervisor/receipt regression')
+def test_real_offline_cli_receipt_records_only_confirmed_job_cleanup(tmp_path, monkeypatch):
+    from test_codex_chat_runner import event, reading, reply
+    events = [event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'),
+        event('read_session', reading(5, 'd'*32), 'read-1'),
+        event('read_session', reading(6, 'e'*32, True), 'read-2', after_sequence=5),
+        event('post_session_message', reply(), 'post'), {'type': 'turn.completed'}]
+    (tmp_path / 'fixture-events.json').write_text(json.dumps(events))
+    cli = tmp_path / 'fixture_protocol.py'
+    cli.write_text('''import json, sys
+from pathlib import Path
+for event in json.loads(Path(sys.argv[1]).read_text()):
+    print(json.dumps(event), flush=True)
+''', encoding='utf8')
+    monkeypatch.setattr(runner, 'command', lambda *args:
+        [sys.executable, str(cli), str(tmp_path / 'fixture-events.json')])
+    monkeypatch.setattr(runner, 'environment', lambda: dict(os.environ))
+    result = runner.native_turn(CONFIG | {'python': sys.executable}, DELIVERY, tmp_path,
+                               lambda: {'status': 'processing'}, lambda: False)
+    assert result['status'] == 'passed'  # Offline protocol data only, not provider acceptance.
+    assert result['native_tree_exit_verified'] is True
+    assert result['native_containment'] == 'windows_job'
+    assert not (tmp_path / 'native-active.json').exists()

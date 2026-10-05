@@ -21,6 +21,26 @@ DELIVERY = {'delivery_id': 'b'*32, 'lease_id': 'c'*32, 'after_sequence': 4, 'thr
             'message_ids': ['d'*32, 'e'*32], 'reply_idempotency_key': 'delivery-' + 'b'*32}
 
 
+@pytest.fixture
+def mock_native_launch(monkeypatch):
+    """Protocol-only fixture. Real Job Object behavior is tested in crash tests."""
+    class Job:
+        def finish(self, proc):
+            proc.wait(timeout=10)
+        def close(self):
+            pass
+    def launch(args, working, python):
+        try:
+            return runner.subprocess.Popen(args, cwd=working, env=runner.environment(),
+                stdin=runner.subprocess.DEVNULL, stdout=runner.subprocess.PIPE,
+                stderr=runner.subprocess.DEVNULL, text=True, encoding='utf8', errors='replace',
+                shell=False), Job()
+        except OSError as error:
+            error.native_exit_verified = True
+            raise
+    monkeypatch.setattr(runner, 'launch_native', launch)
+
+
 def fault_client(claim, dispatch=None):
     def handle(request):
         operation = request.url.path.rsplit('/', 1)[-1]
@@ -464,7 +484,7 @@ def test_stop_file_does_not_even_join(tmp_path):
     assert client.calls == []
 
 
-def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_receipt(monkeypatch, tmp_path):
+def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_receipt(monkeypatch, tmp_path, mock_native_launch):
     native_events = [event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'),
         event('read_session', reading(5, 'd'*32), 'read-1'),
         event('read_session', reading(6, 'e'*32, True), 'read-2', after_sequence=5),
@@ -487,6 +507,7 @@ def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_recei
         return {'status': 'processing'}
     result = runner.native_turn(CONFIG, DELIVERY, tmp_path, heartbeat, lambda: False, now=now)
     assert result['status'] == 'passed' and heartbeats
+    assert 'native_tree_exit_verified' not in result  # Mock protocol stream is not kernel proof.
     assert result['token_usage'] == {'source':'codex_cli.turn.completed.usage',
         'input_tokens':101,'cached_input_tokens':0,'output_tokens':13}
     assert sorted(p.name for p in tmp_path.iterdir()) == ['native-empty', 'native-scope.json']
@@ -764,6 +785,69 @@ def test_windows_failed_tree_stop_does_not_claim_confirmed_exit(monkeypatch):
         runner.terminate(Process())
 
 
+@pytest.mark.parametrize('phase', ['assign', 'GO', 'cleanup'])
+def test_windows_launch_failure_never_releases_unassigned_native_or_clears_unknown_exit(monkeypatch, tmp_path, phase):
+    """Pure boundary fixture, separate from real kernel regression tests."""
+    events = []
+    class Pipe:
+        def write(self, value): events.append(('write', value))
+        def flush(self):
+            raise BrokenPipeError('fixture GO outcome unknown')
+        def close(self): events.append('pipe_closed')
+    class Process:
+        stdin, stdout = Pipe(), io.StringIO()
+        def terminate(self): events.append('supervisor_terminated')
+        def wait(self, timeout): events.append('supervisor_waited')
+    class Job:
+        def assign(self, proc):
+            events.append('assigned')
+            if phase == 'assign': raise runner.ReceiverError('native_job_assignment_failed')
+        def finish(self, proc):
+            events.append('job_cleanup')
+            if phase == 'cleanup': raise runner.ReceiverError('native_tree_exit_unconfirmed')
+        def close(self): events.append('job_closed')
+    monkeypatch.setattr(runner.os, 'name', 'nt')
+    monkeypatch.setattr(runner, 'WindowsNativeJob', Job)
+    monkeypatch.setattr(runner, 'supervisor_python', lambda python: 'fixture-python.exe')
+    monkeypatch.setattr(runner.subprocess, 'Popen', lambda *a, **k: Process())
+    with pytest.raises(Exception) as error:
+        runner.launch_native(['fixture.exe'], tmp_path, __import__('sys').executable)
+    assert 'job_closed' in events
+    if phase == 'assign':
+        assert ('write', 'G') not in events and 'job_cleanup' not in events
+        assert 'supervisor_terminated' in events and 'supervisor_waited' in events
+    else:
+        assert ('write', 'G') in events and 'job_cleanup' in events
+        assert 'supervisor_terminated' not in events
+    assert getattr(error.value, 'native_exit_verified', False) is (phase != 'cleanup')
+
+
+def test_unconfirmed_job_exit_retains_active_marker_and_failure_receipt(monkeypatch, tmp_path):
+    class Process:
+        stdout = io.StringIO('')
+        def wait(self, timeout): return 0
+    class Job:
+        closed = False
+        def finish(self, proc): raise runner.ReceiverError('native_tree_exit_unconfirmed')
+        def close(self): self.closed = True
+    job = Job()
+    monkeypatch.setattr(runner, 'launch_native', lambda *a: (Process(), job))
+    with pytest.raises(runner.ReceiverError, match='native_tree_exit_unconfirmed'):
+        runner.native_turn(CONFIG, DELIVERY, tmp_path, lambda: {'status': 'processing'}, lambda: False)
+    assert job.closed and (tmp_path / 'native-active.json').exists()
+    failure = json.loads((tmp_path / ('native-failure-' + DELIVERY['delivery_id'] + '.json')).read_text())
+    assert failure['status'] == 'incomplete' and failure['retry_authorized'] is False
+    assert not list(tmp_path.glob('receipt-*.json'))
+
+
+@pytest.mark.parametrize('gate', [b'', b'X'])
+def test_supervisor_eof_or_invalid_gate_never_spawns_native(monkeypatch, gate):
+    monkeypatch.setattr(runner.os, 'name', 'nt')
+    monkeypatch.setattr(runner.sys, 'stdin', io.TextIOWrapper(io.BytesIO(gate)))
+    monkeypatch.setattr(runner.subprocess, 'Popen', lambda *a, **k: pytest.fail('No exact GO received'))
+    assert runner.native_supervisor(['fixture.exe']) == 1
+
+
 def test_stopped_exclusive_does_not_retry_oserror_inside_body(tmp_path, monkeypatch):
     from contextlib import contextmanager
     entries = []
@@ -779,7 +863,7 @@ def test_stopped_exclusive_does_not_retry_oserror_inside_body(tmp_path, monkeypa
 
 
 @pytest.mark.parametrize('error', [FileNotFoundError('synthetic missing'), PermissionError('synthetic denied')])
-def test_failed_native_start_removes_only_unlaunched_marker(monkeypatch, tmp_path, error):
+def test_failed_native_start_removes_only_unlaunched_marker(monkeypatch, tmp_path, error, mock_native_launch):
     def failed(*args, **kwargs):
         raise error
     monkeypatch.setattr(runner.subprocess, 'Popen', failed)
@@ -801,7 +885,7 @@ def test_native_start_preserves_preexisting_unknown_marker(monkeypatch,tmp_path)
 
 
 @pytest.mark.parametrize('usage', [None, {'input_tokens':123,'cached_input_tokens':0,'output_tokens':4}])
-def test_failed_native_turn_preserves_only_observed_usage(monkeypatch,tmp_path,usage):
+def test_failed_native_turn_preserves_only_observed_usage(monkeypatch,tmp_path,usage, mock_native_launch):
     stream=[{'type':'turn.completed','usage':usage},{'type':'error','message':'canary-private-provider-error'}]
     class Process:
         stdout=io.StringIO('\n'.join(json.dumps(x) for x in stream)+'\n')

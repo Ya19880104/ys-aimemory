@@ -21,6 +21,19 @@ import sys
 import threading
 import time
 import uuid
+def native_supervisor(args):
+    """No job handle is inherited. Exact GO follows the parent's job assignment."""
+    if os.name != 'nt' or not args or sys.stdin.buffer.read(1) != b'G':
+        return 1  # EOF/invalid gate: never spawn a native process.
+    proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=None, stderr=subprocess.DEVNULL,
+                            close_fds=True, shell=False, creationflags=subprocess.CREATE_NO_WINDOW)
+    return proc.wait()
+
+
+# The base-interpreter supervisor needs only stdlib, not the receiver venv.
+if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--native-supervisor':
+    raise SystemExit(native_supervisor(sys.argv[2:]))
+
 import httpx
 
 TOOLS = ('get_worker_inbox', 'read_session', 'post_session_message', 'complete_session_delivery')
@@ -388,16 +401,159 @@ def command(config, scope_file, working):
     return args + [prompt(config, config['delivery'])]
 
 
-def terminate(proc):
-    if proc.poll() is not None:
+class WindowsNativeJob:
+    """Unnamed, non-inherited job; the receiver owns its only handle."""
+    def __init__(self):
+        import ctypes
+        from ctypes import wintypes
+        self.ctypes, self.handle = ctypes, None
+        self.api = ctypes.WinDLL('kernel32', use_last_error=True)
+        class BasicLimits(ctypes.Structure):
+            _fields_ = [('user_time', ctypes.c_int64), ('job_time', ctypes.c_int64),
+                ('flags', wintypes.DWORD), ('minimum', ctypes.c_size_t), ('maximum', ctypes.c_size_t),
+                ('active_limit', wintypes.DWORD), ('affinity', ctypes.c_size_t),
+                ('priority', wintypes.DWORD), ('scheduling', wintypes.DWORD)]
+        class Counters(ctypes.Structure):
+            _fields_ = [(name, ctypes.c_uint64) for name in
+                ('reads', 'writes', 'other', 'read_bytes', 'write_bytes', 'other_bytes')]
+        class Limits(ctypes.Structure):
+            _fields_ = [('basic', BasicLimits), ('io', Counters)] + [(name, ctypes.c_size_t)
+                for name in ('process_memory', 'job_memory', 'peak_process', 'peak_job')]
+        class Accounting(ctypes.Structure):
+            _fields_ = [(name, ctypes.c_int64) for name in
+                ('user_time', 'kernel_time', 'period_user', 'period_kernel')] + [(name, wintypes.DWORD)
+                for name in ('page_faults', 'total_processes', 'active_processes', 'terminated_processes')]
+        self.Accounting = Accounting
+        self.api.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        self.api.CreateJobObjectW.restype = wintypes.HANDLE
+        self.api.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        self.api.QueryInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p,
+                                                       wintypes.DWORD, ctypes.c_void_p]
+        self.api.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        self.api.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        self.api.CloseHandle.argtypes = [wintypes.HANDLE]
+        self.handle = self.api.CreateJobObjectW(None, None)  # Not inheritable; no named/global job.
+        if not self.handle:
+            raise ReceiverError('native_job_create_failed')
+        limits = Limits()
+        limits.basic.flags = 0x2000  # KILL_ON_JOB_CLOSE, without either breakaway flag.
+        if not self.api.SetInformationJobObject(self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
+            self.close()
+            raise ReceiverError('native_job_limits_failed')
+
+    def assign(self, proc):
+        # Supervisor is blocked on its private GO pipe; Codex cannot exist yet.
+        if not self.api.AssignProcessToJobObject(self.handle, int(proc._handle)):
+            raise ReceiverError('native_job_assignment_failed')
+
+    def active_processes(self):
+        info = self.Accounting()
+        if not self.api.QueryInformationJobObject(self.handle, 1, self.ctypes.byref(info),
+                                                  self.ctypes.sizeof(info), None):
+            raise ReceiverError('native_tree_exit_unconfirmed')
+        return info.active_processes
+
+    def finish(self, proc):
+        # A completed root/EOF never proves that its descendants have exited.
+        if not self.api.TerminateJobObject(self.handle, 1):
+            raise ReceiverError('native_tree_exit_unconfirmed')
+        deadline = time.monotonic() + 10
+        while self.active_processes() != 0:
+            if time.monotonic() >= deadline:
+                raise ReceiverError('native_tree_exit_unconfirmed')
+            time.sleep(.02)
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired as error:
+            raise ReceiverError('native_tree_exit_unconfirmed') from error
+
+    def close(self):
+        if self.handle:
+            handle, self.handle = self.handle, None
+            if not self.api.CloseHandle(handle):
+                raise ReceiverError('native_tree_exit_unconfirmed')
+
+
+
+
+def supervisor_python(python):
+    """Use the current base process image, never a venv redirector or user site."""
+    import ctypes
+    from ctypes import wintypes
+    base = Path(sys._base_executable).resolve(strict=True)
+    api = ctypes.WinDLL('kernel32', use_last_error=True)
+    api.GetModuleFileNameW.argtypes = [wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+    api.GetModuleFileNameW.restype = wintypes.DWORD
+    image = ctypes.create_unicode_buffer(32768)
+    size = api.GetModuleFileNameW(None, image, len(image))
+    if (Path(python).resolve(strict=True) != Path(sys.executable).resolve(strict=True)
+            or not 0 < size < len(image) or Path(image.value).resolve(strict=True) != base):
+        raise ReceiverError('native_supervisor_python_mismatch')
+    return str(base)
+
+
+def launch_native(args, working, python):
+    options = dict(cwd=working, env=environment(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        text=True, encoding='utf-8', errors='replace', shell=False, close_fds=True,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    job, proc, assigned = None, None, False
+    try:
+        if os.name != 'nt':  # Offline POSIX fixtures only; main() rejects production receivers.
+            proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, **options)
+            return proc, None
+        # The Windows venv redirector can create a child BEFORE assignment.
+        # Launch the running interpreter's base executable directly instead.
+        base_python = supervisor_python(python)
+        job = WindowsNativeJob()
+        proc = subprocess.Popen([base_python, '-I', '-S', '-B', str(Path(__file__).resolve()),
+                                 '--native-supervisor', *args],
+                                stdin=subprocess.PIPE, **options)
+        job.assign(proc)
+        assigned = True
+        proc.stdin.write('G')
+        proc.stdin.flush()
+        proc.stdin.close()
+        return proc, job
+    except BaseException as error:
+        # Failed GO/flush may have spawned Codex: after assignment use only the job.
+        try:
+            if proc is not None:
+                if assigned:
+                    job.finish(proc)
+                else:  # Held supervisor has never received GO; no native descendants.
+                    proc.terminate()
+                    proc.wait(timeout=10)
+        except BaseException as cleanup_error:
+            raise ReceiverError('native_tree_exit_unconfirmed') from cleanup_error
+        finally:
+            try:
+                if job is not None:
+                    job.close()
+            finally:
+                if proc is not None:
+                    if proc.stdin is not None:
+                        try:
+                            proc.stdin.close()
+                        except OSError:
+                            pass  # Failed GO is already reconciled by exact owned cleanup.
+                    if proc.stdout is not None:
+                        proc.stdout.close()
+        error.native_exit_verified = True
+        raise
+
+
+def terminate(proc, job=None):
+    if job is not None:
+        try:
+            job.finish(proc)
+        finally:
+            job.close()  # Close kills known members on query failure; keep the marker fenced.
         return
     if os.name == 'nt':
-        result = subprocess.run(['taskkill.exe', '/PID', str(proc.pid), '/T', '/F'], capture_output=True,
-                       timeout=10, creationflags=subprocess.CREATE_NO_WINDOW, check=False)
-        if result.returncode != 0:
-            raise ReceiverError('native_tree_exit_unconfirmed')
-    else:
-        proc.terminate()
+        raise ReceiverError('native_tree_exit_unconfirmed')  # No PID/tree guessing fallback.
+    if proc.poll() is not None:
+        return  # Only single-process offline fixtures, never a Windows tree proof.
+    proc.terminate()
     try:
         proc.wait(timeout=10)
     except subprocess.TimeoutExpired:
@@ -422,13 +578,11 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
     save(active, {'state': 'starting'})
     proof = NativeProof(config, delivery)
     try:
-        proc = subprocess.Popen(args, cwd=working, env=environment(), stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', errors='replace',
-            shell=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-    except OSError as exc:
+        proc, job = launch_native(args, working, config['python'])
+    except BaseException as exc:
         record_native_failure(directory, delivery, proof, 'start', exc)
-        # CreateProcess failed: no child exists. Do not clear any later unknown exit.
-        active.unlink()
+        if getattr(exc, 'native_exit_verified', False):
+            active.unlink()  # No launch or exact owned cleanup; never clear an unknown exit.
         raise
     events = queue.Queue(maxsize=100)
     finished = threading.Event()
@@ -459,9 +613,10 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
             publish(None)
 
     thread = threading.Thread(target=read_output, daemon=True)
-    thread.start()
     deadline, last_beat, total = now() + config['turn_timeout'], now(), 0
+    result = None
     try:
+        thread.start()
         while True:
             if stop() or now() >= deadline:
                 raise ReceiverError('native_stopped_or_timed_out')
@@ -482,20 +637,28 @@ def native_turn(config, delivery, directory, heartbeat, stop, *, now=time.monoto
             if total > 2000:
                 raise ReceiverError('native_event_limit')
             proof.event(item)
-        return proof.finish(proc.wait(timeout=10))
+        result = proof.finish(proc.wait(timeout=10))
+        return result
     except Exception as exc:
         record_native_failure(directory, delivery, proof, 'execution', exc)
         raise
     finally:
         finished.set()
         try:
-            terminate(proc)
+            terminate(proc, job)
         except Exception as exc:
             record_native_failure(directory, delivery, proof, 'cleanup', exc)
             raise
+        finally:
+            if thread.ident is not None:
+                thread.join(timeout=1)
+            if not thread.is_alive():
+                proc.stdout.close()
         active.unlink(missing_ok=True)
-        thread.join(timeout=1)
-        proc.stdout.close()
+        if result is not None and isinstance(job, WindowsNativeJob):
+            # Emitted only after exact-job accounting is zero, supervisor wait,
+            # and owner-handle close. Not an instantaneous wait on every PID.
+            result.update(native_tree_exit_verified=True, native_containment='windows_job')
 
 
 
@@ -504,7 +667,9 @@ def record_native_failure(directory, delivery, proof, phase, error):
     allowed = {'native_turn_failed', 'native_acceptance_incomplete',
                'native_stopped_or_timed_out', 'native_binding_stopped',
                'native_output_too_large', 'invalid_native_json', 'native_event_limit',
-               'native_tree_exit_unconfirmed', 'unexpected_native_builtin'}
+               'native_tree_exit_unconfirmed', 'native_job_create_failed',
+               'native_job_limits_failed', 'native_job_assignment_failed',
+               'native_supervisor_python_mismatch', 'unexpected_native_builtin'}
     code = str(error) if isinstance(error, ReceiverError) and str(error) in allowed else 'native_exception'
     record = {'status': 'incomplete', 'phase': phase, 'error_code': code,
               'token_usage': dict(proof.token_usage), 'native_tool_calls': proof.calls,
