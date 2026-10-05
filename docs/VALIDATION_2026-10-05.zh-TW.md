@@ -26,6 +26,7 @@
 - **Claude自動聊天客戶端。** 聊天工具每次寫入前會先核對worker身分。先前bridge讀取一個安裝器從未寫入的設定欄位，即使「讀完不回覆」已寫入，仍可能回報無法使用。`--disconnect` 現在會在Hub找到並釋放此worker的綁定，並回讀已釋放狀態；無法證實時以固定錯誤碼失敗，不會在沒有Hub呼叫的情況下回報 `disconnected`。Claude bootstrap改為固定來源 `0f6e56f0e91275820489c1c6effedf879051a905`，bootstrap為 `aa082c0b0e0ef004f4503854debc369303821ae3`。已部署的 `a42630c` Hub在下次部署前仍提供先前的Claude bootstrap；Claude原生回覆／不回覆完成驗收為 **not_run**。
 - **三個同時綁定。** 十二個SQLite測試描述同一房間三個自動客戶端的分送、AI互相回覆、插話、明確不回覆完成、暫停與回合預算。房間暫停時，預算已用完的綁定會顯示 `paused`，因為會先檢查暫停。這些是不經模型的測試，不是三客戶端驗收。
 - **ChatGPT gateway診斷。** 私人gateway會記錄每個JSON-RPC request method、只記長度的格式錯誤行、結構化poll失敗、callback回應大小與最上層key名稱，以及每分鐘最多一次的存活紀錄。不記錄id、訊息內容、URL、token或簽章，provider可見的catalog以測試固定不變。過深巢狀的JSON行不再使gateway結束。未進行新的雲端試驗。
+- **Gemini接收器程序群組。** 每次官方Antigravity CLI呼叫現在於Windows專屬Job Object執行（先暫停建立、綁定後恢復），呼叫結束後終止整個程序樹。修正前，持有標準輸出的孫程序會使metadata與送出路徑卡住超過18秒。Journal記錄已確認的程序樹退出；無法確認時阻擋重啟。僅有Windows離線測試；Antigravity在Job內的真實行為為 **not_run**。
 
 ## Windows原生程序清理：來源已測、部署待驗
 
