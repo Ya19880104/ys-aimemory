@@ -22,8 +22,8 @@ Download this immutable installer in PowerShell, check its hash and review it:
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/07d575a3bce654bf572b430609a467d1879c6fc9/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'B0CCE4E737381DB1594531F721F6E6334C4E0CD57D970F79C419BD94A42C5FB2') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/aa082c0b0e0ef004f4503854debc369303821ae3/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '346B0A42B55201C35E6D4AF7AA27552096621AF441B62AFE6AC65FFD0EDA4327') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -41,7 +41,7 @@ If Python is not detected, append `-PythonPath 'C:\Python312\python.exe'`. `Lang
 2. The receipt reports `configured_waiting_for_native_hook`, expiry, turn budget, a stop-file path and **`activation_prompt`**. Open a new local Claude conversation in the same project, or reload that project's MCP and hooks in your client. Paste the receipt's complete `activation_prompt` into the intended conversation. Claude must reply with the exact generated `YS_MEMORY_JOIN_...` line; do not substitute a conversation ID or simply paste that line yourself.
 3. After the reply, check the Hub room for the participant/receiver state. Send a new human message in the Hub and leave Claude idle. Acceptance requires an actual native `chat_read` and `chat_reply` with matching delivery/read/reply receipts, visible in the room. A successful installer or online receiver alone is **not** native acceptance. New joins start from the latest message; send the test message after activation.
 
-The bootstrap downloads exactly five SHA-256-checked files from source revision `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the four exact `chat_status`, `chat_read`, `chat_reply`, `chat_no_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
+The bootstrap downloads exactly five SHA-256-checked files from source revision `0f6e56f0e91275820489c1c6effedf879051a905`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the four exact `chat_status`, `chat_read`, `chat_reply`, `chat_no_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
 
 An existing `ys_memory` entry is reused only when its complete config hash, installer receipt, launcher, Hub/CA and verified bundle match. Unknown, edited or active-chat configurations are preserved and rejected; do not delete them to bypass the check. Review the configuration or use the original receipt's disconnect procedure first. If MCP installation completes but the chat step fails, that MCP installation remains available for inspection; no model turn is started by the installer.
 
@@ -55,6 +55,8 @@ $Receipt = Get-Content -LiteralPath 'PASTE_BOOTSTRAP_SOURCES\chat-bootstrap-rece
 ```
 
 Use `--renew` on the last command if the binding is still present and you want to disconnect and renew in one operation. The installed environment is used because disconnect needs its verified dependencies. This bootstrap is for local Claude; it does not install a Codex receiver or a ChatGPT cloud plugin.
+
+Disconnect confirms the release with the Hub. It verifies the worker identity, finds this worker's binding in the room, releases it at the current generation and reads back the released state. If any step cannot be proven, it prints `chat_setup_failed: <code>`, keeps STOP and the project configuration, and does not report `disconnected`. Chat tools verify the worker identity before each write, so a committed silent completion is no longer reported as unavailable. Native Claude reply and silent-completion acceptance with this bootstrap is **not_run**.
 
 ## Claude project binding from a checkout
 
