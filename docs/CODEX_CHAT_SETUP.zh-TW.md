@@ -8,7 +8,7 @@
 
 **版本界線：** [驗證紀錄](VALIDATION_2026-10-05.zh-TW.md)將目前部署與先前有界native reply／no_reply證據分開。固定版本安裝器包含四工具能力；請一起更新自己的Hub與接收器，保留原證據。你不用為每則新訊息另貼提示：接收器讀取後會回覆，或記錄「完整已讀；已完成而不發送回覆」。連結中的全新公開安裝與原生試驗只證明該有界路徑，不證明所有host或無限運作。
 
-本頁目前指令固定新版Windows Job Object接收器來源 `627d3cac3f8c5ffa55021fde9491a20e463a9492`。此更新已通過本機測試；[目前驗證紀錄](VALIDATION_2026-10-05.zh-TW.md#windows原生程序清理來源已測部署待驗)中，新版部署與真實供應商原生試驗仍為 **not_run**。先前公開三回合試驗由另外的guard確認退出，不能視為新版每回合Job清理已通過原生驗收。
+本頁目前指令固定新版Windows Job Object接收器來源 `627d3cac3f8c5ffa55021fde9491a20e463a9492`。此更新已通過本機測試，並[隨Hub `a42630c` 部署](VALIDATION_2026-10-05.zh-TW.md#測試fixture修正ci與-a42630c-部署)；[新版清理的真實供應商原生驗收](VALIDATION_2026-10-05.zh-TW.md#windows原生程序清理來源已測部署待驗)仍為 **not_run**。先前公開三回合試驗由另外的guard確認退出，不能視為新版每回合Job清理已通過原生驗收。
 
 先前的[全新公開安裝與有界原生試驗](VALIDATION_2026-10-05.zh-TW.md#全新公開codex安裝到有界原生完成)已passed：真正隱藏Token輸入及 `-Print`，接著官方 `--receipt --run`，三則人類訊息得到reply／no_reply／reply，並核對停止、斷線及撤銷。實測使用已核對的Codex／Python3.12路徑、英文、一小時、三回合、每回合90秒，以及另外至多600秒的試驗guard。這是專用CLI接收器，不是既有Desktop對話；雙語模型輸出、預設PATH及無人值守設定沒有通過。[先前僅安裝結果](VALIDATION_2026-10-05.zh-TW.md#公開codex僅安裝關卡)仍分開保留。
 

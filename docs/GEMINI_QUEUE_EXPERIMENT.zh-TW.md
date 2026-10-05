@@ -4,7 +4,9 @@
 
 Live source `7652f1d7f04ef4c00e8860217a0f732f98dcb58e` 的 Gemini 已透過實際 native `chat_read` 與 `chat_reply` 通過兩則連續 fresh Hub 訊息 B、C：human sequence 55 → reply 56，再 human 57 → reply 58，均為 attempt 1。網站送出與兩次回覆之間沒有手動 model prompt。這是限定連續原生交付證據，與較早 queue 實驗及下方歷史快照分開；來源／驗收界線見[驗證記錄](VALIDATION_2026-10-04.zh-TW.md)。
 
-同 binding idle receiver restart **failed／incomplete**。更改檔案中的 `enabled` 設定未讓 host plugin live reload；owned receiver 退出後，到期前未出現替代程序。官方 host lifecycle 控制仍待 live 驗證。下方重啟步驟是尚未通過的測試 protocol，不是已驗證的重啟教學；尚無確立的一鍵重啟方式。
+**更新：**之後在 `6d0ce27` 的全新有界fixture已通過官方同binding idle receiver停止／重啟（[驗證紀錄](VALIDATION_2026-10-04.zh-TW.md)）。目前來源在暫停／恢復後的重啟仍未證實。接收器以一般子程序啟動原生host指令，沒有專屬程序群組；有界試驗中已擷取的guard程序身分已退出，但未擷取的receiver／probe後代程序與常駐MCP bridge的完整關閉仍未證實。下一段描述先前失敗的fixture。
+
+先前同 binding idle receiver restart **failed／incomplete**。更改檔案中的 `enabled` 設定未讓 host plugin live reload；owned receiver 退出後，到期前未出現替代程序。官方 host lifecycle 控制仍待 live 驗證。下方重啟步驟是尚未通過的測試 protocol，不是已驗證的重啟教學；尚無確立的一鍵重啟方式。
 
 到期的 permission-wait fixture 與後續限定 fixture 均已關閉。STOP／binding disabled 狀態優先於「等待下一則訊息」等對話文字；這類文字不證明 receiver 在線或 lease 有效。後續測試需要新的明確授權與限定 run，並驗證 host 啟動，不能重播過期 fixture、清除 STOP 或延長舊 expiry；保留舊 journal／收據。Gemini 正式 task／source／artifact／attachment 交接及同時三客戶端驗收仍為 **not_run**。
 

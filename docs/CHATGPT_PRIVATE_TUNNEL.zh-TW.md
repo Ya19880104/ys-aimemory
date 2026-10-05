@@ -34,6 +34,12 @@ Gateway更新後，開啟既有外掛的「管理→重新整理工具」，操�
 
 與第二輪不同，第三輪log觀察到晚到的 `events/subscribe`及驗證HTTP200，之後在guard關閉前有 `events/unsubscribe`。Task UI pause已核對，但不將這些protocol calls歸因於UI操作，也不據此確認model／tool成功。兩次精確核對確認captured guard身分不存在，沒有證明全部descendants退出。Callback成功與native全文read／completion、Cloud no_reply驗收仍分開。
 
+### 下一次試驗的gateway診斷（僅來源）
+
+`a42630c` 之後的gateway來源會為**每一個** JSON-RPC request記錄一行 `gateway_request_ingress`，包括discovery、catalog、event list與ping；每行只有method名稱、是否帶 `_meta` 及其key名稱。另記錄只含位元組長度的格式錯誤行（`gateway_request_malformed`）、含例外類型的結構化poll失敗、callback回應狀態、大小與最上層key名稱，以及每分鐘最多一次、含poll與本機佇列計數的 `gateway_poll_liveness`。不記錄id、訊息內容、URL、token或簽章，並以測試固定provider可見的catalog不變。Key名稱由對方決定，請視為不受信任的標籤。
+
+這改變了證據界線：V1–V3與更早的試驗中，`gateway_request_ingress` 只記錄工具呼叫與事件訂閱／取消訂閱，因此那些log沒有其他紀錄，並不表示沒有發生discovery或catalog request。此版本尚未用於任何雲端試驗。
+
 ## 先前僅回覆試驗的證據與版本界線
 
 [2026-10-04 驗證](VALIDATION_2026-10-04.zh-TW.md)記錄的先前產品來源為 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`。後續文件及私有 harness 修訂與該次部署分開。執行者於 **2026-10-05 台北 02:06** 截止提供的證據記錄：有界 Cloud C 試驗中，**兩個新的人類事件皆自動完整讀取並回覆**，中途沒有手動 model prompt。每事件首次 callback 嘗試即收到 HTTP 200；native `read_delta` 記錄 `tool_read`，native `post_message` 記錄 `replied`，網站也觀察到兩個對應回覆。

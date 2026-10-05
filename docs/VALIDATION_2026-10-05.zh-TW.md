@@ -2,7 +2,30 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-證據截至台北時間18:18:43，包含Windows清理來源修正與本機核對。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
+證據截至台北時間2026-10-06 03:00，包含 `a42630c` 部署與之後的僅來源修正。下方Windows清理段落保留18:18:43當時的描述。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
+
+## 測試fixture修正、CI與 `a42630c` 部署
+
+公開commit `96177fe` 的兩輪CI均失敗。Linux上 `test_windows_launch_failure_never_releases_unassigned_native_or_clears_unknown_exit` 的 `assign`、`GO`、`cleanup` 三個案例失敗：SQLite 1,020 passed／3 failed／38 skipped，PostgreSQL 1,299 passed／3 failed／36 skipped；Windows 368 passed。原因是模擬Windows的fixture改了共用的 `os.name`，使Linux `pathlib` 在受測程式執行前選到 `WindowsPath`。這些失敗保留在紀錄中。
+
+僅測試的commit **`a42630cbe55d7671c680777c3e60d8648d861f6e`** 讓該runner使用私有 `os` proxy；斷言、runtime來源與安裝器pins均未改。兩輪exact-head CI三個job皆通過：
+
+| Run | Windows | SQLite | PostgreSQL |
+| --- | --- | --- | --- |
+| [push 37325327928](https://github.com/Ya19880104/ys-aimemory/actions/runs/37325327928) | 368 passed／1 warning | 1,023 passed／38 skipped／3 warnings | 1,302 passed／36 skipped／3 warnings |
+| [pull request 37325342063](https://github.com/Ya19880104/ys-aimemory/actions/runs/37325342063) | 368 passed／1 warning | 1,023 passed／38 skipped／3 warnings | 1,302 passed／36 skipped／3 warnings |
+
+不同環境的數字分開記錄，不相加。在從網路共用資料夾執行checkout與Python的Windows主機上，三個crash fixtures超過10秒啟動等待，因為子程序冷啟動匯入需要21–26秒（111 passed／3 failed）；同一commit在本機磁碟執行時，114個runner／crash測試全數通過。產品接收器沒有相同的啟動期限。
+
+`a42630c` 已於2026-10-06台北時間00:37部署。隔離stage在可拋棄PostgreSQL資料庫通過 **1,260 passed／78 skipped／3 warnings**（241.95秒）後移除該資料庫。Promotion通過全部 **473項檢查**，耗時23.8秒，包括備份、schema 6資料保存與已驗證的HTTPS health；前一版image仍保留。部署後Hub的教學連結改指向此commit的文件：`HUB_DOCS_BASE_URL` 只設定在這一版release，已在執行中服務及英文／繁中 `/help` 核對。雲端事件教學連結維持固定於 `b8ebf3f`，該文件內容未變。新版Windows Job清理的真實供應商驗收仍為 **not_run**，此部署不代表已通過。
+
+## `a42630c` 之後的僅來源修正
+
+以下commit已通過本機測試；exact-head CI與部署另行記錄，均不是原生或供應商驗收。
+
+- **Claude自動聊天客戶端。** 聊天工具每次寫入前會先核對worker身分。先前bridge讀取一個安裝器從未寫入的設定欄位，即使「讀完不回覆」已寫入，仍可能回報無法使用。`--disconnect` 現在會在Hub找到並釋放此worker的綁定，並回讀已釋放狀態；無法證實時以固定錯誤碼失敗，不會在沒有Hub呼叫的情況下回報 `disconnected`。Claude bootstrap改為固定來源 `0f6e56f0e91275820489c1c6effedf879051a905`，bootstrap為 `aa082c0b0e0ef004f4503854debc369303821ae3`。已部署的 `a42630c` Hub在下次部署前仍提供先前的Claude bootstrap；Claude原生回覆／不回覆完成驗收為 **not_run**。
+- **三個同時綁定。** 十二個SQLite測試描述同一房間三個自動客戶端的分送、AI互相回覆、插話、明確不回覆完成、暫停與回合預算。房間暫停時，預算已用完的綁定會顯示 `paused`，因為會先檢查暫停。這些是不經模型的測試，不是三客戶端驗收。
+- **ChatGPT gateway診斷。** 私人gateway會記錄每個JSON-RPC request method、只記長度的格式錯誤行、結構化poll失敗、callback回應大小與最上層key名稱，以及每分鐘最多一次的存活紀錄。不記錄id、訊息內容、URL、token或簽章，provider可見的catalog以測試固定不變。過深巢狀的JSON行不再使gateway結束。未進行新的雲端試驗。
 
 ## Windows原生程序清理：來源已測、部署待驗
 
@@ -16,7 +39,7 @@
 | Root runner／crash／inspector | 167 passed／1 warning；11.75秒 | 整合來源的另一組本機核對 |
 | Bootstrap／setup／bundle | 61 passed／2 warnings；12.04秒 | 僅Codex安裝器pins及bundle核對 |
 
-Codex指令現以bootstrap `a9d7f87d452336b890071e0332a4dd8077bfc58b` 固定來源 `627d3ca`；bootstrap的raw Git SHA-256為 `d842ffd109b601b3626a5c97034f0f3b3473e5f07128ad31891914c4f218eaf3`。這是來源／本機核對，不是新版公開安裝或供應商驗收結果。Live Hub仍為 `2472280`；新版部署與全新真實供應商原生試驗均 **not_run**。下方先前的公開三回合試驗，是由外層操作員guard持有26個程序身分確認退出，不代表新版runner每回合Job清理已原生驗收通過。Claude pins及歷史Cloud／三客戶端限制均不變。
+Codex指令現以bootstrap `a9d7f87d452336b890071e0332a4dd8077bfc58b` 固定來源 `627d3ca`；bootstrap的raw Git SHA-256為 `d842ffd109b601b3626a5c97034f0f3b3473e5f07128ad31891914c4f218eaf3`。這是來源／本機核對，不是新版公開安裝或供應商驗收結果。當時Live Hub為 `2472280`；`a42630c` 之後已部署（見上方），新版清理的全新真實供應商原生試驗仍為 **not_run**。下方先前的公開三回合試驗，是由外層操作員guard持有26個程序身分確認退出，不代表新版runner每回合Job清理已原生驗收通過。Claude pins及歷史Cloud／三客戶端限制均不變。
 
 ## 目前部署與說明連結核對
 

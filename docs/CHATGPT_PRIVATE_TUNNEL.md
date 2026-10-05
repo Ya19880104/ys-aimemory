@@ -34,6 +34,12 @@ Post-close native task metadata distinguishes this third run: `is_enabled=false`
 
 Unlike the second run, the third log recorded late `events/subscribe` and verification HTTP 200, followed by `events/unsubscribe` before guard closure. Task UI pause was verified, but no cause is assigned to those protocol calls. They do not establish a successful model/tool outcome. Two exact checks confirmed the captured guard identity absent; every descendant's exit was not proved. Callback success remains distinct from native full-read/completion and cloud no_reply acceptance.
 
+### Gateway diagnostics for the next trial (source only)
+
+After `a42630c`, the gateway source records one `gateway_request_ingress` line for **every** JSON-RPC request, including discovery, catalog, event-list and ping requests. Each line carries the method name, whether `_meta` was present and its key names only. It also records malformed lines by byte length (`gateway_request_malformed`), structured poll failures with the exception type, callback response status, size and top-level key names, and `gateway_poll_liveness` at most once per minute with poll and local queue counts. It never records ids, message bodies, URLs, tokens or signatures, and a test pins the provider-visible catalog unchanged. Key names are chosen by the peer; treat them as untrusted labels.
+
+This changes the evidence boundary. In V1–V3 and earlier trials, `gateway_request_ingress` existed only for tool calls and event subscribe/unsubscribe, so the absence of other records in those logs does not show that discovery or catalog requests did not occur. This build has not been used in any cloud trial.
+
 ## Earlier reply-only evidence and version boundary
 
 The earlier product source recorded in the [2026-10-04 validation](VALIDATION_2026-10-04.md) was `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`. Later documentation and private harness changes are separate from that deployment. Coordinator-supplied evidence at **2026-10-05 02:06 Taipei** records a bounded Cloud C trial with **two new human events automatically fully read and replied to**, with no intervening manual model prompt. Each event's first callback attempt received HTTP 200; native `read_delta` recorded `tool_read`, native `post_message` recorded `replied`, and both corresponding replies were observed on the website.

@@ -2,7 +2,30 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-Evidence cutoff: 18:18:43 Asia/Taipei, including the Windows cleanup source fix and local checks. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+Evidence cutoff: 2026-10-06 03:00 Asia/Taipei, including the `a42630c` deployment and later source-only fixes. The Windows cleanup sections below keep their 18:18:43 checkpoint wording. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+
+## Test-fixture fix, CI and deployment of `a42630c`
+
+Public commit `96177fe` failed both CI runs. On Linux, `test_windows_launch_failure_never_releases_unassigned_native_or_clears_unknown_exit` failed for its `assign`, `GO` and `cleanup` cases: SQLite 1,020 passed / 3 failed / 38 skipped, PostgreSQL 1,299 passed / 3 failed / 36 skipped; Windows 368 passed. The fake-Windows fixture changed the shared `os.name`, so Linux `pathlib` selected `WindowsPath` before the tested code ran. These failures remain part of the record.
+
+Test-only commit **`a42630cbe55d7671c680777c3e60d8648d861f6e`** gives that runner a private `os` proxy. Assertions, runtime sources and installer pins are unchanged. Both exact-head CI runs passed all three jobs:
+
+| Run | Windows | SQLite | PostgreSQL |
+| --- | --- | --- | --- |
+| [push 37325327928](https://github.com/Ya19880104/ys-aimemory/actions/runs/37325327928) | 368 passed / 1 warning | 1,023 passed / 38 skipped / 3 warnings | 1,302 passed / 36 skipped / 3 warnings |
+| [pull request 37325342063](https://github.com/Ya19880104/ys-aimemory/actions/runs/37325342063) | 368 passed / 1 warning | 1,023 passed / 38 skipped / 3 warnings | 1,302 passed / 36 skipped / 3 warnings |
+
+Counts belong to separate environments and are not added. On a Windows host that ran the checkout and Python from a network share, three crash fixtures exceeded their 10-second startup wait because a cold child import took 21–26 seconds (111 passed / 3 failed); the same commit passed all 114 runner/crash tests from local disk. The product receiver has no comparable startup deadline.
+
+`a42630c` was deployed on 2026-10-06 at 00:37 Taipei. The isolated stage passed **1,260 passed / 78 skipped / 3 warnings** (241.95 seconds) on a disposable PostgreSQL database, then removed it. Promotion passed all **473 checks** in 23.8 seconds, including backup, schema-6 data preservation and verified HTTPS health; the previous image remains available. Guide links on the deployed Hub now point to this commit's documents: `HUB_DOCS_BASE_URL` is set for this release only, verified in the running service and on `/help` in English and Traditional Chinese. The cloud-event guide link stays pinned to `b8ebf3f`, whose document is unchanged. Real-provider acceptance of the new Windows Job cleanup is still **not_run**; this deployment does not certify it.
+
+## Source-only fixes after `a42630c`
+
+These commits passed local tests; exact-head CI and deployment are recorded separately, and none is native or provider acceptance.
+
+- **Claude automatic chat client.** Chat tools now verify the worker identity before each write. Previously a committed silent completion could still be reported as unavailable, because the bridge read a configuration field that the installer never writes. `--disconnect` now finds and releases this worker's binding on the Hub and reads back the released state; it fails closed with a fixed error code instead of reporting `disconnected` without a Hub call. The Claude bootstrap is repinned to source `0f6e56f0e91275820489c1c6effedf879051a905` through bootstrap `aa082c0b0e0ef004f4503854debc369303821ae3`. The deployed `a42630c` Hub still serves the previous Claude bootstrap until a later deployment; native Claude reply/silent-completion acceptance is **not_run**.
+- **Three simultaneous bindings.** Twelve SQLite tests characterize fan-out, peer replies, interjection, explicit silent completion, pause and turn budgets for three automatic clients in one room. While a room is paused, an exhausted binding reports `paused`, because pause is checked first. These are model-free tests, not a three-client acceptance.
+- **ChatGPT gateway diagnostics.** The private gateway records every JSON-RPC request method, malformed lines by length only, structured poll failures, callback response size and top-level key names, and a liveness record at most once per minute. It never records ids, message bodies, URLs, tokens or signatures, and the provider-visible catalog is pinned unchanged. A deeply nested JSON line no longer ends the gateway. No new cloud trial was run.
 
 ## Windows native process cleanup: source tested, deployment pending
 
@@ -16,7 +39,7 @@ The preserved pre-fix offline failure showed a fake CLI root exiting while its c
 | Root runner/crash/inspector | 167 passed / 1 warning; 11.75 seconds | Separate local validation of the integrated source |
 | Bootstrap/setup/bundle | 61 passed / 2 warnings; 12.04 seconds | Codex-only installer pins and bundle checks |
 
-Codex instructions now pin source `627d3ca` through bootstrap `a9d7f87d452336b890071e0332a4dd8077bfc58b`, whose raw Git SHA-256 is `d842ffd109b601b3626a5c97034f0f3b3473e5f07128ad31891914c4f218eaf3`. These are source/local checks, not a new public-install or provider acceptance result. The live Hub remains `2472280`; new-version deployment and a fresh real-provider native trial are **not_run**. The earlier public three-turn trial below proved closure through an external operator guard holding 26 process identities; it does not establish the new runner's own per-turn Job cleanup. Claude pins and the historical cloud/three-client limits are unchanged.
+Codex instructions now pin source `627d3ca` through bootstrap `a9d7f87d452336b890071e0332a4dd8077bfc58b`, whose raw Git SHA-256 is `d842ffd109b601b3626a5c97034f0f3b3473e5f07128ad31891914c4f218eaf3`. These are source/local checks, not a new public-install or provider acceptance result. At that checkpoint the live Hub was `2472280`. `a42630c` has since been deployed (see above); a fresh real-provider native trial of the new cleanup is still **not_run**. The earlier public three-turn trial below proved closure through an external operator guard holding 26 process identities; it does not establish the new runner's own per-turn Job cleanup. Claude pins and the historical cloud/three-client limits are unchanged.
 
 ## Current deployment and help-link check
 
