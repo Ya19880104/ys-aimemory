@@ -18,7 +18,21 @@ Gateway更新後，開啟既有外掛的「管理→重新整理工具」，操�
 
 ## 最新無回覆完成試驗
 
+### V1：重新整理四工具連線
+
 2026-10-05 重新整理工具並建立新對話後，原生 identity 確認了正確 worker 及四個工具。新的有界事件任務成功訂閱；一則新網站訊息的 callback 收到 HTTP 200，但到期前沒有原生 `read_delta`、`no_reply` 或 `post_message` 呼叫。之後任務管理回報 `last_run_time=null`，沒有提供失敗原因。任務已暫停及退訂，原期限守衛已停止 gateway；第二則測試訊息沒有送出。因此本輪自動喚起試驗為 **failed**；原生全文讀取與 Cloud 無回覆完成仍為 **not_run**。工具探索與 callback 送達各自通過，不代表模型回合已執行；沒有重播舊事件或用手動讀取補成通過。
+
+### V2：明確指定task模型與reasoning
+
+第二個獨立trial在task明確選用GPT-6.1 Sol／Medium，保持原human-event predicate、scope與payload；callback已收到，但到原15:46:59 deadline前automatic wake仍 **failed**。關閉後原生task metadata回 `is_enabled=false`、`last_run_time=null`；model／reasoning／execution errors未提供。Pause已核對，此輪log沒有 `events/unsubscribe`：local guard停止gateway subscription並斷開Hub binding，不證明provider unsubscribe。只核對了captured guard身分退出；全文read／no_reply及未送出的第二事件仍 **not_run**。這些metadata不能證明task未喚起的原因。
+
+### V3：先讀取再判斷的task
+
+第三個read-first trial只調整task讀前predicate順序，model／reasoning、scope、payload及permissions不變。網站A於台北16:01:23送出，callback於16:01:36回HTTP200；到16:09 task deadline，完整stable log仍無 `read_delta`、`post_message` 或 `no_reply`。原16:10:24 guard deadline關閉此輪，16:10:35讀回確認binding disabled／disconnected、turns0及cancelled無完成批次。完整自動read／completion驗收 **failed**，native read／no_reply仍 **not_run**，B未送；不延長deadline，也沒有重播舊event。
+
+關閉後原生task metadata區分了第三輪：`is_enabled=false`，但 `last_run_time=2026-10-05T08:06:05.813018Z`（台北16:06:05），不是null。確有task-run timestamp，不能說task從未觸發。Model／reasoning／errors未提供，仍無native MCP ingress。Native工具沒有詳細history／output／error／run link，從已排程頁開精確task也只返回同一對話；沒有取得更細run outcome，不能定位model排隊／執行根因。
+
+與第二輪不同，第三輪log觀察到晚到的 `events/subscribe`及驗證HTTP200，之後在guard關閉前有 `events/unsubscribe`。Task UI pause已核對，但不將這些protocol calls歸因於UI操作，也不據此確認model／tool成功。兩次精確核對確認captured guard身分不存在，沒有證明全部descendants退出。Callback成功與native全文read／completion、Cloud no_reply驗收仍分開。
 
 ## 先前僅回覆試驗的證據與版本界線
 

@@ -2,7 +2,7 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-證據截至台北時間 15:23。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
+證據截至台北時間16:18:27。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
 
 ## 已部署無回覆完成與有界原生試驗
 
@@ -10,13 +10,21 @@
 
 公開安裝鏈使用來源 `a614e2d24e35734bfb0c64b1158a629689b30441`、bootstrap `ff7c276a763cfa6b4f6dad56e6b91426f941efd6`；實際公開下載符合兩個 bootstrap及九筆來源 entries。這只證明公開檔案位元組，不是全新公開互動安裝器 passed。試驗的 Codex 客戶端使用該來源、Gemini 使用已部署版本，product code一致。
 
-一次有界 Codex／Gemini 試驗中，兩端自動回覆第一則人類問題；接著各自全文讀取另一個AI的回覆，以原生 `no_reply` 完成，不另貼確認訊息。原生工具及終端 server收據均已核對，此觀察通過同儕事件的明確無回覆完成。第二則人類問題也有網頁可見回覆及對應Hub已讀／replied收據。Codex三份原生完成收據已核對；截至此時，Gemini第二題展開的原生工具輸出仍待核對，不能將缺少的關卡記成passed。
+一次有界Codex／Gemini試驗中，兩端自動回覆兩則人類問題，並各自全文讀取另一個AI的第一則回覆，以原生 `no_reply` 完成、不另貼確認訊息。兩端各三份原生完成及終端server收據均已核對。Gemini第二題工具輸出於稍後檢視，沒有新prompt或replay：已讀未截斷且ready，實際發文回傳 `replied`。這通過了所觀察的雙題及peer無回覆完成序列。
 
-兩端各用了三回合：兩則人類問題及一次同儕完成；沒有另貼同儕確認訊息，silent completion也不退還已扣turn。預算用完後，網站顯示沒有active receiver。Codex guard已確認STOP、owned exit及disconnect；Gemini STOP與binding停用已核對，但guard仍回報process exit未驗證。此closure限制與第二題原生工具輸出pending一起保留。這是有界觀察，不證明無限運作、三客戶端驗收、Cloud no_reply或Token節省；下方歷史失敗不改寫。
+兩端各用了三回合：兩則人類問題及一次同儕完成；沒有另貼同儕確認訊息，silent completion也不退還已扣turn。預算用完後，網站顯示沒有active receiver。Codex guard已確認STOP、owned exit及disconnect；Gemini STOP與binding停用已核對，之後兩次精確kernel核對確認先前捕捉的guard身分已退出。這不證明未捕捉的receiver／probe身分、所有descendants或獨立persistent MCP連線已閉合。此有界觀察不證明無限運作、三客戶端驗收、Cloud no_reply或Token節省；下方歷史失敗不改寫。
 
 ## 四工具更新後的雲端試驗
 
 既有外掛經官方重新整理、頁面更新及新對話後提供四工具，原生身分相符。新有界任務已訂閱，第一則網站新事件的 callback 收到 HTTP 200，但到期前沒有模型工具呼叫：自動喚起 **failed**，原生全文讀取、`no_reply` 及第二事件接續為 **not_run**。任務已暫停及退訂，原期限 gateway 守衛也已關閉本輪。此次失敗與先前僅回覆試驗的通過分別保留；見[雲端證據與設定](CHATGPT_PRIVATE_TUNNEL.zh-TW.md#最新無回覆完成試驗)。
+
+另一個task明確選用GPT-6.1 Sol／Medium reasoning，保留原event predicate與payload；仍 **automatic wake failed**，於原deadline關閉。原生task metadata回 `is_enabled=false`、`last_run_time=null`，model／reasoning／execution error未提供。Task暫停已核對，但此第二輪log沒有 `events/unsubscribe`；本地guard停止subscription及斷開binding，不能寫成provider unsubscribe已驗證。捕捉的guard身分兩次kernel查詢均不存在，downstream全文read／no_reply仍 **not_run**。
+
+第三個獨立read-first試驗只調整task讀前predicate順序，model／reasoning、scope、payload及permissions不變。網站問題A於16:01:23送出，callback於16:01:36回HTTP200；到16:09 task deadline仍無native全文read、post或no_reply呼叫。此輪按原16:10:24 guard deadline關閉；16:10:35 final readback為gen2 disabled／disconnected、turns0、原cursor及cancelled無結果批次。完整自動read／completion驗收 **failed**，downstream read／no_reply仍 **not_run**，問題B未送。
+
+與前兩輪null不同，第三個task關閉後原生metadata回 `is_enabled=false`、**`last_run_time=2026-10-05T08:06:05.813018Z`**（台北16:06:05）。確有task-run時間紀錄，不能寫成此輪從未觸發。Model／reasoning／execution errors未提供；native task工具沒有提供history、output、error或run-link能力。從已排程頁找出精確task再開啟，也只返回同一對話，沒有更細run結果。Timestamp不證明native MCP成功，是否model排隊或執行問題仍未明。
+
+第三輪完整stable log另記錄晚到的 `events/subscribe` 16:09:29.896、verification HTTP200 16:09:30.426，以及 `events/unsubscribe` 16:09:53.401；task UI pause也已核對。這些protocol calls不證明model執行，不將其原因歸給UI操作。新predicate順序在此試驗沒有帶來所需native read／completion，log不能判定platform root cause。Captured guard身分兩次精確核對均不存在，但不證明所有descendants已退出；先前失敗保留。
 
 ## 先前部署與測試：09:30
 
@@ -96,7 +104,7 @@ Claude 較短路徑的官方安裝已完成，但私有驗收 wrapper 隨後因 
 
 ## 仍待驗收
 
-新一輪 Claude／Codex／Gemini 同時自動對話與交接仍為 **not_run**。13:06雙方失敗仍保留；之後已部署的試驗核對了第一題回覆及native peer no_reply完成，但截止時第二題Gemini原生工具輸出及最後清理仍pending。新試驗仍須記錄客戶端／Hub版本組合、首次失敗、期限限制與實際原生投遞證據。
+新一輪Claude／Codex／Gemini同時自動對話與交接仍 **not_run**。13:06雙方失敗保留；之後已部署的雙題／native peer-no_reply序列已passed，但Gemini完整receiver／descendants closure及Cloud native no_reply仍是獨立未完成關卡。前兩個Cloud trials為automatic-wake失敗；第三輪有task-run timestamp，但native read／completion驗收失敗。不宣稱整體產品或Token節省passed。新試驗須保留版本組合、首次失敗、期限限制及實際native投遞證據。
 
 既有 Gemini、ChatGPT 各兩次自動原生讀寫及閒置接收器／閘道重啟，僅對已關閉的 `6d0ce27` 試驗有效。先前順序正式交接及有限 Codex 執行中崩潰防重送，也保留原範圍；不能推論三方同時聊天、線上模型排隊事件、模型崩潰／未知提交復原、無限運作、新帳號雲端外掛安裝或 Token 成本對照測試通過。
 

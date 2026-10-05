@@ -18,7 +18,21 @@ Open a new chat with the plugin enabled before testing the changed tools, as dir
 
 ## Latest silent-completion trial
 
+### V1: refreshed four-tool connection
+
 On 2026-10-05, after refreshing the catalog and opening a new conversation, native identity confirmed the correct worker and all four tools. A new bounded event task subscribed successfully. One fresh website message reached the callback with HTTP 200, but no native `read_delta`, `no_reply` or `post_message` call followed before the deadline. Task management later reported `last_run_time=null`; it did not expose a failure reason. The task was paused and unsubscribed, and the original deadline guard stopped the gateway. The second test message was not sent. The automatic-wake trial therefore **failed**; native full-read and cloud silent completion remain **not_run**. Tool discovery and callback delivery are separate passed checks; neither proves a model turn. No old event was replayed or manually read to turn this result into a pass.
+
+### V2: explicit task model and reasoning
+
+A second, separate trial explicitly selected GPT-6.1 Sol/Medium in the task while keeping the existing human-event predicate, scope and payload. Its callback was received, but automatic wake still **failed** before the original 15:46:59 deadline. After closure, native task metadata returned `is_enabled=false` and `last_run_time=null`; model, reasoning and execution errors were not provided. Pause was verified. No `events/unsubscribe` call was logged in this trial: the local guard stopped the gateway subscription and disconnected the Hub binding, which does not prove provider unsubscribe. Only the captured guard identity's exit was verified; full-read/no_reply and the unsent second event remain **not_run**. The metadata does not establish why the task failed to wake.
+
+### V3: read-first task
+
+A third read-first trial changed only the task's pre-read predicate order, leaving model/reasoning, scope, payload and permissions unchanged. Website A was sent at 16:01:23 Taipei and its callback received HTTP 200 at 16:01:36. By the 16:09 task deadline the full stable log contained no `read_delta`, `post_message` or `no_reply` call. The original 16:10:24 guard deadline closed the trial; 16:10:35 readback confirmed the binding disabled/disconnected, zero admitted turns and a cancelled batch with no completion. Full automatic read/completion acceptance **failed**; native read/no_reply remained **not_run**, and B was not sent. Neither deadline was extended and no old event was replayed.
+
+Post-close native task metadata distinguishes this third run: `is_enabled=false`, but `last_run_time=2026-10-05T08:06:05.813018Z` (16:06:05 Taipei) rather than null. A task-run timestamp was recorded, so it is not correct to say the task never triggered. Model, reasoning and errors were not provided; no native MCP ingress followed. The native tools offered no detailed history/output/error/run link, and opening the exact Scheduled task only returned the same conversation. No finer run outcome or model queueing/execution root cause was established.
+
+Unlike the second run, the third log recorded late `events/subscribe` and verification HTTP 200, followed by `events/unsubscribe` before guard closure. Task UI pause was verified, but no cause is assigned to those protocol calls. They do not establish a successful model/tool outcome. Two exact checks confirmed the captured guard identity absent; every descendant's exit was not proved. Callback success remains distinct from native full-read/completion and cloud no_reply acceptance.
 
 ## Earlier reply-only evidence and version boundary
 
