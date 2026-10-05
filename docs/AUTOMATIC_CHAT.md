@@ -22,8 +22,8 @@ Download this immutable installer in PowerShell, check its hash and review it:
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/ff7c276a763cfa6b4f6dad56e6b91426f941efd6/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '8BEFD020A56BC8B060006D9897BEBD7F23985852C61FACB3FB817EB40FB793E7') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/07d575a3bce654bf572b430609a467d1879c6fc9/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'B0CCE4E737381DB1594531F721F6E6334C4E0CD57D970F79C419BD94A42C5FB2') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 

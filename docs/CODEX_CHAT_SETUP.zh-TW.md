@@ -41,8 +41,8 @@ py -3.12 --version
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/ff7c276a763cfa6b4f6dad56e6b91426f941efd6/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '24D4291E65FD2E06498248806F87FD0147AC58C98468AEC7B22F4BA31EB98A81') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/07d575a3bce654bf572b430609a467d1879c6fc9/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '7A20A0A16D16D475F7EF8825CD94556CCEE7D7BABA85D2CB7B3C7A35F2219D4E') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
