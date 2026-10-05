@@ -3,7 +3,8 @@
 Caller supplies an authenticated scoped HTTP client and fresh native admission.
 No provider credentials, histories, global configuration, or model APIs are read.
 On Windows each official CLI call runs in an owned job and returns only after
-its whole process tree has exited; an unconfirmed exit is never retried.
+its whole process tree has exited. An unconfirmed exit of either call is
+journaled and fences every later start until explicit recovery.
 """
 import json
 import os
@@ -227,6 +228,12 @@ def tree_evidence(value):
     return {'containment': 'none'}
 
 
+def unconfirmed(phase):
+    """Fence for a possibly live owned tree: no reply, exit or return code is claimed."""
+    return {'error_code': TreeExitUnconfirmed.code, 'containment': 'windows_job',
+            'tree_exit_verified': False, 'phase': phase}
+
+
 def durable(path, value):
     """Atomic replace after flushing content; never discard an attempt on restart."""
     pending = path.with_name(path.name + '.pending')
@@ -267,7 +274,8 @@ def run(config, client, directory, executable, admission, *, now=time.time,
 
     Manual admission admits only the initial send. Later sends need fresh native
     Stop metadata. The callable must supply unique event_id values for real events.
-    An attempt whose native tree exit is unconfirmed fences every later claim.
+    An unconfirmed native tree exit (metadata or send) is journaled and fences
+    every later start, even after a Hub receipt for the same delivery.
     """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -287,7 +295,8 @@ def run(config, client, directory, executable, admission, *, now=time.time,
             'scope': scope, 'attempts': [], 'used_events': [], 'claim_request': None}
         if journal['scope'] != scope:
             return 'scope_mismatch'
-        if any(item.get('tree_exit_verified') is False for item in journal['attempts']):
+        if 'native_tree_unconfirmed' in journal or any(
+                item.get('tree_exit_verified') is False for item in journal['attempts']):
             return 'unresolved'  # Possibly live native tree: explicit recovery only.
 
         def call(operation, data):
@@ -323,7 +332,13 @@ def run(config, client, directory, executable, admission, *, now=time.time,
                 return binding['status']
             if len(journal['attempts']) >= config['max_sends']:
                 return 'budget_exhausted'
-            event = admission()
+            try:
+                event = admission()
+            except TreeExitUnconfirmed:
+                # Nothing claimed yet: a journal-level fence blocks every restart.
+                journal['native_tree_unconfirmed'] = unconfirmed('metadata')
+                durable(path, journal)
+                return 'unresolved'
             event_id = event.get('event_id') if isinstance(event, dict) else None
             if (not isinstance(event_id, str) or not event_id or event_id in journal['used_events'] or
                     not admitted(config, event, now()) or
@@ -379,7 +394,13 @@ def run(config, client, directory, executable, admission, *, now=time.time,
             if config.get('admission_mode') == 'official_host_queue':
                 # Query the official host again immediately before every send.
                 # This establishes scope only, never busy/idle/completion.
-                fresh = admission()
+                try:
+                    fresh = admission()
+                except TreeExitUnconfirmed:
+                    # Dispatched, never sent; a later receipt must not clear this.
+                    journal['attempts'][-1].update(state='unknown', **unconfirmed('metadata'))
+                    durable(path, journal)
+                    return 'unresolved'
                 if not admitted(config, fresh, now()) or fresh.get('kind') != 'official_metadata':
                     return 'unresolved'
                 if (directory / 'STOP').exists() or now() >= min(config['expires_at'], delivery['lease_until']):
@@ -391,10 +412,9 @@ def run(config, client, directory, executable, admission, *, now=time.time,
                     creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
                 journal['attempts'][-1].update(state='returned', returncode=result.returncode,
                                                **tree_evidence(result))
-            except TreeExitUnconfirmed as exc:
+            except TreeExitUnconfirmed:
                 # Neither reply nor exit is claimed; the durable fence blocks restarts too.
-                journal['attempts'][-1].update(state='unknown', error_code=exc.code,
-                                               containment='windows_job', tree_exit_verified=False)
+                journal['attempts'][-1].update(state='unknown', **unconfirmed('send'))
                 durable(path, journal)
                 return 'unresolved'
             except (OSError, subprocess.TimeoutExpired) as exc:
@@ -407,7 +427,8 @@ def run(config, client, directory, executable, admission, *, now=time.time,
 def official_metadata_admission(config, executable, *, now=time.time, execute=default_execute):
     """Official CLI metadata only; discard raw output, never query histories/RPC.
 
-    An unconfirmed native tree exit is raised, never treated as a retryable miss.
+    An unconfirmed native tree exit is raised, never treated as a retryable miss;
+    run() journals it as a restart fence.
     """
     try:
         return _official_metadata(config, executable, now=now, execute=execute)

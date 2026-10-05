@@ -275,6 +275,40 @@ def test_unconfirmed_job_accounting_raises_fixed_code_and_closes_owned_job(tmp_p
     assert closed == [1]
 
 
+@pytest.mark.parametrize('unconfirmed', [1, 2])  # 1: before claim; 2: fresh check after dispatch.
+def test_real_metadata_unconfirmed_exit_fences_receiver_restart(rig, monkeypatch, unconfirmed):
+    config, event, binding, client, calls, directory = rig
+    config.update(admission_mode='official_host_queue', native_project_id='native-project')
+    (directory / 'metadata.json').write_text(json.dumps({'response': {'conversationMetadata': {'metadata': {
+        'workspaceUris': [directory.resolve().as_uri()], 'projectId': 'native-project'}}}}))
+    (directory / 'get-conversation-metadata').write_text("from pathlib import Path\n"
+        "with open('launches.txt', 'a') as stream: stream.write('x')\n"
+        "print(Path('metadata.json').read_text())\n", encoding='utf-8')
+    log = directory / 'launches.txt'
+    launches = lambda: len(log.read_text()) if log.exists() else 0
+    active = receiver.WindowsJob.active_processes
+    monkeypatch.setattr(receiver.WindowsJob, 'active_processes',
+                        lambda job: 1 if launches() == unconfirmed else active(job))
+    monkeypatch.setattr(receiver, 'EXIT_CONFIRM_SECONDS', .5)
+    monkeypatch.chdir(directory)
+    def start():
+        return receiver.run(config, client, directory, sys._base_executable, lambda:
+            receiver.official_metadata_admission(config, sys._base_executable, now=lambda: 110), now=lambda: 110)
+    assert start() == 'unresolved' and launches() == unconfirmed
+    journal = json.loads((directory / 'receiver-journal.json').read_text())
+    fence = {'error_code': 'native_tree_exit_unconfirmed', 'containment': 'windows_job',
+             'tree_exit_verified': False, 'phase': 'metadata'}
+    if unconfirmed == 1:
+        assert (journal['native_tree_unconfirmed'], journal['attempts'], calls) == (fence, [], ['status'])
+    else:
+        assert journal['attempts'] == [{'delivery_id': 'delivery', 'lease_until': 300, 'state': 'unknown'} | fence]
+        assert calls == ['status', 'heartbeat', 'claim', 'dispatched']
+    binding['latest_delivery'] = {'delivery_id': 'delivery', 'status': 'replied'}
+    calls.clear()
+    assert start() == 'unresolved'
+    assert calls == [] and launches() == unconfirmed
+
+
 def test_output_beyond_limit_is_discarded_not_parsed(tmp_path):
     args = script(tmp_path, "import sys; sys.stdout.write('x' * 64)")
     result = receiver.contained_run(args, timeout=LIMIT, limit=16)

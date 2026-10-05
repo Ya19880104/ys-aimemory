@@ -346,7 +346,7 @@ def test_unconfirmed_tree_exit_stays_unresolved_and_fences_restart(rig):
     journal = json.loads((directory / 'receiver-journal.json').read_text())
     assert journal['attempts'] == [{'delivery_id': 'delivery', 'lease_until': 300, 'state': 'unknown',
         'error_code': 'native_tree_exit_unconfirmed', 'containment': 'windows_job',
-        'tree_exit_verified': False}]
+        'tree_exit_verified': False, 'phase': 'send'}]
     calls.clear()
     assert run(config, client, directory, 'agentapi', lambda: event, now=lambda: 110,
                execute=send) == 'unresolved'
@@ -359,6 +359,63 @@ def test_metadata_unconfirmed_tree_exit_is_raised_not_a_retryable_miss(rig):
     execute = Mock(side_effect=receiver.TreeExitUnconfirmed())
     with pytest.raises(receiver.TreeExitUnconfirmed, match='^native_tree_exit_unconfirmed$'):
         official_metadata_admission(config, 'agentapi', execute=execute)
+
+
+METADATA_FENCE = {'error_code': 'native_tree_exit_unconfirmed', 'containment': 'windows_job',
+                  'tree_exit_verified': False, 'phase': 'metadata'}
+
+
+def queue_rig(rig):
+    """Real metadata provider over one injected executor for metadata and send."""
+    config, event, binding, client, calls, directory = rig
+    config.update(admission_mode='official_host_queue', native_project_id='native-project')
+    good = Mock(returncode=0, stdout=json.dumps({'response': {'conversationMetadata': {'metadata': {
+        'workspaceUris': [directory.resolve().as_uri()], 'projectId': 'native-project'}}}}).encode())
+    execute = Mock()
+    def start():
+        return run(config, client, directory, 'agentapi', lambda: official_metadata_admission(
+            config, 'agentapi', now=lambda: 110, execute=execute), now=lambda: 110, execute=execute)
+    return config, binding, calls, directory, good, execute, start
+
+
+@pytest.mark.parametrize('prior', [None, [{'delivery_id': 'old', 'lease_until': 99, 'state': 'replied'}]])
+def test_metadata_unconfirmed_before_claim_is_journaled_and_fences_restart(rig, prior):
+    config, binding, calls, directory, good, execute, start = queue_rig(rig)
+    path = directory / 'receiver-journal.json'
+    scope = {key: config[key] for key in ('project_id', 'session_id', 'binding_id', 'generation', 'native_session_id')}
+    if prior:
+        durable(path, dict(scope=scope, attempts=prior, used_events=['old-event'], claim_request=None))
+    execute.side_effect = receiver.TreeExitUnconfirmed()
+    assert start() == 'unresolved'
+    journal = json.loads(path.read_text())
+    assert journal == dict(scope=scope, attempts=prior or [], used_events=['old-event'] if prior else [],
+                           claim_request=None, native_tree_unconfirmed=METADATA_FENCE)
+    assert calls == ['status'] and execute.call_count == 1
+    # Healthy metadata later must not relaunch any CLI or reach the Hub.
+    execute.side_effect, execute.return_value = None, good
+    calls.clear()
+    assert start() == 'unresolved'
+    assert calls == [] and execute.call_count == 1
+    assert json.loads(path.read_text()) == journal
+
+
+def test_metadata_unconfirmed_after_dispatch_fences_restart_despite_later_receipt(rig):
+    config, binding, calls, directory, good, execute, start = queue_rig(rig)
+    path = directory / 'receiver-journal.json'
+    execute.side_effect = [good, receiver.TreeExitUnconfirmed()]
+    assert start() == 'unresolved'
+    assert [call.args[0][1] for call in execute.call_args_list] == ['get-conversation-metadata'] * 2
+    assert calls == ['status', 'heartbeat', 'claim', 'dispatched']
+    journal = json.loads(path.read_text())
+    assert journal['attempts'] == [{'delivery_id': 'delivery', 'lease_until': 300, 'state': 'unknown'} |
+                                   METADATA_FENCE]
+    # A Hub receipt settles the delivery, never the possibly live metadata tree.
+    binding['latest_delivery'] = {'delivery_id': 'delivery', 'status': 'replied'}
+    execute.side_effect, execute.return_value = None, good
+    calls.clear()
+    assert start() == 'unresolved'
+    assert calls == [] and execute.call_count == 2
+    assert json.loads(path.read_text()) == journal
 
 
 def test_default_executor_is_owned_windows_job():
