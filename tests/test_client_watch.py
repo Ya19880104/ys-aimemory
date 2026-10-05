@@ -335,6 +335,35 @@ def test_stop_after_claim_prevents_dispatch(tmp_path, mode):
     assert 'dispatched' not in operations
 
 
+@pytest.mark.parametrize('failure', ['heartbeat_outage', 'stale_binding', 'join_outage_after_restart'])
+def test_transient_and_terminal_state_writes_keep_joined_binding(tmp_path, failure):
+    """setup-chat.py --disconnect needs the exact binding after any watcher state write."""
+    state = tmp_path / 'status.json'
+    if failure == 'join_outage_after_restart':
+        state.write_text(json.dumps({'state': 'handed_to_client', 'binding_id': 'b', 'generation': 3}))
+    written = []
+    def handle(req):
+        op = req.url.path.rsplit('/', 1)[-1]
+        if op == 'join':
+            return httpx.Response(503 if failure == 'join_outage_after_restart' else 200,
+                                  json={'binding_id': 'b', 'generation': 3})
+        if op == 'heartbeat' and failure == 'heartbeat_outage':
+            return httpx.Response(503)
+        if op == 'claim':
+            return httpx.Response(409, json={'error': 'stale_binding'})
+        return httpx.Response(200, json={})
+    def sleep(_):
+        written.append(json.loads(state.read_text()))
+        (tmp_path / 'STOP').touch()
+    with httpx.Client(base_url='https://hub.test', transport=httpx.MockTransport(handle)) as client:
+        with pytest.raises(WatchDisconnected if failure == 'stale_binding' else WatchStopped):
+            watch(config(), {'hook_event_name': 'Stop', 'session_id': 'native'}, client, state,
+                  now=lambda: 100, sleep=sleep)
+    written.append(json.loads(state.read_text()))
+    assert written[0]['state'] == ('disconnected' if failure == 'stale_binding' else 'reconnecting')
+    assert all(record['binding_id'] == 'b' and record['generation'] == 3 for record in written)
+
+
 def test_explicit_new_join_key_clears_terminal_gate(tmp_path):
     (tmp_path / 'status.json').write_text(json.dumps({'state': 'disconnected', 'join_key': 'old'}))
     operations = []

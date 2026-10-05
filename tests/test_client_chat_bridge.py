@@ -49,7 +49,8 @@ def test_status_retains_authenticated_identity_and_active_semantics(joined, monk
 
 @pytest.fixture
 def joined(tmp_path):
-    config = {'native_session_id':'native','expires_at':1000,'project_id':'p','session_id':'room','worker_id':'own','idempotency_key':'join'}
+    # Exactly the identity-free keys scripts/setup-chat.py writes; never a local worker_id.
+    config = {'native_session_id':'native','expires_at':1000,'project_id':'p','session_id':'room','idempotency_key':'join'}
     delivery = {'delivery_id':'d','lease_id':'lease','lease_until':500,'after_sequence':10,
         'through_sequence':12,'reply_idempotency_key':'once','join_key':'join'}
     (tmp_path/'chat-binding.json').write_text(json.dumps(config))
@@ -63,15 +64,31 @@ def complete_read(delivery):
         'status':'tool_read','unread_message_ids':[]}})
 
 
-def silent_result(delivery):
-    return result({'project_id':'p','session_id':'room','worker_id':'own','delivery_receipt':{
+def silent_result(delivery, worker='own'):
+    return result({'project_id':'p','session_id':'room','worker_id':worker,'delivery_receipt':{
         'delivery_id':delivery['delivery_id'],'status':'no_reply','processed_sequence':delivery['through_sequence']}})
+
+
+def inbox(worker='own'):
+    return result({'worker_id':worker,'context_revision':1,'pending_handoffs':[],'owned_tasks':[],'available_tasks':[]})
+
+
+def verified(upstream, worker='own'):
+    """Answer the bridge's non-mutating identity check; every other call reaches upstream."""
+    async def forward(name, wire):
+        if name == 'get_worker_inbox':
+            assert wire == {'arguments':{'project_id':'p'}}
+            return inbox(worker)
+        return await upstream(name, wire)
+    return forward
 
 
 def test_no_reply_forwards_only_after_full_read_and_is_not_a_post(joined):
     gate, config, delivery = joined; calls=[]
+    assert 'worker_id' not in config
     async def upstream(name, wire):
         calls.append((name,wire))
+        if name=='get_worker_inbox':return inbox()
         if name=='read_session':return complete_read(delivery)
         assert name=='complete_session_delivery'
         assert wire=={'arguments':{'project_id':'p','session_id':'room','delivery_id':'d','lease_id':'lease','idempotency_key':'once'}}
@@ -82,7 +99,8 @@ def test_no_reply_forwards_only_after_full_read_and_is_not_a_post(joined):
     assert asyncio.run(gate.call('chat_no_reply',{},upstream)) is completed
     assert completed.structuredContent['delivery_receipt']['status']=='no_reply'
     with pytest.raises(ScopeError,match='already_completed'):asyncio.run(gate.call('chat_reply',{'body':'ack'},upstream))
-    assert len(calls)==2
+    # The own authenticated identity is verified once, before any Hub mutation.
+    assert [name for name,_ in calls]==['get_worker_inbox','read_session','complete_session_delivery']
 
 
 @pytest.mark.parametrize('ambiguous', [False,True])
@@ -94,15 +112,19 @@ def test_no_reply_intent_survives_error_and_restart_without_disposition_fallback
         assert name=='complete_session_delivery'
         if ambiguous:raise TimeoutError('committed response lost')
         return types.CallToolResult(isError=True,content=[])
-    asyncio.run(gate.call('chat_read',{},fail))
-    with pytest.raises((ScopeError,TimeoutError)):asyncio.run(gate.call('chat_no_reply',{},fail))
+    asyncio.run(gate.call('chat_read',{},verified(fail)))
+    with pytest.raises((ScopeError,TimeoutError)):asyncio.run(gate.call('chat_no_reply',{},verified(fail)))
     raw=next(gate.directory.glob('chat-completion-intent-*.json')).read_text()
     assert 'body' not in json.loads(raw) and json.loads(raw)['disposition']=='no_reply'
     restarted=RoomGate(gate.directory,clock=lambda:100)
     with pytest.raises(ScopeError,match='already_completed'):asyncio.run(restarted.call('chat_reply',{'body':'fallback'},fail))
+    order=[]
     async def retry(name,wire):
+        order.append(name)
+        if name=='get_worker_inbox':return inbox()
         assert name=='complete_session_delivery';calls.append((name,wire));return silent_result(delivery)
     assert asyncio.run(restarted.call('chat_no_reply',{},retry)).structuredContent['delivery_receipt']['status']=='no_reply'
+    assert order==['get_worker_inbox','complete_session_delivery']  # A restarted process re-verifies first.
     assert calls[1]==calls[2]  # Same completion intent and stable upstream arguments.
 
 
@@ -112,6 +134,7 @@ def test_ambiguous_reply_intent_blocks_no_reply_and_changed_body_across_restart(
         calls.append((name,wire))
         if name=='read_session':return complete_read(delivery)
         raise TimeoutError('unknown post')
+    upstream=verified(upstream)
     asyncio.run(gate.call('chat_read',{},upstream))
     with pytest.raises(TimeoutError):asyncio.run(gate.call('chat_reply',{'body':body},upstream))
     assert body not in next(gate.directory.glob('chat-completion-intent-*.json')).read_text()
@@ -124,6 +147,7 @@ def test_ambiguous_reply_intent_blocks_no_reply_and_changed_body_across_restart(
 
 def test_persisted_intent_never_authorizes_a_new_lease(joined):
     gate,config,delivery=joined
+    @verified
     async def upstream(name,wire):
         if name=='read_session':return complete_read(delivery)
         raise TimeoutError('unknown completion')
@@ -149,6 +173,7 @@ def test_scoped_tools_cannot_choose_room_cursor_tool_or_write_key(joined):
 def test_full_pages_are_required_and_scope_is_server_injected(joined):
     gate, config, delivery = joined
     calls=[]
+    @verified
     async def upstream(name,wire):
         calls.append((name,wire))
         args=wire['arguments']
@@ -203,6 +228,7 @@ def test_new_lease_requires_new_complete_read(joined):
 def test_large_escaped_message_retries_same_cursor_once_with_bounded_budget(joined):
     gate,_,_=joined
     calls=[]
+    @verified
     async def upstream(name,wire):
         args=wire['arguments'];calls.append(args)
         assert name=='read_session' and args['after_sequence']==10
@@ -224,6 +250,7 @@ def test_large_escaped_message_retries_same_cursor_once_with_bounded_budget(join
 def test_error_budget_mentions_do_not_authorize_retry(joined, failure):
     gate, _, _ = joined
     calls=[]
+    @verified
     async def upstream(name, wire):
         calls.append(wire['arguments'])
         return failure
@@ -240,6 +267,7 @@ def test_error_budget_mentions_do_not_authorize_retry(joined, failure):
 def test_actual_budget_error_allows_only_one_unchanged_cursor_retry(joined, failure):
     gate, _, _ = joined
     calls=[]
+    @verified
     async def upstream(name, wire):
         assert name=='read_session'
         calls.append(wire['arguments'])
@@ -254,6 +282,7 @@ def test_actual_budget_error_allows_only_one_unchanged_cursor_retry(joined, fail
 def test_successful_user_budget_mention_never_retries(joined):
     gate, _, delivery = joined
     calls=[]
+    @verified
     async def upstream(name, wire):
         calls.append(wire)
         page=complete_read(delivery).structuredContent
@@ -261,3 +290,85 @@ def test_successful_user_budget_mention_never_retries(joined):
         return result(page)
     response=asyncio.run(gate.call('chat_read', {}, upstream))
     assert len(calls)==1 and response.structuredContent['ready_to_reply']
+
+
+def served(gate, name, arguments, forward):
+    """Mirror serve(): the model sees only a fixed code for any gate exception."""
+    try:
+        return 'ok', asyncio.run(gate.call(name, arguments, forward)).structuredContent
+    except Exception as exc:
+        return 'error', str(exc) if isinstance(exc, ScopeError) else 'chat_operation_unavailable'
+
+
+def test_committed_no_reply_is_reported_as_completed_without_local_worker_id(joined):
+    """Regression: a Hub-committed completion was reported as chat_operation_unavailable."""
+    gate, config, delivery = joined; committed=[]
+    async def upstream(name, wire):
+        if name=='get_worker_inbox':return inbox('worker-b')
+        if name=='read_session':return complete_read(delivery)
+        committed.append(wire)
+        return silent_result(delivery, 'worker-b')
+    assert served(gate,'chat_read',{},upstream)[0]=='ok'
+    outcome=served(gate,'chat_no_reply',{},upstream)
+    assert len(committed)==1  # The Hub completion happened exactly once.
+    assert outcome[0]=='ok', outcome
+    assert outcome[1]['worker_id']=='worker-b' and outcome[1]['delivery_receipt']['status']=='no_reply'
+    assert served(gate,'chat_no_reply',{},upstream)==outcome and len(committed)==1
+
+
+@pytest.mark.parametrize('identity', [
+    types.CallToolResult(isError=True, content=[types.TextContent(type='text', text='forbidden')]),
+    result({'context_revision':1}),
+    inbox(''),
+    inbox('x'*129),
+])
+def test_unknown_identity_fails_closed_before_read_receipt(joined, identity):
+    gate, _, _ = joined; calls=[]
+    async def upstream(name, wire):
+        calls.append(name)
+        if name=='get_worker_inbox':return identity
+        pytest.fail('read receipt mutation reached the Hub without a verified identity')
+    with pytest.raises(ScopeError, match='^chat_identity_unverified$'):
+        asyncio.run(gate.call('chat_read',{},upstream))
+    assert calls==['get_worker_inbox'] and gate.cursor==10 and not gate.read_complete
+
+
+def test_unknown_identity_after_restart_never_forwards_completion(joined):
+    gate, _, delivery = joined
+    @verified
+    async def ambiguous(name, wire):
+        if name=='read_session':return complete_read(delivery)
+        raise TimeoutError('completion response lost')
+    asyncio.run(gate.call('chat_read',{},ambiguous))
+    with pytest.raises(TimeoutError):asyncio.run(gate.call('chat_no_reply',{},ambiguous))
+    calls=[]
+    async def unverified(name, wire):
+        calls.append(name)
+        if name=='get_worker_inbox':
+            return types.CallToolResult(isError=True, content=[types.TextContent(type='text', text='unavailable')])
+        pytest.fail('completion forwarded before identity was verified')
+    restarted=RoomGate(gate.directory,clock=lambda:100)
+    assert served(restarted,'chat_no_reply',{},unverified)==('error','chat_identity_unverified')
+    assert calls==['get_worker_inbox']
+
+
+def test_each_delivery_scope_reverifies_identity_before_its_read(joined):
+    gate, _, delivery = joined; calls=[]
+    async def upstream(name, wire):
+        calls.append(name)
+        if name=='get_worker_inbox':return inbox()
+        return complete_read(json.loads((gate.directory/'chat-delivery.json').read_text()))
+    asyncio.run(gate.call('chat_read',{},upstream))
+    (gate.directory/'chat-delivery.json').write_text(json.dumps(delivery|{'delivery_id':'d2','lease_id':'lease2'}))
+    asyncio.run(gate.call('chat_read',{},upstream))
+    assert calls==['get_worker_inbox','read_session','get_worker_inbox','read_session']
+
+
+def test_completion_for_another_worker_is_not_accepted_as_own(joined):
+    gate, _, delivery = joined
+    async def upstream(name, wire):
+        if name=='get_worker_inbox':return inbox('own')
+        if name=='read_session':return complete_read(delivery)
+        return silent_result(delivery, 'other')
+    asyncio.run(gate.call('chat_read',{},upstream))
+    assert served(gate,'chat_no_reply',{},upstream)==('error','invalid_completion_receipt')

@@ -54,6 +54,12 @@ def result(value):
         content=[types.TextContent(type='text', text=json.dumps(value,ensure_ascii=False))])
 
 
+def delivery_receipt(value):
+    # Receipt checks after a commit compare values only; they never raise locally.
+    found = value.get('delivery_receipt') if isinstance(value, dict) else None
+    return found if isinstance(found, dict) else {}
+
+
 def read_budget_failure(raw):
     """Only the actual Hub error permits a larger read, never a body mention."""
     if raw.isError is not True:
@@ -93,9 +99,24 @@ class RoomGate:
         self.post_hash = None
         self.no_reply = None
         self.completion_intent = None
+        self.worker = None
+
+    async def verify(self, config, forward):
+        """Own authenticated worker from a non-mutating Hub check, before any Hub write.
+
+        setup-chat.py writes no local worker_id; the credential's identity is
+        verified once per delivery scope and an unknown identity fails closed."""
+        if self.worker is None:
+            raw = await forward('get_worker_inbox', {'arguments':{'project_id':config['project_id']}})
+            value = None if raw.isError else unpack(raw.model_dump(mode='json',by_alias=True))
+            worker = value.get('worker_id') if isinstance(value, dict) else None
+            if not isinstance(worker, str) or not worker.strip() or len(worker) > 128:
+                raise ScopeError('chat_identity_unverified')
+            self.worker = worker
+        return self.worker
 
     def intent(self, config, delivery, disposition=None, body_hash=None):
-        scope = {k: config.get(k) for k in ('project_id', 'session_id', 'worker_id', 'idempotency_key')}
+        scope = {k: config.get(k) for k in ('project_id', 'session_id', 'idempotency_key')}
         scope.update({k: delivery[k] for k in ('delivery_id', 'lease_id')})
         scope_hash = hashlib.sha256(json.dumps(scope, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
         path = self.directory / ('chat-completion-intent-' + scope_hash + '.json')
@@ -135,13 +156,14 @@ class RoomGate:
         if (delivery.get('join_key') != config['idempotency_key'] or
                 self.clock() >= delivery['lease_until']):
             raise ScopeError('chat_delivery_expired')
-        signature = tuple(config.get(k) for k in ('project_id','session_id','worker_id','idempotency_key')) + (
+        signature = tuple(config.get(k) for k in ('project_id','session_id','idempotency_key')) + (
             delivery['delivery_id'],delivery['lease_id'])
         if self.current != signature:
             self.current, self.cursor = signature, delivery['after_sequence']
             self.read_complete, self.posted, self.post_hash = False, None, None
             self.no_reply = None
             self.completion_intent = None
+            self.worker = None
         route = {k:config[k] for k in ('project_id','session_id')}
         route.update({k:delivery[k] for k in ('delivery_id','lease_id')})
         intent = self.intent(config, delivery)
@@ -161,6 +183,7 @@ class RoomGate:
                 raise ScopeError('chat_turn_already_replied')
             if self.read_complete:
                 return result({'status':'already_read','ready_to_reply':True})
+            await self.verify(config, forward)  # The read receipt is a Hub mutation too.
             raw = await forward('read_session', {'arguments':route | {
                 'after_sequence':self.cursor,'limit':20,'max_bytes':16384,'full_text':True}})
             if read_budget_failure(raw):
@@ -171,7 +194,7 @@ class RoomGate:
             if raw.isError:
                 raise ScopeError('hub_read_failed')
             value = unpack(raw.model_dump(mode='json',by_alias=True))
-            receipt = value.get('delivery_receipt', {}) if value else {}
+            receipt = delivery_receipt(value)
             if (not value or receipt.get('delivery_id') != delivery['delivery_id']
                     or value.get('session',{}).get('session_id') != config['session_id']
                     or value.get('session',{}).get('project_id') != config['project_id']
@@ -192,6 +215,8 @@ class RoomGate:
                 return self.no_reply
             if not self.read_complete:
                 raise ScopeError('read_entire_delivery_first')
+            # Every expected value is known before the commit; nothing after it can raise locally.
+            worker = await self.verify(config, forward)
             self.intent(config, delivery, 'no_reply')
             self.completion_intent = 'no_reply'
             raw = await forward('complete_session_delivery', {'arguments':route | {
@@ -199,10 +224,10 @@ class RoomGate:
             if raw.isError:
                 raise ScopeError('hub_completion_failed')
             value = unpack(raw.model_dump(mode='json',by_alias=True))
-            receipt = value.get('delivery_receipt',{}) if value else {}
+            receipt = delivery_receipt(value)
             if (not value or value.get('project_id') != config['project_id'] or
                     value.get('session_id') != config['session_id'] or
-                    value.get('worker_id') != config['worker_id'] or value.get('message_id') is not None or
+                    value.get('worker_id') != worker or value.get('message_id') is not None or
                     receipt.get('delivery_id') != delivery['delivery_id'] or receipt.get('status') != 'no_reply' or
                     type(receipt.get('processed_sequence')) is not int or
                     receipt.get('processed_sequence') != delivery['through_sequence']):
@@ -224,6 +249,7 @@ class RoomGate:
                 raise ScopeError('read_entire_delivery_first')
             if self.completion_intent == 'reply' and self.post_hash != digest:
                 raise ScopeError('completion_intent_changed')
+            await self.verify(config, forward)
             self.intent(config, delivery, 'reply', digest)
             self.completion_intent, self.post_hash = 'reply', digest
             raw = await forward('post_session_message', {'arguments':route | {
@@ -231,7 +257,7 @@ class RoomGate:
             if raw.isError:
                 raise ScopeError('hub_reply_failed')
             value = unpack(raw.model_dump(mode='json',by_alias=True))
-            receipt = value.get('delivery_receipt',{}) if value else {}
+            receipt = delivery_receipt(value)
             if (not value or value.get('session_id') != config['session_id'] or
                     receipt.get('delivery_id') != delivery['delivery_id'] or receipt.get('status') != 'replied'):
                 raise ScopeError('invalid_reply_receipt')
