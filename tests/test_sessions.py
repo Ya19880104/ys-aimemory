@@ -411,7 +411,11 @@ def test_session_tools_use_real_mcp_principal_and_expose_typed_schema(collaborat
         tools={item['name']:item for item in listed}
         assert 'post_session_message' in tools and 'send_message' in tools
         assert 'body' in json.dumps(tools['post_session_message']['inputSchema'])
-        assert len(tools)==38
+        assert len(tools)==39
+        silent_schema=tools['complete_session_delivery']['inputSchema']
+        silent_arguments=silent_schema['$defs']['CompleteSessionDelivery']
+        assert set(silent_arguments['required']) == {'project_id','session_id','delivery_id','lease_id','idempotency_key'}
+        assert 'body' not in silent_arguments['properties']
         mcp_result=client.post('/mcp',headers=headers,json={'jsonrpc':'2.0','id':2,'method':'tools/call',
             'params':{'name':'post_session_message','arguments':{'arguments':values(session,
                 body='Actual MCP call',idempotency_key='mcp')}}}).json()['result']

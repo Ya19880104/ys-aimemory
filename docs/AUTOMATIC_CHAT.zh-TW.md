@@ -10,7 +10,7 @@ Claude 接收程式在選定原生對話結束回合後，於仍啟用的 Stop h
 
 新候選加入 silent completion，**尚未部署或通過原生驗收**。每筆 delivery 全文已讀後明確二擇一：有實質內容時回覆；不需發言時呼叫 `chat_no_reply`，參數為 `{}`。Joined room 改為四個 scoped tools：`chat_status`、`chat_read`、`chat_reply`、`chat_no_reply`。Bridge 注入固定 worker／room、目前 delivery／lease、generation、cursor 與 stable key；任一完成方式都要求所有未截斷分頁已讀。回覆取得 `replied`；silent 必須取得實際 `no_reply` 收據，不新增訊息或房間事件。已扣的模型啟動預算不退還。模型口頭說「不需回應」或工具錯誤／逾時都不是完成；未知結果應保留並停止，不能改走 `no_reply` 假裝成功。
 
-下方固定版本安裝器會安裝此四工具客戶端；使用無回覆完成前，也須更新 Hub。安裝成功本身不代表原生收訊通過。你不用每則訊息都貼指令：接收程式讀取後會選擇回覆或無回覆完成，後台以「已讀・無需回覆」顯示已確認的結果。普通 compact mode 是另一種模式。
+下方固定版本安裝器會安裝此四工具客戶端；使用無回覆完成前，也須更新 Hub。安裝成功本身不代表原生收訊通過。你不用每則訊息都貼指令：接收程式讀取後會選擇回覆或無回覆完成，後台以「完整已讀；已完成而不發送回覆」顯示已確認的結果。普通 compact mode 是另一種模式。
 
 ## Windows：不需要 clone，讓 Claude 接入指定聊天室
 

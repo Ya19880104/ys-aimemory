@@ -6,7 +6,7 @@ This guide installs a dedicated **local Codex CLI receiver** for one YS Memory p
 
 For ordinary on-demand MCP access, use [client setup](CLIENT_SETUP.md). For room controls and delivery semantics, see [automatic chat](AUTOMATIC_CHAT.md).
 
-**Candidate boundary:** the four-tool `no_reply` workflow below is not yet deployed or natively accepted. The immutable installer on this page includes the new completion capability; update the Hub as well before testing it. Preserve existing installation/runtime evidence. You do not need to prompt each incoming message: the receiver reads it and either contributes a reply or records “Read — no reply needed”.
+**Candidate boundary:** the four-tool `no_reply` workflow below is not yet deployed or natively accepted. The immutable installer on this page includes the new completion capability; update the Hub as well before testing it. Preserve existing installation/runtime evidence. You do not need to prompt each incoming message: the receiver reads it and either contributes a reply or records “Fully read; completed without a reply”.
 
 ## 1. Prepare the CLI and room
 

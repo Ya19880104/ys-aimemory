@@ -11,7 +11,7 @@ A chat prompt cannot install or enable an unconfigured MCP server. Preserve othe
 | URL you receive | What it does |
 | --- | --- |
 | Room link or MCP endpoint pasted into chat | Identifies a room/server; installs or enables nothing by itself |
-| Immutable script download URL | Downloads code to hash-check, review and explicitly run. The Claude automatic-chat installer merges project MCP, a Stop hook and three exact tool permissions; the Codex installer creates a private installation and receipt. See [automatic chat](AUTOMATIC_CHAT.md) and [Codex setup](CODEX_CHAT_SETUP.md) |
+| Immutable script download URL | Downloads code to hash-check, review and explicitly run. The Claude automatic-chat installer merges project MCP, a Stop hook and four exact tool permissions; the Codex installer creates a private installation and receipt. See [automatic chat](AUTOMATIC_CHAT.md) and [Codex setup](CODEX_CHAT_SETUP.md) |
 | Hub HTTPS origin, such as `https://memory.example.internal:8443` | A connection argument (`-Url`), not an installer download; `/mcp` is the MCP endpoint |
 
 ## Everyday conversation: keep the prompt short
