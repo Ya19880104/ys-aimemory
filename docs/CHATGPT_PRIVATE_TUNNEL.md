@@ -6,13 +6,23 @@ This pilot connects **one dedicated Hub worker to one project and one shared roo
 
 Source tests are not ChatGPT acceptance. Record tool discovery, actual cloud tool calls, subscription verification, webhook receipt, model response and Hub write-back separately. A webhook `2xx` is only **received**, not **replied**.
 
-**New candidate boundary:** the fixed-room gateway adds `no_reply` as its fourth model tool. It is not yet deployed or natively accepted; the historical reply-only runs and tested request below remain unchanged. Update both Hub and gateway before using the candidate contract, and verify actual tool discovery rather than assuming an existing plugin already exposes it.
+**Cloud acceptance boundary:** Hub source `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433` is deployed. The fixed-room gateway has four model tools including `no_reply`, but cloud native no_reply acceptance remains **not_run**. Historical reply-only runs and the tested request below remain unchanged. Update both Hub and gateway and verify the existing plugin's tool list before testing the new operation.
+
+### Refresh an existing developer-mode plugin
+
+After the gateway update, open the existing plugin's Manage menu and refresh its tools once. If its details still show three tools, reload the plugin page and wait for the details to update; check that `identity`, `read_delta`, `post_message` and `no_reply` are present. The observed detail page then showed four tools: three writes and one read. No new plugin or broader room access/permissions was required in that observation.
+
+Open a new chat with the plugin enabled before testing the changed tools, as directed by [OpenAI's refresh-metadata guidance](https://developers.openai.com/plugins/deploy/connect-chatgpt#refresh-metadata). A refreshed list is preparation, not a successful native call. Keep identity, full-read and terminal no_reply receipts as separate acceptance checks; do not broaden permissions to force a pass.
 
 
 
-## Current evidence and version boundary
+## Latest silent-completion trial
 
-The deployed product source recorded in the [2026-10-04 validation](VALIDATION_2026-10-04.md) is `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`. Later documentation and private harness changes are separate from that deployment. Coordinator-supplied evidence at **2026-10-05 02:06 Taipei** records a bounded Cloud C trial with **two new human events automatically fully read and replied to**, with no intervening manual model prompt. Each event's first callback attempt received HTTP 200; native `read_delta` recorded `tool_read`, native `post_message` recorded `replied`, and both corresponding replies were observed on the website.
+On 2026-10-05, after refreshing the catalog and opening a new conversation, native identity confirmed the correct worker and all four tools. A new bounded event task subscribed successfully. One fresh website message reached the callback with HTTP 200, but no native `read_delta`, `no_reply` or `post_message` call followed before the deadline. Task management later reported `last_run_time=null`; it did not expose a failure reason. The task was paused and unsubscribed, and the original deadline guard stopped the gateway. The second test message was not sent. The automatic-wake trial therefore **failed**; native full-read and cloud silent completion remain **not_run**. Tool discovery and callback delivery are separate passed checks; neither proves a model turn. No old event was replayed or manually read to turn this result into a pass.
+
+## Earlier reply-only evidence and version boundary
+
+The earlier product source recorded in the [2026-10-04 validation](VALIDATION_2026-10-04.md) was `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`. Later documentation and private harness changes are separate from that deployment. Coordinator-supplied evidence at **2026-10-05 02:06 Taipei** records a bounded Cloud C trial with **two new human events automatically fully read and replied to**, with no intervening manual model prompt. Each event's first callback attempt received HTTP 200; native `read_delta` recorded `tool_read`, native `post_message` recorded `replied`, and both corresponding replies were observed on the website.
 
 Between the events, an official idle transport/gateway stop/connect at 02:02:29 Taipei preserved the same Hub binding, generation 1, expiry, deadline, cursor and remaining budget; the second event then passed. After the second reply, native task pause, `events/unsubscribe` and persisted `unsubscribed` state were verified. One official runtime stop exited 0 and closure was confirmed. This is **one bounded two-event trial and an idle transport/gateway reconnect**, not model restart, crash or in-flight recovery, long-term reliability, or full lifecycle acceptance. The native task narrative and saved progress still showed 1/2; that stale UI did not override the two complete server receipts.
 
@@ -48,7 +58,7 @@ Final public Claude installer check: `97813588f2930fd7cfcf3f92fc67257a8f08cb98/s
 - `identity`: verifies the configured worker and room; returns the latest sequence and shared pause state.
 - `read_delta`: reads one full-text page of up to 10 events within 16 KiB. If one escaped message cannot fit, it retries once for one complete event within 64 KiB. It never substitutes a snippet for a complete delivery read.
 - `post_message`: posts up to 4,000 UTF-8 bytes. Before monitoring, manual posts require a caller-supplied idempotency key. Automatic replies use the Hub's saved delivery key and lease.
-- Candidate `no_reply`: input is exactly `{"notification_id":"<event.data.notification_id>"}`. It explicitly completes this notification after all full `read_delta` pages; no body, reason, manual mode or caller-selected scope is accepted. The fixed gateway injects the actual delivery/lease and stable Hub completion key.
+- `no_reply` (cloud acceptance pending): input is exactly `{"notification_id":"<event.data.notification_id>"}`. It explicitly completes this notification after all full `read_delta` pages; no body, reason, manual mode or caller-selected scope is accepted. The fixed gateway injects the actual delivery/lease and stable Hub completion key.
 - `message.created`: one notification per authorized Hub batch, containing a preview and an opaque `notification_id`. Own messages and replies at automatic depth 2 do not trigger a new batch.
 
 The candidate's four model tools are `identity`, `read_delta`, `post_message`, and `no_reply`; `message.created` is an event, not another tool. The gateway does not expose a general Hub tool relay, caller-selected project, room, URL, task claim, administrator action or file access. It offers MCP 2.0 discovery and the three event methods over stdio. It does not provide a legacy MCP 1.x `initialize` interface.

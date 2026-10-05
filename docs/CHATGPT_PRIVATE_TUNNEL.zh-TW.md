@@ -6,13 +6,23 @@
 
 程式測試不能代替 ChatGPT 驗收。請分別記錄工具探索、實際雲端工具呼叫、訂閱驗證、webhook 接收、模型啟動與 Hub 寫回。webhook `2xx` 只代表 **received**，不代表 **replied**。
 
-**新候選界線：** 固定房 gateway 加入第四個 model tool `no_reply`，尚未部署或通過原生驗收。歷史 reply-only 試驗及下方實測請求原文保持不變。使用候選契約前須一起更新 Hub／gateway 並核對實際工具探索，不能假設既有 plugin 已提供此工具。
+**Cloud 驗收界線：** Hub 來源 `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433` 已部署。固定房 gateway有四個model tools，包括 `no_reply`；Cloud native no_reply驗收仍 **not_run**。歷史reply-only試驗及下方實測請求原文保持不變。測試新操作前，須一起更新Hub／gateway並核對既有plugin的工具列表。
+
+### 重新整理既有開發者模式外掛
+
+Gateway更新後，開啟既有外掛的「管理→重新整理工具」，操作一次。詳細頁若仍顯示三工具，重新載入外掛頁並等詳細資料更新，核對 `identity`、`read_delta`、`post_message`、`no_reply` 都在列表。此次觀察之後顯示四工具：三個寫入、一個讀取；沒有新增外掛或擴大房間存取／權限。
+
+測試變更的工具前，開啟新聊天並啟用該外掛；這是[OpenAI重新整理metadata的官方步驟](https://developers.openai.com/plugins/deploy/connect-chatgpt#refresh-metadata)。列表更新只是準備，不代表native呼叫成功。身分、全文已讀及終端no_reply收據仍須分開驗收；不要為了通過而放寬權限。
 
 
 
-## 目前證據與版本界線
+## 最新無回覆完成試驗
 
-[2026-10-04 驗證](VALIDATION_2026-10-04.zh-TW.md)記錄的已部署產品來源為 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`。後續文件及私有 harness 修訂與該次部署分開。執行者於 **2026-10-05 台北 02:06** 截止提供的證據記錄：有界 Cloud C 試驗中，**兩個新的人類事件皆自動完整讀取並回覆**，中途沒有手動 model prompt。每事件首次 callback 嘗試即收到 HTTP 200；native `read_delta` 記錄 `tool_read`，native `post_message` 記錄 `replied`，網站也觀察到兩個對應回覆。
+2026-10-05 重新整理工具並建立新對話後，原生 identity 確認了正確 worker 及四個工具。新的有界事件任務成功訂閱；一則新網站訊息的 callback 收到 HTTP 200，但到期前沒有原生 `read_delta`、`no_reply` 或 `post_message` 呼叫。之後任務管理回報 `last_run_time=null`，沒有提供失敗原因。任務已暫停及退訂，原期限守衛已停止 gateway；第二則測試訊息沒有送出。因此本輪自動喚起試驗為 **failed**；原生全文讀取與 Cloud 無回覆完成仍為 **not_run**。工具探索與 callback 送達各自通過，不代表模型回合已執行；沒有重播舊事件或用手動讀取補成通過。
+
+## 先前僅回覆試驗的證據與版本界線
+
+[2026-10-04 驗證](VALIDATION_2026-10-04.zh-TW.md)記錄的先前產品來源為 `6d0ce27fd0d58745476dadd4cc6ca393fe8c339f`。後續文件及私有 harness 修訂與該次部署分開。執行者於 **2026-10-05 台北 02:06** 截止提供的證據記錄：有界 Cloud C 試驗中，**兩個新的人類事件皆自動完整讀取並回覆**，中途沒有手動 model prompt。每事件首次 callback 嘗試即收到 HTTP 200；native `read_delta` 記錄 `tool_read`，native `post_message` 記錄 `replied`，網站也觀察到兩個對應回覆。
 
 兩事件之間，台北 02:02:29 的官方 idle transport/gateway stop/connect 保持相同 Hub binding、generation 1、expiry、deadline、cursor 與剩餘額度，隨後第二事件通過。第二次回覆後核實 native task pause、`events/unsubscribe` 與持久保存的 `unsubscribed` 狀態。官方 runtime stop 只執行一次，exit 0 並確認關閉。這是**一次有界雙事件試驗及閒置 transport/gateway 重連**，不是模型 restart、crash／in-flight recovery、長期可靠度或完整生命週期驗收。native task 敘述及 saved progress 仍顯示 1/2；這個過時 UI 不凌駕兩份完整 server 回條。
 
@@ -48,7 +58,7 @@ Hub `24f3173` 單事件 native ChatGPT 驗收 passed：原生 event-triggered Au
 - `identity` 驗證固定 worker／專案／房間、最新序號與共同暫停狀態。
 - `read_delta` 每頁最多 10 筆完整事件、上限 16 KiB；若單筆 JSON 跳脫後過大，只重試一次「單筆完整事件、64 KiB」。不以摘要冒充完整投遞讀取。
 - `post_message` 最多 4,000 UTF-8 bytes。尚未監控時，手動發言提供冪等鍵；自動回覆則使用 Hub 保存的 delivery key 與 lease。
-- 候選 `no_reply` 的輸入只接受 `{"notification_id":"<event.data.notification_id>"}`；讀完全部 `read_delta` 全文分頁後，明確完成此通知。不接受 body、reason、手動模式或自行指定 scope；固定 gateway 注入實際 delivery／lease 與 Hub stable completion key。
+- `no_reply`（Cloud 驗收 pending）的輸入只接受 `{"notification_id":"<event.data.notification_id>"}`；讀完全部 `read_delta` 全文分頁後，明確完成此通知。不接受 body、reason、手動模式或自行指定 scope；固定 gateway 注入實際 delivery／lease 與 Hub stable completion key。
 - `message.created` 每個 Hub 授權批次只發一個通知，包含預覽及不透明的 `notification_id`。自己的訊息、自動回覆深度已達 2 的訊息不再觸發新批次。
 
 候選四個 model tools 為 `identity`、`read_delta`、`post_message`、`no_reply`；`message.created` 是事件，不是另一個工具。不提供任意 Hub 工具、網址、專案、房間、管理或認領任務入口。stdio 使用 MCP 2.0 探索與三個 event methods，沒有舊 MCP 1.x `initialize` 介面。

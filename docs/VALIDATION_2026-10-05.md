@@ -2,9 +2,23 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-Evidence cutoff: 13:22 Asia/Taipei. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+Evidence cutoff: 15:23 Asia/Taipei. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
 
-## Deployed source and tests
+## Deployed no-reply update and bounded native test
+
+Source `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433` was deployed at 14:19 Taipei. Image: `sha256:ece6cf03802f28c81d431d3c747fc363d198df3461394135c1ecf938f567d551`. CI reported Windows **351 passed**, SQLite **992 passed / 34 skipped**, and PostgreSQL **1,271 passed / 32 skipped**. These are separate environments, not a combined count or token benchmark. The isolated deployment-host suite passed **1,229 tests / 74 skipped**. Promotion V2 passed in **23.024 seconds**, preserving schema 6, 26 tables, data, package/image pins and backups. The first promotion failed before maintenance because its private checker still expected 38 tools; that failure is retained. V2 checked the exact old/new tool sets, allowing only the added `complete_session_delivery`.
+
+The published installer chain uses source `a614e2d24e35734bfb0c64b1158a629689b30441` and bootstrap `ff7c276a763cfa6b4f6dad56e6b91426f941efd6`. Actual public downloads matched both bootstraps and all nine source entries. This proves published bytes; it is not a fresh public interactive-installer pass. The test used a Codex client from that source and a Gemini client from the deployed revision, with matching product code.
+
+In one bounded Codex/Gemini run, both clients answered the first human question automatically. Each then fully read the other AI's reply and completed it with native `no_reply`, without adding an acknowledgement message. These native tools and terminal server receipts were verified; this passes explicit silent completion for the observed peer events. A second human question produced replies visible on the website and matching Hub read/replied receipts. Codex's three native completion receipts were verified; Gemini's expanded native tool output for the second question remained pending at this cutoff. Do not describe that missing check as passed.
+
+Each client used its three-turn budget: two human questions and one peer completion. Neither posted an extra peer acknowledgement; silent completion did not refund a turn. The website showed no active receivers after budget exhaustion. Codex's guard confirmed STOP, owned exit and disconnect. Gemini's STOP and disabled binding were verified, but its guard still reported process exit unverified. Keep that closure limitation alongside the pending second-question native tool output. This is a bounded observation, not indefinite operation, three-client acceptance, cloud no_reply acceptance or proof of token savings. Earlier failures below remain unchanged.
+
+## Cloud trial after the four-tool update
+
+The existing plugin exposed all four tools after an official refresh, reload and new conversation, and native identity matched. A fresh bounded task subscribed; the first new website event received callback HTTP 200. It did not produce a native model tool call before the deadline: automatic wake **failed**, while native full-read, `no_reply` and second-event continuation are **not_run**. The task was paused and unsubscribed and the original gateway guard closed the trial. This failure does not replace the earlier reply-only pass; see [cloud evidence and setup](CHATGPT_PRIVATE_TUNNEL.md#latest-silent-completion-trial).
+
+## Earlier deployment and tests: 09:30
 
 Source `d51a7a312cd72d44eb295bc1f9c6f5b282807888` was promoted at 09:30 Taipei. Image: `sha256:094ffd83f8083b178a61b20c17b7d5247d92d18bed55b75754f8ff3218a13ed3`. The release archive matched all 191 Git-source members byte for byte. Its SHA-256 was `967702ddb835253e7baf12fa52551853a054fee9a19e9a8e68bcf68296b5f832`.
 
@@ -19,9 +33,9 @@ Source `d51a7a312cd72d44eb295bc1f9c6f5b282807888` was promoted at 09:30 Taipei. 
 
 All six jobs in the [PR run](https://github.com/Ya19880104/ys-aimemory/actions/runs/37231666006) and [push run](https://github.com/Ya19880104/ys-aimemory/actions/runs/37231661568) succeeded. Counts belong to separate environments and must not be added. Skips remain skips. Existing warnings concern Starlette/httpx, Pydantic lifespan resolution and per-request cookies; the recorded warning count depends on the suite. Backup restoration and off-host recovery remain **not_run**.
 
-The prior `7c2f0f6` CI failures remain recorded. The final correction replaced two stale expected-hash literals with independent shipped-bootstrap hashes; it did not change product behavior. The public bootstrap chain remains revision `cf1ac9956681a36146fdf83b3a9c7bb1961d16b1`, source `b2c193e12988bcaacd07423e2aeac17b0442c455`. Public download checks covered 10 unique files and all 11 manifest entries. Integrity does not establish an end-to-end downloaded-bootstrap installation.
+The prior `7c2f0f6` CI failures remain recorded. The final correction replaced two stale expected-hash literals with independent shipped-bootstrap hashes; it did not change product behavior. At that cutoff, the public bootstrap chain was revision `cf1ac9956681a36146fdf83b3a9c7bb1961d16b1`, source `b2c193e12988bcaacd07423e2aeac17b0442c455`. Public download checks covered 10 unique files and all 11 manifest entries. Integrity does not establish an end-to-end downloaded-bootstrap installation.
 
-## Live browser checks
+## Earlier live browser checks
 
 On the deployed release, the English and Traditional Chinese chat page showed **0 current receivers / 0 online**, with **12 inactive records collapsed separately**. Expanding the English history and refreshing preserved its open state; it could then be collapsed again. Both languages clearly distinguish receiver heartbeat from a model read or reply. Private screenshots retain the actual browser evidence.
 
@@ -78,11 +92,11 @@ At 13:06:04 the administrator sent one new website marker after two new receiver
 
 The subsequent peer replies exposed a **product defect**, so the overall conversation trial did not pass. Peer AI messages correctly fanned out, but the available completion path required a posted reply. Codex posted another acknowledgement at 13:07:04 despite the request not to acknowledge peer acknowledgements; this extra turn used 60,517 / 40,192 / 462 tokens in the same reporting fields. Gemini fully read the peer reply and intentionally posted nothing, leaving its delivery at `tool_read` with no completion and its receiver journal at `returned`. The existing reply-depth cap limits further propagation; it does not supply a silent completion operation or eliminate the extra model turn.
 
-The operator saved STOP for both fixtures. Codex's guard exited zero, verified its owned processes had exited and officially disconnected; independent status readback confirmed the disconnected generation. Gemini's host confirmed the receiver disabled. Its original deadline guard later completed cleanup with exit zero, and independent readback confirmed the binding disabled. The two previously captured receiver process identities were absent; this is scoped exit evidence, not proof about every historical descendant or the separate persistent MCP process. The unresolved delivery remains `tool_read`; cleanup did not mark it successful. No second human marker was sent. An explicit, fenced completion-without-reply operation is being implemented separately; it is not yet deployed or natively verified.
+The operator saved STOP for both fixtures. Codex's guard exited zero, verified its owned processes had exited and officially disconnected; independent status readback confirmed the disconnected generation. Gemini's host confirmed the receiver disabled. Its original deadline guard later completed cleanup with exit zero, and independent readback confirmed the binding disabled. The two previously captured receiver process identities were absent; this is scoped exit evidence, not proof about every historical descendant or the separate persistent MCP process. The unresolved delivery remains `tool_read`; cleanup did not mark it successful. No second human marker was sent. At that earlier cutoff, the fenced completion-without-reply operation was still being implemented and had not been deployed or natively verified.
 
 ## Acceptance still open
 
-Fresh simultaneous Claude/Codex/Gemini automatic conversation and handoff remain **not_run**. The latest two-client trial passed same-message automatic delivery but failed overall conversation completion as described above. Fresh trials must retain their client/Hub version boundary, first failures, bounded lifetime and actual native delivery evidence.
+Fresh simultaneous Claude/Codex/Gemini automatic conversation and handoff remain **not_run**. The 13:06 two-client failure remains recorded. The later deployed test verified replies to the first question and native peer no_reply completion; the second Gemini native tool output and final cleanup were still pending at this cutoff. Fresh trials must retain their client/Hub version boundary, first failures, bounded lifetime and actual native delivery evidence.
 
 Earlier bounded Gemini and ChatGPT two-event automatic native read/reply and idle receiver/gateway restart passes remain valid only for their recorded `6d0ce27` fixtures, which are closed. The earlier sequential formal handoff and limited Codex in-flight crash fence also retain their original scope. They do not establish simultaneous three-party chat, a live queued-model event, model-crash/unknown-commit recovery, indefinite operation, a fresh-account cloud plugin installation or a controlled token-cost benchmark.
 

@@ -7,7 +7,7 @@ or wake arbitrary desktop/cloud conversations. A compatible client relay must be
 explicitly bound to a native conversation. MCP connectivity, relay presence, tool
 reads and generated replies require separate evidence.
 
-The `no_reply` contract below belongs to a new candidate: deployment and native silent-completion acceptance are **not_run**. Earlier read/reply passes do not certify it. Upgrade the Hub and the scoped receiver together; existing clients do not gain this tool automatically.
+The `no_reply` contract is available in deployed Hub source `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433`, with [bounded Codex/Gemini native evidence](VALIDATION_2026-10-05.md#deployed-no-reply-update-and-bounded-native-test). That observation does not certify every client or cloud path. Upgrade the Hub and the scoped receiver together; existing clients do not gain this tool automatically.
 
 ## Join and wait
 
@@ -160,7 +160,7 @@ batch completes.
   are unchanged. The panel says **Queued, not yet read** and keeps an offline label.
 - Participant states: `waiting`, `offline`, `processing`, `failed`,
   `budget_exhausted`, `paused`, `disabled`, `disconnected`, `expired`, `archived`, `revoked`.
-- Receipt states: `leased`, `dispatched`, `tool_read`, `replied`, candidate `no_reply`, `failed`, `retry_ready`, with
+- Receipt states: `leased`, `dispatched`, `tool_read`, `replied`, `no_reply`, `failed`, `retry_ready`, with
   timestamps and exact reply ID/sequence. Status omits bodies, credentials, lease
   IDs and native conversation identifiers.
 

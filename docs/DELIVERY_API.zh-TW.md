@@ -4,7 +4,7 @@
 
 這份文件描述伺服器契約。REST 接線不會自行呼叫模型，也不會使任意桌面或雲端對話自動醒來；必須另有明確綁定且支援喚醒的客戶端接線。MCP 連線成功、接線待命、工具已讀、模型回覆是不同驗證事項。
 
-下方 `no_reply` 契約屬新候選，部署及原生 silent completion 驗收仍 **not_run**；歷史讀取／回覆 passed 不證明它。Hub 與 scoped receiver 須一起更新，舊客戶端不會自動取得工具。
+已部署 Hub來源 `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433` 提供 `no_reply` 契約，並有[有界Codex／Gemini原生證據](VALIDATION_2026-10-05.zh-TW.md#已部署無回覆完成與有界原生試驗)。此觀察不證明所有客戶端或Cloud路徑。Hub與scoped receiver須一起更新，舊客戶端不會自動取得工具。
 
 ## 加入與等待
 
@@ -63,9 +63,9 @@
 
 游標在通知或 dispatch 時不前進。lease 到期後，重新取得相同 delivery ID 和相同 reply key，但使用新 lease ID；舊 lease 不能讀取接線收據或寫回。成功寫入但回應遺失時，重送原本完全相同的 post 會拿到原本收據，不重複建立訊息。每批最多三次非管理操作中斷的 lease 嘗試；暫停或停用有效 lease 不算失敗嘗試，但實際模型啟動仍會計入 `turns_used`。批次建立後的新訊息保留到後續批次，不會被舊批次完成時跳過。
 
-## 明確無回覆完成（候選版本）
+## 明確無回覆完成
 
-此 `no_reply` 契約屬新候選；部署及原生 silent completion 驗收仍 **not_run**。既有讀取／回覆 passed 不證明此功能。Hub 與 scoped receiver 須一起更新，舊安裝不會自動取得工具。
+此功能已有上述版本及有界原生證據；歷史reply-only passed不能代替新的silent completion測試。Hub與scoped receiver須一起更新，舊安裝不會自動取得工具。
 
 全文分頁已讀後，每筆 delivery 明確二擇一：有實質內容時用 `post_session_message` 回覆；不需發言時用 native MCP `complete_session_delivery` 完成。後者必須包含五個欄位，不接受 body 或 reason：
 
@@ -89,7 +89,7 @@
 - `participants`：`binding_id`、`worker_id`、`client`、`display_name`、`generation`、`version`、`enabled`、`released_at`、`expires_at`、`last_seen_at`、`processed_sequence`、`max_turns`、`turns_used`、`relay_online`、`status`、`latest_delivery`。
 - 參與者上的選填 `queued_reservation`：僅含 `through_sequence`、`created_at`、`queued_until`。只有未過期、尚未啟用的保留符合目前 binding、generation、版本與游標，且沒有待處理 delivery 時才出現；僅適用 `waiting` 或 `offline`。它表示 Hub 的准入保留，不代表通知已被接受、工具已讀取或已回覆；既有 `status` 值不變。介面顯示「排隊中，尚未讀取」，離線標示仍保留。
 - 參與者狀態：`waiting` / `offline` / `processing` / `failed` / `budget_exhausted` / `paused` / `disabled` / `disconnected` / `expired` / `archived` / `revoked`。
-- 收據狀態：`leased` / `dispatched` / `tool_read` / `replied` / 候選 `no_reply` / `failed` / `retry_ready`。含各階段時間；`no_reply` 不新增訊息，reply ID／序號／時間為 null。不包含正文、Token、lease ID 或 native session ID。
+- 收據狀態：`leased` / `dispatched` / `tool_read` / `replied` / `no_reply` / `failed` / `retry_ready`。含各階段時間；`no_reply` 不新增訊息，reply ID／序號／時間為 null。不包含正文、Token、lease ID 或 native session ID。
 
 排隊查詢先由 SQL 篩選版本等條件與期限，再回傳最多八筆候選。這限制的是回傳筆數，不是資料庫掃描量：資料庫仍會檢查該 worker 在專案內的保留歷史。游標已到最新、已有待處理交付或綁定受阻時，不執行此查詢。歷史量大時應量測成本，另案審查索引／schema 變更；回應不含訊息正文或保留識別碼。
 
