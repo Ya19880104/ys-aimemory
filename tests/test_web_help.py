@@ -246,7 +246,7 @@ def test_bundled_tutorial_images_are_public_only_on_the_exact_allowlist(tmp_path
             assert 'id="cloud-event-prompt"' in localized.text
             assert 'message.created' in localized.text and 'PROJECT_ID' in localized.text and 'ROOM_ID' in localized.text
             guide = 'CHATGPT_PRIVATE_TUNNEL' + ('.zh-TW' if language == 'zh-TW' else '') + '.md'
-            assert 'https://github.com/Ya19880104/ys-aimemory/blob/cb042a30268a8b2a3875a3cbfec204ce76c7661e/docs/' + guide in localized.text
+            assert 'https://github.com/Ya19880104/ys-aimemory/blob/b8ebf3f88b900cde986adca44d0fe80a2b94ebb9/docs/' + guide in localized.text
             assert 'tested snapshot cb042a3' in localized.text if language == 'en' else '已驗收快照 cb042a3' in localized.text
             assert localized.text.index('id="cloud-event-inputs"') < localized.text.index('id="cloud-event-prompt"')
             for term in ('&lt;DEADLINE_ASIA_TAIPEI&gt;', '&lt;DEADLINE_UTC&gt;', 'event.data.notification_id',
