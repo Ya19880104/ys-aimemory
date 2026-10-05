@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import io
+from types import SimpleNamespace
 import httpx
 from pathlib import Path
 
@@ -779,7 +780,7 @@ def test_windows_failed_tree_stop_does_not_claim_confirmed_exit(monkeypatch):
         def wait(self, timeout): pytest.fail('Tree termination was not proved')
     class Result: returncode = 1
     monkeypatch.setattr(runner.subprocess, 'run', lambda *a, **k: Result())
-    monkeypatch.setattr(runner.os, 'name', 'nt')
+    monkeypatch.setattr(runner, 'os', SimpleNamespace(**(vars(runner.os) | {'name': 'nt'})))
     monkeypatch.setattr(runner.subprocess, 'CREATE_NO_WINDOW', 0, raising=False)
     with pytest.raises(runner.ReceiverError, match='native_tree_exit_unconfirmed'):
         runner.terminate(Process())
@@ -806,7 +807,7 @@ def test_windows_launch_failure_never_releases_unassigned_native_or_clears_unkno
             events.append('job_cleanup')
             if phase == 'cleanup': raise runner.ReceiverError('native_tree_exit_unconfirmed')
         def close(self): events.append('job_closed')
-    monkeypatch.setattr(runner.os, 'name', 'nt')
+    monkeypatch.setattr(runner, 'os', SimpleNamespace(**(vars(runner.os) | {'name': 'nt'})))
     monkeypatch.setattr(runner, 'WindowsNativeJob', Job)
     monkeypatch.setattr(runner, 'supervisor_python', lambda python: 'fixture-python.exe')
     monkeypatch.setattr(runner.subprocess, 'Popen', lambda *a, **k: Process())
@@ -842,7 +843,7 @@ def test_unconfirmed_job_exit_retains_active_marker_and_failure_receipt(monkeypa
 
 @pytest.mark.parametrize('gate', [b'', b'X'])
 def test_supervisor_eof_or_invalid_gate_never_spawns_native(monkeypatch, gate):
-    monkeypatch.setattr(runner.os, 'name', 'nt')
+    monkeypatch.setattr(runner, 'os', SimpleNamespace(**(vars(runner.os) | {'name': 'nt'})))
     monkeypatch.setattr(runner.sys, 'stdin', io.TextIOWrapper(io.BytesIO(gate)))
     monkeypatch.setattr(runner.subprocess, 'Popen', lambda *a, **k: pytest.fail('No exact GO received'))
     assert runner.native_supervisor(['fixture.exe']) == 1
