@@ -213,3 +213,51 @@ def test_large_escaped_message_retries_same_cursor_once_with_bounded_budget(join
     response=asyncio.run(gate.call('chat_read',{},upstream))
     assert response.structuredContent['ready_to_reply']
     assert [a['max_bytes'] for a in calls]==[16384,65536]
+
+
+@pytest.mark.parametrize('failure', [
+    types.CallToolResult(isError=True, content=[types.TextContent(type='text', text='forbidden: response_budget_too_small')]),
+    types.CallToolResult(isError=True, content=[types.TextContent(type='text', text='not_response_budget_too_small')]),
+    types.CallToolResult(isError=True, content=[types.TextContent(type='text', text='response_budget_too_small_suffix')]),
+    types.CallToolResult(isError=True, structuredContent={'error':'forbidden', 'body':'response_budget_too_small'}, content=[]),
+])
+def test_error_budget_mentions_do_not_authorize_retry(joined, failure):
+    gate, _, _ = joined
+    calls=[]
+    async def upstream(name, wire):
+        calls.append(wire['arguments'])
+        return failure
+    with pytest.raises(ScopeError, match='^hub_read_failed$'):
+        asyncio.run(gate.call('chat_read', {}, upstream))
+    assert len(calls)==1 and calls[0]['max_bytes']==16384
+    assert gate.cursor==10 and not gate.read_complete
+
+
+@pytest.mark.parametrize('failure', [
+    types.CallToolResult(isError=True, structuredContent={'error':'response_budget_too_small'}, content=[]),
+    types.CallToolResult(isError=True, content=[types.TextContent(type='text', text='Error executing tool read_session: response_budget_too_small: Increase max_bytes')]),
+])
+def test_actual_budget_error_allows_only_one_unchanged_cursor_retry(joined, failure):
+    gate, _, _ = joined
+    calls=[]
+    async def upstream(name, wire):
+        assert name=='read_session'
+        calls.append(wire['arguments'])
+        return failure
+    with pytest.raises(ScopeError, match='^hub_read_failed$'):
+        asyncio.run(gate.call('chat_read', {}, upstream))
+    assert len(calls)==2
+    assert calls[1]==calls[0] | {'max_bytes':65536}
+    assert gate.cursor==10 and not gate.read_complete
+
+
+def test_successful_user_budget_mention_never_retries(joined):
+    gate, _, delivery = joined
+    calls=[]
+    async def upstream(name, wire):
+        calls.append(wire)
+        page=complete_read(delivery).structuredContent
+        page['items'][0]['body']='response_budget_too_small: this is user data'
+        return result(page)
+    response=asyncio.run(gate.call('chat_read', {}, upstream))
+    assert len(calls)==1 and response.structuredContent['ready_to_reply']

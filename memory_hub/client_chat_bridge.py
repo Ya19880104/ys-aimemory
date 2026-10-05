@@ -9,6 +9,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import time
 
 import httpx
@@ -51,6 +52,17 @@ def unpack(value):
 def result(value):
     return types.CallToolResult(structuredContent=value,
         content=[types.TextContent(type='text', text=json.dumps(value,ensure_ascii=False))])
+
+
+def read_budget_failure(raw):
+    """Only the actual Hub error permits a larger read, never a body mention."""
+    if raw.isError is not True:
+        return False
+    if isinstance(raw.structuredContent, dict) and raw.structuredContent.get('error') == 'response_budget_too_small':
+        return True
+    return any(isinstance(block, types.TextContent) and
+        re.match(r'^(?:Error executing tool read_session:\s*)?response_budget_too_small(?::|$)', block.text.strip())
+        for block in raw.content)
 
 
 def chat_status(directory, connection, bridge, *, clock=time.time):
@@ -151,7 +163,7 @@ class RoomGate:
                 return result({'status':'already_read','ready_to_reply':True})
             raw = await forward('read_session', {'arguments':route | {
                 'after_sequence':self.cursor,'limit':20,'max_bytes':16384,'full_text':True}})
-            if raw.isError and 'response_budget_too_small' in json.dumps(raw.model_dump(mode='json',by_alias=True)):
+            if read_budget_failure(raw):
                 # Escaped full text can exceed the normal page budget. Retry the
                 # same cursor once, within the Hub's hard response limit.
                 raw = await forward('read_session', {'arguments':route | {
