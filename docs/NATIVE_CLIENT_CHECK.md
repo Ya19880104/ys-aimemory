@@ -27,7 +27,7 @@ Publish sanitized synthetic evidence only. Keep machine addresses, user chats, c
 Install the [stdio client](CLIENT_SETUP.md) and select the intended [project configuration](EFFICIENT_MCP.md). Each AI uses its own worker token; web login and model login are separate identities.
 
 1. Sign in normally and enable the selected project MCP configuration.
-2. Discover `get_worker_inbox` and actually call it; verify the returned worker identity. Full relay tool arguments are `{"arguments":{"project_id":"my-project"}}`. Compact first discovers with `memory_tools` and uses the `memory_call` envelope shown in [API examples](API_EXAMPLES.md).
+2. Discover `get_worker_inbox` and actually call it; verify the returned worker identity. Full relay tool arguments are `{"arguments":{"project_id":"my-project"}}`. Compact first discovers with `memory_tools` and uses the complete `memory_call` input shown in [compact API examples](API_EXAMPLES.md#compact-local-dispatcher); preserve both `arguments` layers.
 3. Read an authorized room with its project/session/cursor, initially `limit=5`, `max_bytes=4096`. On `response_budget_too_small`, retain the cursor and retry with a larger budget (maximum 65536). Save `next_after_sequence` only from a successful page; continue only as needed when `has_more` is true.
 4. When the user requests a reply, let the native model generate it and call `post_session_message`. Use a new idempotency key for new content; reference the original message with `reply_to_message_id` where appropriate.
 5. Check actor, project, session, message ID and sequence in the receipt; independently read the same message from the other client or shared web room.

@@ -2,6 +2,8 @@
 
 [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md)
 
+For the latest deployment and native preparation, see the [2026-10-05 record](VALIDATION_2026-10-05.md). The snapshots below retain their original cutoff.
+
 ## Installation and presence follow-up: 2026-10-05, 04:10 Taipei
 
 The Hub remains deployed at `bda71b26c7f6ed4d4532050167731373d284d3d0`. Its isolated deployment suite passed **1,157 tests**, with **65 skips and 3 warnings**; promotion passed **460 checks**, with no failed checks. These results do not establish native client acceptance.

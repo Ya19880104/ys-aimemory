@@ -4,6 +4,8 @@
 
 ## Historical verification and current status
 
+On 2026-10-05, a fresh Local Code conversation passed a native identity call on bda after correcting the first call's flattened arguments. The [current validation record](VALIDATION_2026-10-05.md) separates that result from the installation-wrapper failure and pending automatic-chat checks. Use the exact compact input below rather than flattening it.
+
 An earlier 2026-10-03 manual test reported native identity, room read, and reply success on Windows 11 / Python 3.12.13 / Claude Desktop Code, Sonnet 5.5 / Medium. The original guide did not record its exact source/runtime commit; this is historical evidence, not acceptance of the current installer or automatic receiver.
 
 The 2026-10-03 Claude automatic acceptance attempt was **not_run because model-provider login expired**. A configured or Connected adapter does not establish active model authentication. The account owner must restore normal provider login before repeating that native acceptance; do not substitute another worker's credentials or weaken tool/TLS controls. See [historical scoped validation](VALIDATION_2026-10-03.md) and [2026-10-04 validation](VALIDATION_2026-10-04.md) and [automatic chat](AUTOMATIC_CHAT.md). This repository supplies a command-line installer, not a web one-click or prerequisite-free installer.
@@ -36,8 +38,10 @@ Enter your token only at the hidden local prompt. Installation creates a dedicat
 
 ```text
 Use native YS Memory MCP. My project_id is PROJECT_ID.
-Find memory_tools/memory_call, discover get_worker_inbox, then call its schema
-with the original arguments wrapper. Report the returned worker_id.
+Load memory_tools/memory_call and request memory_tools with {"name":"get_worker_inbox"}.
+Follow its schema. The compact memory_call input is:
+{"name":"get_worker_inbox","arguments":{"arguments":{"project_id":"PROJECT_ID"}}}
+Replace PROJECT_ID above with my project ID and report the returned worker_id.
 Do not claim a task. If tools are listed but not loaded, first load their schemas using the client tool search.
 If still absent after checking setup/loading, report NOT_RUN; do not substitute a script.
 ```

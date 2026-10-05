@@ -20,6 +20,24 @@ MCP tools themselves accept an object named `arguments`, inside the protocol's a
 
 Client SDKs handle initialize/initialized and protocol headers. Do not substitute REST URLs for `/mcp`.
 
+## Compact local dispatcher
+
+When the client exposes `memory_tools` and `memory_call`, first request the exact target schema. Input to `memory_tools`:
+
+```json
+{"name":"get_worker_inbox"}
+```
+
+Then pass the complete target input object to `memory_call`. Replace `YOUR_PROJECT_ID` with your authorized project:
+
+```json
+{"name":"get_worker_inbox","arguments":{"arguments":{"project_id":"YOUR_PROJECT_ID"}}}
+```
+
+These are tool inputs, not JSON-RPC messages. The outer `arguments` belongs to the compact dispatcher; the inner `arguments` belongs to the discovered Hub tool. Keep both layers. A search returns brief matches; an exact-name lookup returns the full schema. Do not load every tool or room history to check identity.
+
+This checks the current worker without claiming a task. It does not start automatic replies. `memory_call` can also forward writes: do not preapprove the generic dispatcher as read-only or automatically retry an uncertain write.
+
 ## Task fields
 
 Administrators create project → register sources → create task with `goal`, `allowed_paths`, `acceptance_criteria`, and `source_ids`. No general task-definition editor/reopen tool is promised.

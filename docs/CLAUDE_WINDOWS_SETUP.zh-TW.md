@@ -4,6 +4,8 @@
 
 ## 歷史驗證與目前狀態
 
+2026-10-05，新的 Local Code 對話在 bda 完成原生身分呼叫；第一次展平參數失敗，修正後才成功。[最新驗證紀錄](VALIDATION_2026-10-05.zh-TW.md) 將此結果與安裝 wrapper 失敗、待驗的自動對話分開記錄。請使用下方完整 compact 輸入，不要展平參數。
+
 2026-10-03 較早的手動測試回報原生身分、共享對話讀取與寫回成功，環境為 Windows 11／Python 3.12.13／Claude Desktop Code，Sonnet 5.5／Medium。原指南沒有記錄該次確切來源／runtime commit；這是歷史證據，不是目前安裝器或自動接收程式的驗收。
 
 2026-10-03 的 Claude 自動模式驗收因模型供應商登入過期而記錄為 **not_run**。adapter 已設定或 Connected 不證明模型登入有效；帳號擁有人需先恢復正常登入，再重做原生驗收，不借用其他 worker 憑證或放寬工具／TLS 控制。詳見[歷史限定驗證](VALIDATION_2026-10-03.zh-TW.md)與[2026-10-04 驗證](VALIDATION_2026-10-04.zh-TW.md)與[自動對話](AUTOMATIC_CHAT.zh-TW.md)。本庫提供命令列安裝器，不是網頁一鍵或免前置準備的安裝包。
@@ -44,8 +46,10 @@ py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-
 ```text
 請使用原生 YS Memory MCP 確認連線。
 我的 project_id 是：填入自己的專案 ID。
-先搜尋 memory_tools / memory_call，取得 get_worker_inbox 的 schema，
-再依 schema 呼叫，保留 arguments 層級，回報實際 worker_id。
+先載入 memory_tools / memory_call，用 {"name":"get_worker_inbox"} 取得 schema。
+依該 schema 呼叫。compact memory_call 的輸入為：
+{"name":"get_worker_inbox","arguments":{"arguments":{"project_id":"PROJECT_ID"}}}
+將上面的 PROJECT_ID 換成我的專案 ID，回報實際 worker_id。
 不要認領任務。工具已列出但未載入時，先用客戶端工具搜尋載入 schema。
 核對設定與載入後仍找不到原生工具才回報 NOT_RUN，不用其他程式代替。
 ```

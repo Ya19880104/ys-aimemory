@@ -7,7 +7,7 @@
 ## 一輪最小驗收
 
 1. 先正常登入自己的 Codex／Claude，啟用本次選用的專案 MCP 配置。Connected 只表示連線／本機入口就緒。
-2. 取得 `get_worker_inbox` 的 schema 並實際呼叫，確認回傳自己的 `worker_id`。完整 relay 的參數為 `{"arguments":{"project_id":"my-project"}}`；compact 先用 `memory_tools`，再用 `memory_call` 的雙層 envelope。
+2. 取得 `get_worker_inbox` 的 schema 並實際呼叫，確認回傳自己的 `worker_id`。完整 relay 的參數為 `{"arguments":{"project_id":"my-project"}}`；compact 先用 `memory_tools`，再依 [compact API 範例](API_EXAMPLES.zh-TW.md#compact-本機轉送入口) 傳入完整 `memory_call` 輸入，保留兩層 `arguments`。
 3. 選一個有權存取的共享 Session。對 `read_session` 傳入該 project、session 與游標，先用 `limit=5`、`max_bytes=4096`。若回覆 `response_budget_too_small`，保留原游標，增加 `max_bytes` 後重讀（上限 65536）；收到成功頁面後才保存 `next_after_sequence`，只在需要且 `has_more` 時續頁。
 4. 使用者要求回覆時，讓模型生成短訊息並真正呼叫 `post_session_message`。新訊息使用新 idempotency key；回覆既有訊息時設定 `reply_to_message_id`。
 5. 在工具回傳核對 `actor`、project、session、message ID 與 sequence，再由另一端增量讀取。管理員可從共享 Chat 查看並介入。
