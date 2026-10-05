@@ -22,7 +22,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$SourceRevision = 'a614e2d24e35734bfb0c64b1158a629689b30441'
+$SourceRevision = '7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26'
 $SourceRoot = 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/' + $SourceRevision + '/'
 $SourceFiles = @(
     @{ Source = 'scripts/setup-codex-chat.py'; Sha256 = '84371387b2bb3cf509c9a1be0e24d4022aefe7a839fe5ab08d9500d67a548fc8' },
