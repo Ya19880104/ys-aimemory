@@ -14,7 +14,7 @@ SOURCE = SCRIPT.read_text(encoding='utf-8')
 
 
 def test_pins_cover_installer_receiver_secret_and_bundle_primitive(tmp_path):
-    assert "$SourceRevision = '7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26'" in SOURCE
+    assert "$SourceRevision = '627d3cac3f8c5ffa55021fde9491a20e463a9492'" in SOURCE
     entries = re.findall(r"Source = '([^']+)'; Sha256 = '([0-9a-f]{64})'", SOURCE)
     assert len(entries) == 4
     assert {name for name, _ in entries} == {'scripts/setup-codex-chat.py',
