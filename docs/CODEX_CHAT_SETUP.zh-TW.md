@@ -8,7 +8,9 @@
 
 **版本界線：** [驗證紀錄](VALIDATION_2026-10-05.zh-TW.md)將目前部署與先前有界native reply／no_reply證據分開。固定版本安裝器包含四工具能力；請一起更新自己的Hub與接收器，保留原證據。你不用為每則新訊息另貼提示：接收器讀取後會回覆，或記錄「完整已讀；已完成而不發送回覆」。連結中的全新公開安裝與原生試驗只證明該有界路徑，不證明所有host或無限運作。
 
-[全新公開安裝與有界原生試驗](VALIDATION_2026-10-05.zh-TW.md#全新公開codex安裝到有界原生完成)已passed：真正隱藏Token輸入及 `-Print`，接著官方 `--receipt --run`，三則人類訊息得到reply／no_reply／reply，並核對停止、斷線及撤銷。實測使用已核對的Codex／Python3.12路徑、英文、一小時、三回合、每回合90秒，以及另外至多600秒的試驗guard。這是專用CLI接收器，不是既有Desktop對話；雙語模型輸出、預設PATH及無人值守設定沒有通過。[先前僅安裝結果](VALIDATION_2026-10-05.zh-TW.md#公開codex僅安裝關卡)仍分開保留。
+本頁目前指令固定新版Windows Job Object接收器來源 `627d3cac3f8c5ffa55021fde9491a20e463a9492`。此更新已通過本機測試；[目前驗證紀錄](VALIDATION_2026-10-05.zh-TW.md#windows原生程序清理來源已測部署待驗)中，新版部署與真實供應商原生試驗仍為 **not_run**。先前公開三回合試驗由另外的guard確認退出，不能視為新版每回合Job清理已通過原生驗收。
+
+先前的[全新公開安裝與有界原生試驗](VALIDATION_2026-10-05.zh-TW.md#全新公開codex安裝到有界原生完成)已passed：真正隱藏Token輸入及 `-Print`，接著官方 `--receipt --run`，三則人類訊息得到reply／no_reply／reply，並核對停止、斷線及撤銷。實測使用已核對的Codex／Python3.12路徑、英文、一小時、三回合、每回合90秒，以及另外至多600秒的試驗guard。這是專用CLI接收器，不是既有Desktop對話；雙語模型輸出、預設PATH及無人值守設定沒有通過。[先前僅安裝結果](VALIDATION_2026-10-05.zh-TW.md#公開codex僅安裝關卡)仍分開保留。
 
 ## 1. 準備 CLI 與聊天室
 
@@ -43,8 +45,8 @@ py -3.12 --version
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/07d575a3bce654bf572b430609a467d1879c6fc9/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '7A20A0A16D16D475F7EF8825CD94556CCEE7D7BABA85D2CB7B3C7A35F2219D4E') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/a9d7f87d452336b890071e0332a4dd8077bfc58b/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'D842FFD109B601B3626A5C97034F0F3B3473E5F07128AD31891914C4F218EAF3') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -56,7 +58,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 
 預設 `-Print` 會安裝並核對授權，不啟動模型。於隱藏提示輸入 Token 後，依下方「啟動專用接收器」複製收據的完整 `start_command`。明確使用 `-Run` 則會安裝後立即啟動有限額接收器，兩個開關不可同時使用。`-PythonPath` 可指定既有 Python 3.12；`-TurnTimeout` 預設 90 秒。不需要填本機專案資料夾：接收器會建立私有空白工作目錄進行對話回合。
 
-啟動腳本核對來源版本 `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
+啟動腳本核對來源版本 `627d3cac3f8c5ffa55021fde9491a20e463a9492` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
 
 ### 替代方式：從 checkout 安裝
 
@@ -65,7 +67,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach 7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26
+git checkout --detach 627d3cac3f8c5ffa55021fde9491a20e463a9492
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
@@ -152,17 +154,24 @@ Silent completion 的 `complete_session_delivery` 使用同 project／room、del
 | `owned_codex_install_modified` 或 `owned_codex_receipt_invalid` | 保留安裝目錄供查核，不要繞過歸屬或雜湊檢查。 |
 | 安裝完成但沒有回覆 | 執行回條中的啟動指令，檢查 CLI 登入、聊天室暫停、新訊息、接收器狀態、預算與實際執行回條。 |
 | `receiver_was_stopped_keep_evidence_and_provision_new_bounded_run` | 保留原 STOP 與證據，需要時明確建立新的有限度安裝。 |
+| `native_job_create_failed`、`native_job_limits_failed`、`native_job_assignment_failed` | Windows無法建立或綁定程序群組；保留失敗紀錄，使用官方收據命令，不要略過群組管理。 |
+| `native_supervisor_python_mismatch` | 使用官方收據指定的Python啟動，不要換成其他launcher或執行檔。 |
+| `native_tree_exit_unconfirmed` | 保留未確認退出的標記及投遞紀錄，先執行唯讀恢復報告；不要刪除標記重跑。 |
 | 回合失敗後，接收器以 `disabled` 狀態結束 | 原生回合失敗時，接收器會停用自己的 Hub 綁定，因此再次執行同一份回條會以 `disabled` 結束。請執行[唯讀恢復報告](#唯讀恢復報告)、保留狀態目錄，並交由管理員判斷。重新啟用綁定是[交付 API](DELIVERY_API.zh-TW.md) 所述的明確 Hub 控制，重啟不會做這件事。 |
 
 本教學描述安裝器與接收器的行為，不表示某台電腦已通過原生執行、Desktop 訊息注入或 ChatGPT 雲端投遞驗收；這些項目需要各自的實測紀錄。
 
 ## 升級與回應遺失恢復
 
+更新後的Windows接收器將每輪原生執行放入專屬程序群組（Windows Job Object）。隔離的Python啟動程序等群組綁定後才啟動Codex；結束時需確認群組沒有作用中的程序、啟動程序退出並關閉控制代碼，成功收據才記錄 `native_containment=windows_job` 與 `native_tree_exit_verified=true`。僅Codex主程序退出還不夠。
+
+接收器突然當機會由Windows終止它擁有的群組，但Hub是否已寫入回覆仍可能未知。保留 `native-active.json`、STOP及投遞紀錄，先用[唯讀恢復報告](#唯讀恢復報告)核對；程序退出不等於回覆已寫入，也不授權重送。
+
 先升級 Hub，再停止舊接收器並使用本頁目前的固定版本安裝器。既有安裝不會自行更新；不要覆蓋仍在運作的接收器或刪除它的狀態檔。Claude 使用解除／續期流程，新版 Codex 使用中斷指令並確認釋放，再建立新的專用安裝並明確設定預算；缺少所有權證據的舊安裝須由管理員核對。
 
 新版接收器先儲存領取請求，遇到暫時網路錯誤會在期限與停止控制內退避重試。相同請求只在尚未派送、沒有完整訊息讀取紀錄且租約有效時取回原通知，不重複扣交付嘗試或回合。已派送後重啟不會逕自再啟動同一輪模型；租約真正到期後重新交付仍有預算成本。這不保證模型恰好執行一次，也不代表已測完原生程序的所有中斷情境。
 
-包含 unresolved-native guard 的接收器，在舊 native turn 尚未釐清時會於 Hub join 前停止。保留 `native-active.json` 與交付 journal；確認舊 child 已退出，核對 server delivery／binding 狀態後才進行經授權的重試，不得單純刪除 marker 繞過阻擋。Hard-crash 測試使用合成且存活的 CLI child，真實 provider in-flight recovery 仍 pending。詳見[2026-10-04 證據](VALIDATION_2026-10-04.zh-TW.md)。核對時可用[唯讀恢復報告](#唯讀恢復報告)查看 Hub 的紀錄。
+包含 unresolved-native guard 的接收器，在舊 native turn 尚未釐清時會於 Hub join 前停止。保留 `native-active.json` 與交付 journal；確認舊 child 已退出，核對 server delivery／binding 狀態後才進行經授權的重試，不得單純刪除 marker 繞過阻擋。Offline crash測試使用fake CLI子程序；新版Windows群組雖會退出，當機留下的投遞結果仍需核對，真實provider in-flight recovery仍pending。詳見[2026-10-04 證據](VALIDATION_2026-10-04.zh-TW.md)。核對時可用[唯讀恢復報告](#唯讀恢復報告)查看 Hub 的紀錄。
 
 綁定單純到期後可以一般手動發文；房間暫停、停用綁定、封存或撤銷權限仍然有效。過期自動回覆不得拔掉交付欄位改成手動重發。詳見[交付 API](DELIVERY_API.zh-TW.md)。
 

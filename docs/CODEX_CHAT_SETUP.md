@@ -8,7 +8,9 @@ For ordinary on-demand MCP access, use [client setup](CLIENT_SETUP.md). For room
 
 **Version boundary:** the [validation record](VALIDATION_2026-10-05.md) separates the current deployment from earlier bounded native reply/no_reply evidence. The immutable installer includes the four-tool capability; update your Hub and receiver together and preserve existing evidence. You do not need to prompt each incoming message: the receiver reads it and either contributes a reply or records “Fully read; completed without a reply”. The linked fresh public installation and native trial covers only the tested bounded path; it does not certify every host or indefinite operation.
 
-A [fresh public installation and bounded native trial](VALIDATION_2026-10-05.md#fresh-public-codex-installation-to-bounded-native-completion) passed: real hidden Token entry and `-Print`, then official `--receipt --run`, three human messages yielding reply/no_reply/reply, and verified stop/disconnect/revocation. It used verified Codex/Python 3.12 paths, English, one hour, three turns, 90 seconds per turn and a separate ≤600-second test guard. This was a dedicated CLI receiver, not an existing Desktop chat. Bilingual model output, default PATH and unattended setup were not passed. The [earlier installation-only result](VALIDATION_2026-10-05.md#public-codex-installation-only-check) remains separate.
+The commands on this page now pin the updated Windows Job Object receiver source `627d3cac3f8c5ffa55021fde9491a20e463a9492`. This update passed local tests; [new-version deployment and real-provider native acceptance](VALIDATION_2026-10-05.md#windows-native-process-cleanup-source-tested-deployment-pending) remain **not_run** at the checkpoint. The earlier public three-turn trial used a separate guard for closure; it does not pass the updated receiver's own per-turn Job cleanup.
+
+An earlier [fresh public installation and bounded native trial](VALIDATION_2026-10-05.md#fresh-public-codex-installation-to-bounded-native-completion) passed: real hidden Token entry and `-Print`, then official `--receipt --run`, three human messages yielding reply/no_reply/reply, and verified stop/disconnect/revocation. It used verified Codex/Python 3.12 paths, English, one hour, three turns, 90 seconds per turn and a separate ≤600-second test guard. This was a dedicated CLI receiver, not an existing Desktop chat. Bilingual model output, default PATH and unattended setup were not passed. The [earlier installation-only result](VALIDATION_2026-10-05.md#public-codex-installation-only-check) remains separate.
 
 ## 1. Prepare the CLI and room
 
@@ -43,8 +45,8 @@ Download and review this immutable script. The hash check must pass before execu
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/07d575a3bce654bf572b430609a467d1879c6fc9/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '7A20A0A16D16D475F7EF8825CD94556CCEE7D7BABA85D2CB7B3C7A35F2219D4E') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/a9d7f87d452336b890071e0332a4dd8077bfc58b/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'D842FFD109B601B3626A5C97034F0F3B3473E5F07128AD31891914C4F218EAF3') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -56,7 +58,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 
 `-Print` is the default: it performs installation and authorization checks without starting a model. Enter the Token at the hidden prompt, then continue at **Start the dedicated receiver** below using the receipt's exact `start_command`. Explicit `-Run` instead installs and immediately starts the bounded receiver. Do not combine both switches. `-PythonPath` can select an existing Python 3.12; `-TurnTimeout` defaults to 90 seconds. No local project-directory argument is needed: the receiver creates a private empty working directory for its conversational turns.
 
-The bootstrap verifies four source files from revision `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
+The bootstrap verifies four source files from revision `627d3cac3f8c5ffa55021fde9491a20e463a9492`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
 
 ### Alternative: install from a checkout
 
@@ -65,7 +67,7 @@ Clone into a **new** directory and use the checkout containing `scripts/setup-co
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach 7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26
+git checkout --detach 627d3cac3f8c5ffa55021fde9491a20e463a9492
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
@@ -152,17 +154,24 @@ The time budget starts at the **first receiver start**, not installation. Its ex
 | `owned_codex_install_modified` or `owned_codex_receipt_invalid` | Preserve the directory for review; do not bypass the ownership/hash checks. |
 | Installed but no reply | Start the printed command; check CLI login, room pause, fresh messages, receiver status, budget, and actual runtime receipts. |
 | `receiver_was_stopped_keep_evidence_and_provision_new_bounded_run` | Preserve the old STOP/evidence and explicitly create a new bounded installation when wanted. |
+| `native_job_create_failed`, `native_job_limits_failed`, `native_job_assignment_failed` | Windows could not establish the process group. Preserve the failure record and use the official receipt command; do not bypass containment. |
+| `native_supervisor_python_mismatch` | Start with the Python executable in the official receipt; do not substitute another launcher or executable. |
+| `native_tree_exit_unconfirmed` | Keep the unresolved marker and journal; run the read-only recovery report before any new attempt. |
 | Receiver ends with state `disabled` after a failed turn | A failed native turn makes the receiver disable its own Hub binding, so starting the same receipt again ends with `disabled`. Run the [read-only recovery report](#read-only-recovery-report), keep the state directory, and ask the administrator. Re-enabling a binding is an explicit Hub control described in the [delivery API](DELIVERY_API.md); a restart does not do it. |
 
 This guide describes the installer/receiver contract. It does not certify a particular machine's native run, Desktop injection, or ChatGPT cloud delivery. Those require their own recorded acceptance tests.
 
 ## Upgrade and lost-response recovery
 
+Updated Windows receivers contain each native turn in its own Windows Job Object. An isolated Python supervisor waits for job assignment before starting Codex. Successful receipts record `native_containment=windows_job` and `native_tree_exit_verified=true` only after the job has no active processes, the supervisor exits and the owner handle closes. The Codex root exiting alone is insufficient.
+
+A hard receiver crash terminates its owned job through Windows, but whether the Hub committed a reply can remain unknown. Preserve `native-active.json`, STOP and the delivery journal; use the [read-only recovery report](#read-only-recovery-report). Process exit does not prove reply commitment or authorize a duplicate attempt.
+
 Upgrade the Hub first, then stop the old receiver and use this page's current pinned installer. Existing installations do not update themselves. Do not overwrite a running receiver or delete its state. Use Claude's disconnect/renew flow; for updated Codex installations, use the disconnect command and confirm release before creating a new dedicated installation with an explicit budget. Older installations without ownership evidence require administrator review.
 
 Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid, dispatch has not started, and no full-message read has been recorded, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
 
-Receivers containing the unresolved-native guard stop before Hub join when a prior native turn is unresolved. Preserve `native-active.json` and the delivery journal. Confirm the old child has exited and reconcile server delivery/binding state before an authorized retry; never delete the marker simply to bypass the fence. Hard-crash tests use a synthetic live CLI child, so real-provider in-flight recovery remains pending. See [2026-10-04 evidence](VALIDATION_2026-10-04.md). The [read-only recovery report](#read-only-recovery-report) shows what the Hub recorded for the reconciliation step.
+Receivers containing the unresolved-native guard stop before Hub join when a prior native turn is unresolved. Preserve `native-active.json` and the delivery journal. Confirm the old child has exited and reconcile server delivery/binding state before an authorized retry; never delete the marker simply to bypass the fence. Offline crash tests use fake CLI children; Windows terminates the updated job, but the crashed delivery outcome still needs reconciliation. Real-provider in-flight recovery remains pending. See [2026-10-04 evidence](VALIDATION_2026-10-04.md). The [read-only recovery report](#read-only-recovery-report) shows what the Hub recorded for the reconciliation step.
 
 Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).
 

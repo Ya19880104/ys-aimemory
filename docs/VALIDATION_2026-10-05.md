@@ -2,7 +2,21 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-Evidence cutoff: 17:32 Asia/Taipei, including the fresh public Codex bounded native trial and cleanup. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+Evidence cutoff: 18:18:43 Asia/Taipei, including the Windows cleanup source fix and local checks. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+
+## Windows native process cleanup: source tested, deployment pending
+
+Source fix **`627d3cac3f8c5ffa55021fde9491a20e463a9492`** replaces per-PID cleanup with an owned Windows Job Object. An isolated, verified base-Python supervisor waits for job assignment before starting Codex; no venv redirector can spawn the native process before containment. Cleanup requires zero active job processes, supervisor exit and owner-handle closure before removing the unresolved marker. Only a successful Windows receipt then records `native_containment=windows_job` and `native_tree_exit_verified=true`; unknown cleanup keeps the marker and does not authorize a retry.
+
+The preserved pre-fix offline failure showed a fake CLI root exiting while its child remained alive and `native-active.json` had already disappeared. The fix passed real offline Windows child/root-exit and hard-parent-crash fixtures, including a delayed assignment gate and confirmation that the killed parent was the actual job owner. Windows process cleanup still does not establish whether a reply was committed to the Hub; crash journals remain unresolved until reconciled.
+
+| Local gate | Result | Scope |
+| --- | --- | --- |
+| Writer runner/crash regression | 114 passed / 1 warning; 8.28 seconds | Offline fixtures; original failure preserved |
+| Root runner/crash/inspector | 167 passed / 1 warning; 11.75 seconds | Separate local validation of the integrated source |
+| Bootstrap/setup/bundle | 61 passed / 2 warnings; 12.04 seconds | Codex-only installer pins and bundle checks |
+
+Codex instructions now pin source `627d3ca` through bootstrap `a9d7f87d452336b890071e0332a4dd8077bfc58b`, whose raw Git SHA-256 is `d842ffd109b601b3626a5c97034f0f3b3473e5f07128ad31891914c4f218eaf3`. These are source/local checks, not a new public-install or provider acceptance result. The live Hub remains `2472280`; new-version deployment and a fresh real-provider native trial are **not_run**. The earlier public three-turn trial below proved closure through an external operator guard holding 26 process identities; it does not establish the new runner's own per-turn Job cleanup. Claude pins and the historical cloud/three-client limits are unchanged.
 
 ## Current deployment and help-link check
 

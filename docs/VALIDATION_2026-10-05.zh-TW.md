@@ -2,7 +2,21 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-證據截至台北時間17:32，包含全新公開Codex有界原生試驗及清理。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
+證據截至台北時間18:18:43，包含Windows清理來源修正與本機核對。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
+
+## Windows原生程序清理：來源已測、部署待驗
+
+來源修正 **`627d3cac3f8c5ffa55021fde9491a20e463a9492`** 以專屬Windows Job Object取代逐PID清理。隔離且已核對的base-Python啟動程序等待群組綁定後才啟動Codex，避免venv redirector在綁定前先建立原生程序。清理需確認群組沒有作用中的程序、啟動程序退出及擁有者控制代碼關閉，才能移除未確認標記；只有此後成功的Windows收據會記錄 `native_containment=windows_job` 及 `native_tree_exit_verified=true`。清理未知時保留標記，不授權重試。
+
+保留的修前離線失敗顯示：fake CLI主程序已退出、子程序仍存活，但 `native-active.json` 已消失。修正通過真正的Windows離線child／root-exit及hard-parent-crash fixtures，包括延遲綁定閘門，並確認被終止的父程序是真正Job擁有者。Windows程序清理仍不能證明回覆是否已寫入Hub；當機投遞紀錄仍須核對。
+
+| 本機關卡 | 結果 | 範圍 |
+| --- | --- | --- |
+| Writer runner／crash regression | 114 passed／1 warning；8.28秒 | Offline fixtures；首次失敗保留 |
+| Root runner／crash／inspector | 167 passed／1 warning；11.75秒 | 整合來源的另一組本機核對 |
+| Bootstrap／setup／bundle | 61 passed／2 warnings；12.04秒 | 僅Codex安裝器pins及bundle核對 |
+
+Codex指令現以bootstrap `a9d7f87d452336b890071e0332a4dd8077bfc58b` 固定來源 `627d3ca`；bootstrap的raw Git SHA-256為 `d842ffd109b601b3626a5c97034f0f3b3473e5f07128ad31891914c4f218eaf3`。這是來源／本機核對，不是新版公開安裝或供應商驗收結果。Live Hub仍為 `2472280`；新版部署與全新真實供應商原生試驗均 **not_run**。下方先前的公開三回合試驗，是由外層操作員guard持有26個程序身分確認退出，不代表新版runner每回合Job清理已原生驗收通過。Claude pins及歷史Cloud／三客戶端限制均不變。
 
 ## 目前部署與說明連結核對
 
