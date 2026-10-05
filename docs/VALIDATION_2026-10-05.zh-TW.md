@@ -4,11 +4,17 @@
 
 證據截至台北時間16:18:27。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
 
+## 收據與客戶端修正候選版
+
+以下兩項修正與下方14:19部署版本分開。來源 `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26` 只在真正的讀取額度錯誤時重試一次較大讀取，並先驗證自動雲端回覆收據，再記錄完成。成功訊息內提到錯誤不會觸發重試；收據不符時保留原始請求意圖，不標示成功或自動重送。
+
+Windows本機檢查通過：bridge／runner **127項**、gateway **120項**、客戶端／bootstrap bundle **52項**、web／help／language **153項**。這是獨立套件，不相加為整體驗收數。新安裝鏈固定上述來源與bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`。此候選版的公開下載核對、部署主機隔離測試、promotion及全新互動安裝，在本檢查點仍為 **not_run**。這兩項修正不能解釋或消除雲端試驗缺少原生事件工具呼叫的問題。
+
 ## 已部署無回覆完成與有界原生試驗
 
 來源 `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433` 已於台北時間14:19部署；映像 `sha256:ece6cf03802f28c81d431d3c747fc363d198df3461394135c1ecf938f567d551`。CI 記錄 Windows **351 passed**、SQLite **992 passed／34 skipped**、PostgreSQL **1,271 passed／32 skipped**；這是不同環境，不相加，也不是 Token 對照測試。部署主機隔離套件為 **1,229 passed／74 skipped**。Promotion V2 **23.024秒 passed**，保留 schema6、26tables、資料、package／image pins及備份。第一次 promotion 因私有檢查器仍預期38工具而在maintenance前失敗，原失敗保留；V2比對精確新舊工具集合，只允許新增 `complete_session_delivery`。
 
-公開安裝鏈使用來源 `a614e2d24e35734bfb0c64b1158a629689b30441`、bootstrap `ff7c276a763cfa6b4f6dad56e6b91426f941efd6`；實際公開下載符合兩個 bootstrap及九筆來源 entries。這只證明公開檔案位元組，不是全新公開互動安裝器 passed。試驗的 Codex 客戶端使用該來源、Gemini 使用已部署版本，product code一致。
+當時部署的公開安裝鏈使用來源 `a614e2d24e35734bfb0c64b1158a629689b30441`、bootstrap `ff7c276a763cfa6b4f6dad56e6b91426f941efd6`；實際公開下載符合兩個 bootstrap及九筆來源 entries。這只證明公開檔案位元組，不是全新公開互動安裝器 passed。試驗的 Codex 客戶端使用該來源、Gemini 使用已部署版本，product code一致。
 
 一次有界Codex／Gemini試驗中，兩端自動回覆兩則人類問題，並各自全文讀取另一個AI的第一則回覆，以原生 `no_reply` 完成、不另貼確認訊息。兩端各三份原生完成及終端server收據均已核對。Gemini第二題工具輸出於稍後檢視，沒有新prompt或replay：已讀未截斷且ready，實際發文回傳 `replied`。這通過了所觀察的雙題及peer無回覆完成序列。
 

@@ -4,11 +4,17 @@
 
 Evidence cutoff: 16:18:27 Asia/Taipei. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
 
+## Receipt and client hardening candidate
+
+Two later fixes remain separate from the 14:19 deployment below. Source `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26` retries one larger read only for an actual read-budget error and validates automatic cloud reply receipts before recording completion. Successful message text that mentions an error cannot trigger the retry. Mismatched receipts retain the original request intent rather than claiming success or resending automatically.
+
+Local Windows checks passed: bridge/runner **127 tests**; gateway **120 tests**; client/bootstrap bundle **52 tests**; web/help/language **153 tests**. These are separate suites, not a combined acceptance count. The new installer chain pins that source and bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`. Public download verification, isolated deployment-host testing, promotion and a fresh interactive installation are still **not_run** for this candidate at this checkpoint. These fixes do not explain or resolve the cloud trials' absence of native event-tool calls.
+
 ## Deployed no-reply update and bounded native test
 
 Source `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433` was deployed at 14:19 Taipei. Image: `sha256:ece6cf03802f28c81d431d3c747fc363d198df3461394135c1ecf938f567d551`. CI reported Windows **351 passed**, SQLite **992 passed / 34 skipped**, and PostgreSQL **1,271 passed / 32 skipped**. These are separate environments, not a combined count or token benchmark. The isolated deployment-host suite passed **1,229 tests / 74 skipped**. Promotion V2 passed in **23.024 seconds**, preserving schema 6, 26 tables, data, package/image pins and backups. The first promotion failed before maintenance because its private checker still expected 38 tools; that failure is retained. V2 checked the exact old/new tool sets, allowing only the added `complete_session_delivery`.
 
-The published installer chain uses source `a614e2d24e35734bfb0c64b1158a629689b30441` and bootstrap `ff7c276a763cfa6b4f6dad56e6b91426f941efd6`. Actual public downloads matched both bootstraps and all nine source entries. This proves published bytes; it is not a fresh public interactive-installer pass. The test used a Codex client from that source and a Gemini client from the deployed revision, with matching product code.
+At that deployment, the published installer chain used source `a614e2d24e35734bfb0c64b1158a629689b30441` and bootstrap `ff7c276a763cfa6b4f6dad56e6b91426f941efd6`. Actual public downloads matched both bootstraps and all nine source entries. This proves published bytes; it is not a fresh public interactive-installer pass. The test used a Codex client from that source and a Gemini client from the deployed revision, with matching product code.
 
 In one bounded Codex/Gemini run, both clients answered two human questions automatically and each fully read the other AI's first reply before completing it with native `no_reply`, without adding an acknowledgement message. All three native completions per client and their terminal server receipts were verified. Gemini's second-question tool outputs were inspected later without a new prompt or replay: the read was untruncated and ready to reply, and the actual post returned `replied`. This passes the observed two-question and peer silent-completion sequence.
 
