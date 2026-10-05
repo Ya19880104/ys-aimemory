@@ -62,6 +62,15 @@ def diagnostic(record):
         pass
 
 
+_KEY_NAME = re.compile(r'[A-Za-z][A-Za-z_./-]{0,63}')
+
+
+def key_names(value, limit=16):
+    """Up to `limit` sorted protocol-style names (letters, _ . / -, <=64); id/URL-like names are only counted."""
+    names = sorted(key for key in value if isinstance(key, str) and _KEY_NAME.fullmatch(key))[:limit]
+    return names, len(value) - len(names)
+
+
 def fields(value, allowed, required=()):
     if not isinstance(value, dict) or set(value) - set(allowed) or set(required) - set(value):
         raise GatewayError()
@@ -328,6 +337,7 @@ class Gateway:
     def __init__(self, config, hub, *, box=None, sender=post_webhook, clock=time.time):
         self.config, self.hub, self.box, self.sender, self.clock = config, hub, box or SecretBox(), sender, clock
         self.lock = threading.RLock()
+        self._liveness_at = None
         path = Path(config['state_path'])
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.is_symlink():
@@ -813,8 +823,9 @@ class Gateway:
                 body = compact(payload)
                 attempts = item['attempts'] + 1
                 self._delivery_diagnostic('gateway_event_dispatch', item['event_id'], attempts)
+                response = None
                 try:
-                    status, _ = self.sender(destination['url'], body,
+                    status, response = self.sender(destination['url'], body,
                         signed_headers(sub['id'], item['event_id'], body, destination['secret'], self.clock(),
                             destination.get('previous_secret') if destination.get('previous_until', 0) > self.clock() else None),
                         self.config['callback_hosts'])
@@ -831,9 +842,9 @@ class Gateway:
                     elif terminal:
                         self.db.execute("UPDATE subscriptions SET status='callback_failed' WHERE id=?", (sub['id'],))
                 self._delivery_diagnostic('gateway_event_received' if accepted else 'gateway_event_failed',
-                                         item['event_id'], attempts, status, terminal)
+                                         item['event_id'], attempts, status, terminal, response)
 
-    def _delivery_diagnostic(self, event, identifier, attempt, status=None, terminal=None):
+    def _delivery_diagnostic(self, event, identifier, attempt, status=None, terminal=None, response=None):
         try:
             record = {'event': event, 'timestamp': iso(self.clock()), 'attempt': attempt,
                       'notification_fingerprint': hashlib.sha256(identifier.encode()).hexdigest()[:16]}
@@ -841,6 +852,49 @@ class Gateway:
                 record['http_status'] = status
             if terminal is not None:
                 record['terminal'] = terminal
+            if isinstance(response, (bytes, bytearray)):
+                # Callback response size and top-level key names only; never values or the URL.
+                record['response_bytes'] = len(response)
+                try:
+                    value = json.loads(response)
+                except Exception:
+                    value = None
+                if isinstance(value, dict):
+                    record['response_keys'], withheld = key_names(value)
+                    if withheld:
+                        record['response_keys_withheld'] = withheld
+            diagnostic(record)
+        except Exception:
+            pass
+
+    def _record(self, event, **values):
+        """Fixed metadata only; a diagnostic failure never changes control flow."""
+        try:
+            diagnostic({'event': event, 'timestamp': iso(self.clock()), **values})
+        except Exception:
+            pass
+
+    def _liveness(self, polls, failures):
+        """At most one record per minute: poll and local queue counts, never ids."""
+        try:
+            now = self.clock()
+            if self._liveness_at is not None and 0 <= now - self._liveness_at < 60:
+                return
+            self._liveness_at = now
+            record = {'event': 'gateway_poll_liveness', 'timestamp': iso(now), 'polls': polls, 'poll_failures': failures}
+            try:
+                with self.lock:
+                    record['stopped'] = self.stopped()
+                    record['subscriptions_active'] = self.db.execute(
+                        "SELECT count(*) FROM subscriptions WHERE status='active' AND expires>?", (now,)).fetchone()[0]
+                    states = {row[0]: row[1] for row in self.db.execute('SELECT state,count(*) FROM batches GROUP BY state')}
+                    # A batch stays reserved until read_delta activates its Hub lease.
+                    pending = [self.box.decrypt(row[0]) for row in self.db.execute("SELECT delivery FROM batches WHERE state='active'")]
+                reserved = sum('reservation_id' in delivery for delivery in pending)
+                record.update(queue_reserved=reserved, queue_active=len(pending) - reserved,
+                              queue_complete=states.get('replied', 0) + states.get('no_reply', 0))
+            except Exception:
+                record['queue_state'] = 'unavailable'
             diagnostic(record)
         except Exception:
             pass
@@ -848,8 +902,11 @@ class Gateway:
     def _diagnostic(self, request, error_code=None, receipt_status=None, *, ingress=False):
         """Bounded stderr metadata only; never echo caller or exception text."""
         try:
+            # Well-known unsupported MCP names are listed so a rejected handshake is identifiable.
             methods = {'server/discover', 'tools/list', 'tools/call', 'events/list',
-                       'events/subscribe', 'events/unsubscribe', 'ping'}
+                       'events/subscribe', 'events/unsubscribe', 'ping', 'initialize',
+                       'notifications/initialized', 'notifications/cancelled', 'notifications/progress',
+                       'resources/list', 'prompts/list'}
             method = request.get('method') if isinstance(request, dict) else None
             method = method if isinstance(method, str) and method in methods else 'unknown'
             params = request.get('params') if isinstance(request, dict) else None
@@ -864,6 +921,14 @@ class Gateway:
                 record['tool'] = tool
                 if isinstance(notification, str) and 0 < len(notification) <= 128:
                     record['notification_fingerprint'] = hashlib.sha256(notification.encode('utf-8')).hexdigest()[:16]
+            if ingress:
+                # Presence flags and _meta key names only; never the id or _meta values.
+                record['id_present'] = isinstance(request, dict) and 'id' in request
+                record['meta_present'] = '_meta' in params
+                if isinstance(params.get('_meta'), dict):
+                    record['meta_keys'], withheld = key_names(params['_meta'])
+                    if withheld:
+                        record['meta_keys_withheld'] = withheld
             if error_code:
                 record['error_code'] = error_code
             if receipt_status in {'partial_tool_read', 'tool_read', 'replied', 'no_reply'}:
@@ -874,8 +939,7 @@ class Gateway:
             pass
 
     def dispatch(self, request):
-        if isinstance(request, dict) and isinstance(request.get('method'), str) and request['method'] in {'tools/call', 'events/subscribe', 'events/unsubscribe'}:
-            self._diagnostic(request, ingress=True)
+        self._diagnostic(request, ingress=True)  # Every request, notification and unknown method.
         identifier = request.get('id') if isinstance(request, dict) else None
         try:
             fields(request, {'jsonrpc', 'id', 'method', 'params'}, {'jsonrpc', 'method'})
@@ -960,12 +1024,18 @@ def runtime_lock(path):
 def serve(gateway):
     finished = threading.Event()
     def poll():
+        polls = failures = 0
         while not finished.wait(gateway.config['poll_interval']):
+            polls += 1
             try:
                 gateway.tick()
-            except Exception:
-                # No URL, callback body, token or exception text in logs.
-                sys.stderr.write('gateway_poll_failed_closed\n')
+            except Exception as exc:
+                failures += 1
+                # Exception type only: no URL, callback body, token or exception text in logs.
+                name = type(exc).__name__
+                gateway._record('gateway_poll_failed_closed',
+                                error_type=name if re.fullmatch('[A-Za-z_][A-Za-z0-9_]{0,63}', name) else 'unknown')
+            gateway._liveness(polls, failures)
     thread = threading.Thread(target=poll, daemon=True)
     thread.start()
     try:
@@ -974,10 +1044,14 @@ def serve(gateway):
             if not line:
                 break
             if len(line) > MAX_LINE:
+                # Bytes read (limit + 1), never content; an oversize line still ends serve().
+                gateway._record('gateway_request_malformed', reason='line_too_large',
+                                byte_length=len(line), byte_limit=MAX_LINE)
                 raise GatewayError('JSON-RPC line too large')
             try:
                 request = json.loads(line)
             except (ValueError, UnicodeError):
+                gateway._record('gateway_request_malformed', reason='invalid_json', byte_length=len(line))
                 response = {'jsonrpc': '2.0', 'id': None, 'error': {'code': -32700, 'message': 'Invalid JSON'}}
             else:
                 response = gateway.dispatch(request)

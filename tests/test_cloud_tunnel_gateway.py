@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import threading
 from types import SimpleNamespace
 
 import pytest
@@ -1328,3 +1329,193 @@ def test_cached_automatic_reply_is_validated_without_repair_or_resend(pilot,monk
         pilot.gateway.call('post_message',request)
     stored=pilot.gateway.db.execute('SELECT state,result FROM batches WHERE notification_id=?',(identifier,)).fetchone()
     assert stored['state']=='replied' and stored['result']==cipher  # Preserve evidence, no automatic reclassification.
+
+
+# Provider-visible bytes at base a42630c. Diagnostics must never change what the provider sees.
+CATALOG_SHA256 = {'tools': '3ce53b9cd705f053ac901e65c2638aca8aea959d6977af5098a7538557306127',
+    'events': '9026325a00c77fcc7e92676e92c34293c4f2f8d7a41cd3bedaab6d18e6cf6d1d',
+    'server/discover': 'defadbc55b2707676b413f4fe54a5104af1c053ecda347504ef185d1c093d213',
+    'tools/list': '6564742584be253c5a0f8e9f5dd7976cc09423d4729f9fe00da36151af2567ed',
+    'events/list': '4bfc14219462667f03a578e73533455d84d4871885536fcfcf0b0dfd9c0b2897'}
+
+
+def stderr_records(capsys):
+    log = capsys.readouterr().err
+    return log, [json.loads(line) for line in log.splitlines()]
+
+
+def test_provider_visible_catalog_is_byte_identical_to_pinned_base(pilot):
+    digest = lambda value: hashlib.sha256(cloud.compact(value)).hexdigest()
+    assert digest(pilot.gateway.tools()) == CATALOG_SHA256['tools']
+    assert digest(pilot.gateway.events()) == CATALOG_SHA256['events']
+    for params in ({}, {'_meta': {'progressToken': SECRET, 'openai/subject': 'canary-private-subject'}}):
+        assert digest(rpc(pilot.gateway, 'server/discover', params)['result']) == CATALOG_SHA256['server/discover']
+        assert digest(rpc(pilot.gateway, 'tools/list', params)) == CATALOG_SHA256['tools/list']
+        assert digest(rpc(pilot.gateway, 'events/list', params)) == CATALOG_SHA256['events/list']
+
+
+@pytest.mark.parametrize('method,logged,has_id', [
+    ('server/discover', 'server/discover', True), ('tools/list', 'tools/list', True),
+    ('events/list', 'events/list', True), ('ping', 'ping', True), ('initialize', 'initialize', True),
+    ('notifications/initialized', 'notifications/initialized', False),
+    ('canary-private-method', 'unknown', True), ('canary-private-method', 'unknown', False)])
+def test_every_jsonrpc_request_logs_ingress_with_meta_key_names_only(pilot, capsys, method, logged, has_id):
+    meta = {'progressToken': SECRET, 'openai/subject': 'canary-private-subject',
+            'io.modelcontextprotocol/related-request': {'id': 'canary-private-nested'},
+            'evt_0123456789abcdef0123456789abcdef': 'canary-private-id-key', URL: 'canary-private-url-key'}
+    request = {'jsonrpc': '2.0', 'method': method, 'params': {'_meta': meta}}
+    if has_id:
+        request['id'] = 'canary-private-request-id'
+    response = pilot.gateway.dispatch(request)
+    log, records = stderr_records(capsys)
+    assert records[0] == {'event': 'gateway_request_ingress', 'timestamp': cloud.iso(pilot.now[0]), 'method': logged,
+        'id_present': has_id, 'meta_present': True, 'meta_keys_withheld': 2,
+        'meta_keys': ['io.modelcontextprotocol/related-request', 'openai/subject', 'progressToken']}
+    assert (response is None) is not has_id
+    assert all(value not in log for value in (SECRET, URL, 'canary-private', 'evt_0123'))
+
+
+def test_ingress_without_meta_non_object_and_tool_call_fields(pilot, capsys):
+    rpc(pilot.gateway, 'tools/list')
+    stamp = cloud.iso(pilot.now[0])
+    assert stderr_records(capsys)[1] == [{'event': 'gateway_request_ingress', 'timestamp': stamp,
+        'method': 'tools/list', 'id_present': True, 'meta_present': False}]
+    for request in (['canary-private-batch'], 'canary-private-string',
+                    {'jsonrpc': '2.0', 'id': 3, 'method': 'ping', 'params': {'_meta': 'canary-private-scalar'}}):
+        pilot.gateway.dispatch(request)
+    log, records = stderr_records(capsys)
+    ingress = [r for r in records if r['event'] == 'gateway_request_ingress']
+    assert [(r['method'], r['id_present'], r['meta_present'], 'meta_keys' in r) for r in ingress] == [
+        ('unknown', False, False, False), ('unknown', False, False, False), ('ping', True, True, False)]
+    assert 'canary-private' not in log
+    rpc(pilot.gateway, 'tools/call', {'name': 'identity', '_meta': {'progressToken': SECRET}})
+    log, records = stderr_records(capsys)
+    assert records[0] == {'event': 'gateway_request_ingress', 'timestamp': stamp, 'method': 'tools/call',
+        'tool': 'identity', 'id_present': True, 'meta_present': True, 'meta_keys': ['progressToken']}
+    assert records[-1]['event'] == 'gateway_tool_completed' and SECRET not in log
+
+
+def test_key_names_are_bounded_and_withhold_id_like_names():
+    letters = 'abcdefghijklmnopqrst'
+    value = {**{'key_' + c: 1 for c in letters}, 'evt_0123': 1, 'https://callback.example.test/a': 1,
+             'with space': 1, 'x' * 65: 1}
+    assert cloud.key_names(value) == (sorted('key_' + c for c in letters)[:16], 8)
+    assert cloud.key_names({}) == ([], 0)
+
+
+def test_malformed_and_oversize_lines_log_length_only_and_oversize_still_ends_serve(pilot, capsys, monkeypatch):
+    invalid = b'{canary-private-invalid ' + SECRET.encode() + b'\n'
+    undecodable = b'\xc3\x28canary-private-bytes\n'
+    oversize = b'{"canary-private-oversize":"' + b'x' * cloud.MAX_LINE + b'"}\n'
+    after = cloud.compact({'jsonrpc': '2.0', 'id': 9, 'method': 'ping'}) + b'\n'
+    output = io.BytesIO()
+    monkeypatch.setattr('sys.stdin', SimpleNamespace(buffer=io.BytesIO(invalid + undecodable + oversize + after)))
+    monkeypatch.setattr('sys.stdout', SimpleNamespace(buffer=output))
+    with pytest.raises(cloud.GatewayError, match='too large'):
+        cloud.serve(pilot.gateway)
+    assert [json.loads(line)['error']['code'] for line in output.getvalue().splitlines()] == [-32700, -32700]
+    log, records = stderr_records(capsys)
+    stamp = cloud.iso(pilot.now[0])
+    assert records == [
+        {'event': 'gateway_request_malformed', 'timestamp': stamp, 'reason': 'invalid_json', 'byte_length': len(invalid)},
+        {'event': 'gateway_request_malformed', 'timestamp': stamp, 'reason': 'invalid_json', 'byte_length': len(undecodable)},
+        {'event': 'gateway_request_malformed', 'timestamp': stamp, 'reason': 'line_too_large',
+         'byte_length': cloud.MAX_LINE + 1, 'byte_limit': cloud.MAX_LINE}]
+    assert all(value not in log for value in (SECRET, 'canary-private'))
+
+
+def test_poll_failure_and_liveness_are_structured_and_rate_limited(pilot, capsys, monkeypatch):
+    pilot.config['poll_interval'] = 0.001
+    ticks, done = [], threading.Event()
+    def tick():
+        ticks.append(1)
+        if len(ticks) == 1:
+            raise RuntimeError('canary-private-exception ' + URL + SECRET)
+        if len(ticks) >= 3:
+            done.set()
+    class Stdin:
+        def readline(self, size):
+            done.wait(10)
+            return b''
+    monkeypatch.setattr(pilot.gateway, 'tick', tick)
+    monkeypatch.setattr('sys.stdin', SimpleNamespace(buffer=Stdin()))
+    monkeypatch.setattr('sys.stdout', SimpleNamespace(buffer=io.BytesIO()))
+    cloud.serve(pilot.gateway)
+    assert done.is_set()
+    log, records = stderr_records(capsys)
+    stamp = cloud.iso(pilot.now[0])
+    assert records == [{'event': 'gateway_poll_failed_closed', 'timestamp': stamp, 'error_type': 'RuntimeError'},
+        {'event': 'gateway_poll_liveness', 'timestamp': stamp, 'polls': 1, 'poll_failures': 1, 'stopped': False,
+         'subscriptions_active': 0, 'queue_reserved': 0, 'queue_active': 0, 'queue_complete': 0}]
+    assert all(value not in log for value in ('canary-private', URL, SECRET))
+
+
+def test_liveness_counts_reserved_active_complete_without_ids(pilot, capsys):
+    pilot.config['subscription_ttl'] = 900
+    logs = []
+    def liveness(polls, **expected):
+        capsys.readouterr()
+        pilot.gateway._liveness(polls, 0)
+        log, records = stderr_records(capsys)
+        logs.append(log)
+        assert records == ([{'event': 'gateway_poll_liveness', 'timestamp': cloud.iso(pilot.now[0]), 'polls': polls,
+            'poll_failures': 0, 'stopped': False, 'subscriptions_active': 1, 'queue_reserved': 0, 'queue_active': 0,
+            'queue_complete': 0, **expected}] if expected else [])
+    liveness(1, subscriptions_active=0)
+    pilot.gateway.subscribe(subscription())
+    message = pilot.hub.add(body='canary-private-body')
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    liveness(2)  # At most one record per 60 seconds.
+    pilot.now[0] += 60
+    liveness(3, queue_reserved=1)
+    read_batch(pilot, identifier)
+    pilot.now[0] += 60
+    liveness(4, queue_active=1)
+    reply = pilot.gateway.call('post_message', {'notification_id': identifier, 'body': 'canary-private-reply'})
+    pilot.now[0] += 59
+    liveness(5)
+    pilot.now[0] += 1
+    liveness(6, queue_complete=1)
+    binding = active_binding(pilot)
+    pilot.gateway.stop()
+    pilot.now[0] += 60
+    liveness(7, stopped=True, subscriptions_active=0, queue_complete=1)
+    log = ''.join(logs)
+    subscription_id = pilot.gateway.db.execute('SELECT id FROM subscriptions').fetchone()[0]
+    assert all(value not in log for value in (identifier, identifier[4:], subscription_id, binding['binding_id'],
+        message['message_id'], reply['message_id'], URL, SECRET, 'canary-private'))
+
+
+@pytest.mark.parametrize('status,kind', [(202, 'json'), (400, 'json'), (503, 'text'), (202, 'empty'), (0, 'raise')])
+def test_webhook_response_logs_size_and_top_level_key_names_only(pilot, capsys, status, kind):
+    sent = []
+    def sender(url, body, headers, hosts):
+        packet = json.loads(body)
+        if packet.get('type') == 'verification':
+            return 200, cloud.compact({'challenge': packet['challenge']})
+        if kind == 'raise':
+            sent.append((packet['eventId'], headers['webhook-signature'], None))
+            raise RuntimeError('canary-private-exception ' + url)
+        raw = {'json': cloud.compact({'received': True, 'status': 'canary-private-status',
+            'requestId': 'canary-private-request', packet['eventId']: headers['webhook-signature'], url: SECRET,
+            'error': {'message': 'canary-private-nested'}}), 'empty': b'',
+            'text': ('<html>canary-private-html ' + url + '</html>').encode()}[kind]
+        sent.append((packet['eventId'], headers['webhook-signature'], raw))
+        return status, raw
+    pilot.gateway.sender = sender
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add(body='canary-private-body')
+    capsys.readouterr()
+    pilot.gateway.tick()
+    log, records = stderr_records(capsys)
+    event_id, signature, raw = sent[0]
+    expected = {'event': 'gateway_event_received' if status == 202 else 'gateway_event_failed',
+        'timestamp': cloud.iso(pilot.now[0]), 'attempt': 1, 'http_status': status, 'terminal': status in (202, 400),
+        'notification_fingerprint': hashlib.sha256(event_id.encode()).hexdigest()[:16]}
+    if raw is not None:
+        expected['response_bytes'] = len(raw)
+    if kind == 'json':
+        expected.update(response_keys=['error', 'received', 'requestId', 'status'], response_keys_withheld=2)
+    assert records[-1] == expected
+    assert all(value not in log for value in (event_id, signature, URL, SECRET, 'canary-private'))
