@@ -175,7 +175,7 @@ def contained_run(args, *, timeout, creationflags=0, shell=False, capture_output
     """
     if shell or not capture_output:
         raise ValueError('contained_run_requires_argv_capture')
-    deadline, chunks, size = time.monotonic() + timeout, [], [0]
+    deadline, chunks, size, broken = time.monotonic() + timeout, [], [0], []
     job = proc = reader = error = None
     assigned = timed_out = False
 
@@ -186,7 +186,7 @@ def contained_run(args, *, timeout, creationflags=0, shell=False, capture_output
                 if size[0] <= limit:
                     chunks.append(data)
         except (OSError, ValueError):
-            pass  # Completion is judged by job accounting, never by this pipe.
+            broken.append(1)  # Exit is judged by job accounting; this output is incomplete.
 
     try:
         job = WindowsJob()
@@ -212,7 +212,7 @@ def contained_run(args, *, timeout, creationflags=0, shell=False, capture_output
         error.containment, error.tree_exit_verified = 'windows_job', True
         raise error
     result = subprocess.CompletedProcess(args, proc.returncode,
-                                         b''.join(chunks) if size[0] <= limit else None)
+                                         b''.join(chunks) if size[0] <= limit and not broken else None)
     result.containment, result.tree_exit_verified = 'windows_job', True
     return result
 
@@ -420,6 +420,8 @@ def run(config, client, directory, executable, admission, *, now=time.time,
             except (OSError, subprocess.TimeoutExpired) as exc:
                 journal['attempts'][-1].update(state='unknown', error_type=type(exc).__name__,
                                                **tree_evidence(exc))
+                if isinstance(exc, NativeContainmentError):  # Keep the fixed launch-phase code.
+                    journal['attempts'][-1]['error_code'] = str(exc)
             durable(path, journal)
         return 'stopped' if (directory / 'STOP').exists() else 'expired'
 

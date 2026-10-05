@@ -177,6 +177,23 @@ def test_send_timeout_kills_stdout_holding_grandchild_and_journals_verified_exit
         'error_type': 'TimeoutExpired', 'containment': 'windows_job', 'tree_exit_verified': True}
 
 
+def within_bound(call, limit=LIMIT * 2):
+    """Run a contained call off the test thread so a regressed bound fails instead of hanging pytest."""
+    box = {}
+    def target():
+        try:
+            box['value'] = call()
+        except BaseException as error:
+            box['error'] = error
+    thread = threading.Thread(target=target, daemon=True)
+    thread.start()
+    thread.join(limit)
+    assert not thread.is_alive(), 'contained_run_bound_regressed'
+    if 'error' in box:
+        raise box['error']
+    return box.get('value')
+
+
 def script(tmp_path, body):
     path = tmp_path / 'fixture_cli.py'
     path.write_text(body, encoding='utf-8')
@@ -255,7 +272,7 @@ def test_pipe_writer_held_outside_job_is_bounded_and_unconfirmed(tmp_path, monke
     observer.start()
     try:
         with pytest.raises(receiver.TreeExitUnconfirmed, match='^native_tree_exit_unconfirmed$'):
-            receiver.contained_run(args, timeout=LIMIT)
+            within_bound(lambda: receiver.contained_run(args, timeout=LIMIT))
     finally:
         observer.join(LIMIT)
         if held.value:
@@ -271,7 +288,7 @@ def test_unconfirmed_job_accounting_raises_fixed_code_and_closes_owned_job(tmp_p
     monkeypatch.setattr(receiver.WindowsJob, 'close', lambda job: closed.append(1) or close(job))
     monkeypatch.setattr(receiver, 'EXIT_CONFIRM_SECONDS', .5)
     with pytest.raises(receiver.TreeExitUnconfirmed, match='^native_tree_exit_unconfirmed$'):
-        receiver.contained_run(args, timeout=LIMIT)
+        within_bound(lambda: receiver.contained_run(args, timeout=LIMIT))
     assert closed == [1]
 
 
@@ -312,4 +329,24 @@ def test_real_metadata_unconfirmed_exit_fences_receiver_restart(rig, monkeypatch
 def test_output_beyond_limit_is_discarded_not_parsed(tmp_path):
     args = script(tmp_path, "import sys; sys.stdout.write('x' * 64)")
     result = receiver.contained_run(args, timeout=LIMIT, limit=16)
+    assert (result.returncode, result.stdout, result.tree_exit_verified) == (0, None, True)
+
+
+def test_stdout_read_error_discards_partial_output(tmp_path, monkeypatch):
+    """A broken pipe read is incomplete output, never a complete result to parse."""
+    args = script(tmp_path, "import sys; sys.stdout.write('partial-output')")
+    popen = receiver.subprocess.Popen
+    class BrokenStdout:
+        def __init__(self, stream):
+            self.stream = stream
+        def read1(self, size):
+            raise OSError('fixture_read_error')
+        def close(self):
+            self.stream.close()
+    def broken(*a, **k):
+        proc = popen(*a, **k)
+        proc.stdout = BrokenStdout(proc.stdout)
+        return proc
+    monkeypatch.setattr(receiver.subprocess, 'Popen', broken)
+    result = within_bound(lambda: receiver.contained_run(args, timeout=LIMIT))
     assert (result.returncode, result.stdout, result.tree_exit_verified) == (0, None, True)

@@ -9,6 +9,7 @@ import pytest
 
 from memory_hub import client_antigravity_receiver as receiver
 from memory_hub.client_antigravity_receiver import durable, run
+from memory_hub.client_antigravity_receiver import NativeContainmentError
 from memory_hub.client_antigravity_receiver import official_metadata_admission, admitted
 from memory_hub.client_watch import exclusive
 from test_sessions import collaboration, room, human, values, A
@@ -319,7 +320,11 @@ def contained(value):
     # Injected/POSIX executors carry no owned-tree proof: no exit claim is recorded.
     (lambda: Mock(returncode=0), {'state': 'returned', 'returncode': 0, 'containment': 'none'}),
     (lambda: subprocess.TimeoutExpired('agentapi', 10),
-     {'state': 'unknown', 'error_type': 'TimeoutExpired', 'containment': 'none'})])
+     {'state': 'unknown', 'error_type': 'TimeoutExpired', 'containment': 'none'}),
+    # A launch-phase failure keeps its fixed code; the CLI never ran.
+    (lambda: contained(NativeContainmentError('native_job_create_failed')),
+     {'state': 'unknown', 'error_type': 'NativeContainmentError', 'containment': 'windows_job',
+      'tree_exit_verified': True, 'error_code': 'native_job_create_failed'})])
 def test_attempt_records_only_exact_owned_tree_exit_evidence(rig, outcome, fields):
     config, event, binding, client, calls, directory = rig
     def execute(*args, **kwargs):
