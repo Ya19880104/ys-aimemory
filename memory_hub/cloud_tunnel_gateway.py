@@ -66,7 +66,10 @@ _KEY_NAME = re.compile(r'[A-Za-z][A-Za-z_./-]{0,63}')
 
 
 def key_names(value, limit=16):
-    """Up to `limit` sorted protocol-style names (letters, _ . / -, <=64); id/URL-like names are only counted."""
+    """Up to `limit` sorted names of letters and _ . / - (no digits, <=64); others are only counted.
+
+    Names are peer-chosen: a digit-free host/path shaped name can pass, so treat output as untrusted labels.
+    """
     names = sorted(key for key in value if isinstance(key, str) and _KEY_NAME.fullmatch(key))[:limit]
     return names, len(value) - len(names)
 
@@ -1050,7 +1053,7 @@ def serve(gateway):
                 raise GatewayError('JSON-RPC line too large')
             try:
                 request = json.loads(line)
-            except (ValueError, UnicodeError):
+            except (ValueError, UnicodeError, RecursionError):  # Deep nesting must not end serve().
                 gateway._record('gateway_request_malformed', reason='invalid_json', byte_length=len(line))
                 response = {'jsonrpc': '2.0', 'id': None, 'error': {'code': -32700, 'message': 'Invalid JSON'}}
             else:

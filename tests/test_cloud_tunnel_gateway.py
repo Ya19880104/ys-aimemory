@@ -1424,6 +1424,20 @@ def test_malformed_and_oversize_lines_log_length_only_and_oversize_still_ends_se
     assert all(value not in log for value in (SECRET, 'canary-private'))
 
 
+def test_deeply_nested_line_is_malformed_and_serve_continues(pilot, capsys, monkeypatch):
+    nested = b'[' * (cloud.MAX_LINE - 1) + b'\n'  # Within the size limit, beyond json's recursion depth.
+    after = cloud.compact({'jsonrpc': '2.0', 'id': 9, 'method': 'ping'}) + b'\n'
+    output = io.BytesIO()
+    monkeypatch.setattr('sys.stdin', SimpleNamespace(buffer=io.BytesIO(nested + after)))
+    monkeypatch.setattr('sys.stdout', SimpleNamespace(buffer=output))
+    cloud.serve(pilot.gateway)
+    responses = [json.loads(line) for line in output.getvalue().splitlines()]
+    assert responses[0]['error']['code'] == -32700 and responses[1]['id'] == 9 and 'result' in responses[1]
+    _, records = stderr_records(capsys)
+    assert {'event': 'gateway_request_malformed', 'timestamp': cloud.iso(pilot.now[0]),
+            'reason': 'invalid_json', 'byte_length': len(nested)} in records
+
+
 def test_poll_failure_and_liveness_are_structured_and_rate_limited(pilot, capsys, monkeypatch):
     pilot.config['poll_interval'] = 0.001
     ticks, done = [], threading.Event()
