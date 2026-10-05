@@ -209,8 +209,10 @@ def arguments(name, **changes):
             key: DELIVERY[key] for key in ('delivery_id', 'lease_id')}
         if name == 'read_session':
             result.update(after_sequence=4, limit=20, max_bytes=16384, full_text=True)
-        else:
+        elif name == 'post_session_message':
             result.update(body='這是原生對話回覆。', idempotency_key=DELIVERY['reply_idempotency_key'])
+        else:
+            result.update(idempotency_key=DELIVERY['reply_idempotency_key'])
     return {'arguments': result | changes}
 
 
@@ -232,6 +234,57 @@ def reply():
     return {key: CONFIG[key] for key in ('project_id', 'session_id')} | {'message_id': 'f'*32,
         'sequence': 7, 'actor': {'id': CONFIG['worker_id'], 'kind': 'worker'},
         'delivery_receipt': {'delivery_id': DELIVERY['delivery_id'], 'status': 'replied', 'processed_sequence': 6}}
+
+
+def no_reply():
+    return {key: CONFIG[key] for key in ('project_id', 'session_id', 'worker_id')} | {
+        'delivery_receipt': {'delivery_id': DELIVERY['delivery_id'], 'status': 'no_reply', 'processed_sequence': 6}}
+
+
+def fully_read_proof():
+    proof = runner.NativeProof(CONFIG, DELIVERY)
+    proof.event(event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'))
+    proof.event(event('read_session', reading(5, 'd'*32), 'read-1'))
+    proof.event(event('read_session', reading(6, 'e'*32, True), 'read-2', after_sequence=5))
+    return proof
+
+
+def test_native_silent_completion_requires_actual_receipt_and_stays_distinct_from_post():
+    proof = fully_read_proof()
+    with pytest.raises(runner.ReceiverError, match='incomplete'):proof.finish(0)
+    proof.event(event('complete_session_delivery', no_reply(), 'no-reply'))
+    result = proof.finish(0)
+    assert result['completion_status'] == 'no_reply' and result['post_receipt'] is None
+    assert result['no_reply_receipt']['delivery_receipt']['status'] == 'no_reply'
+    assert result['native_tool_calls'] == 4
+    with pytest.raises(runner.ReceiverError, match='extra_native_call'):
+        proof.event(event('post_session_message', reply(), 'post'))
+    posted = completed_proof()
+    with pytest.raises(runner.ReceiverError, match='extra_native_call'):
+        posted.event(event('complete_session_delivery', no_reply(), 'no-reply'))
+
+
+@pytest.mark.parametrize('change', ['worker', 'room', 'delivery', 'cursor', 'message', 'status'])
+def test_native_no_reply_rejects_forged_or_cross_scope_result(change):
+    value = no_reply()
+    if change == 'worker':value['worker_id'] = 'other'
+    elif change == 'room':value['session_id'] = 'other'
+    elif change == 'delivery':value['delivery_receipt']['delivery_id'] = '0'*32
+    elif change == 'cursor':value['delivery_receipt']['processed_sequence'] = True
+    elif change == 'message':value['message_id'] = '0'*32
+    else:value['delivery_receipt']['status'] = 'replied'
+    proof = fully_read_proof()
+    with pytest.raises(runner.ReceiverError, match='no_reply_receipt_mismatch'):
+        proof.event(event('complete_session_delivery', value, 'no-reply'))
+
+
+def test_native_no_reply_cannot_skip_read_or_change_write_scope():
+    proof = runner.NativeProof(CONFIG, DELIVERY)
+    proof.event(event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'))
+    with pytest.raises(runner.ReceiverError, match='not_read'):
+        proof.event(event('complete_session_delivery', no_reply(), 'no-reply'))
+    for changes in ({'body':'ack'}, {'idempotency_key':'different'}, {'lease_id':'0'*32}):
+        assert not runner.valid_scope('complete_session_delivery', arguments('complete_session_delivery', **changes), CONFIG, DELIVERY)
 
 
 def completed_proof():

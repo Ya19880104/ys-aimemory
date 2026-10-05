@@ -6,6 +6,12 @@ The Hub stores a room message; an enabled receiver detects eligible events; a bo
 
 The Claude receiver polls REST from the selected native conversation's Stop hook after that conversation finishes a turn, while the hook remains active: normally every 3 seconds, 5 when paused and 10 on a failed status. The dedicated Codex receiver polls from its own process every 3 seconds; empty polling does not start a model. These are receiver polls, not a request for the model to keep checking an empty room. The cloud gateway's webhook is a notification; accepted delivery does not prove a native read or reply.
 
+## Candidate: reply or complete without a reply
+
+The new candidate adds explicit silent completion; it is **not yet deployed or natively accepted**. After every complete delivery read, choose exactly one: post a substantive reply, or call `chat_no_reply` with `{}` when nothing needs saying. The joined room now exposes four scoped tools: `chat_status`, `chat_read`, `chat_reply`, `chat_no_reply`. The bridge supplies the fixed worker/room, current delivery/lease, generation, cursor and stable key; it requires all untruncated pages before either completion. Reply returns `replied`; silent completion must return an actual `no_reply` delivery receipt, without adding a message or room event. The admitted model-start budget is not refunded. Neither a model's “no response needed” statement nor tool error/timeout counts as completion; preserve unknown outcomes and stop instead of falling back to `no_reply`.
+
+The immutable bootstrap below still installs the earlier three-tool client. Its successful installation/reply evidence does not prove the four-tool candidate, and its pins are not silently changed here. Use a reviewed release containing the updated Hub and scoped receiver before testing `chat_no_reply`; ordinary compact mode is separate.
+
 ## Windows: connect Claude to one room without cloning
 
 This path installs project-local MCP and prepares automatic replies in one selected room. Use an existing local Claude Code project and Python 3.12. In the Hub, choose the project and room, obtain a **separate Claude worker Token**, and copy the project ID, room/session ID, HTTPS Hub URL and trusted **CA DER SHA-256 fingerprint**. The room ID is not the Claude conversation ID. Keep the Token for the private prompt; it never belongs in a URL or the following command.
@@ -58,7 +64,7 @@ py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PR
 
 Language accepts `en` or `zh-TW`. Review the receipt's expiry, budget, and stop-file path. Reload project hooks and paste its exact activation prompt into the intended Claude conversation. The random activation reply binds that native conversation; do not invent/borrow a native ID. Hub `session_id` is a different identifier. A fresh join starts at the latest message unless an explicit cursor is supplied.
 
-Automatic mode replaces only this project's `ys_memory` entry with three scoped tools: `chat_status`, `chat_read`, and `chat_reply`. The bridge injects room identity, lease/fence, cursor, and reply deduplication data. Only the three exact project tool permissions are granted; a general `memory_call` permission is not implied. Ordinary compact MCP remains a separate mode.
+Candidate automatic mode replaces only this project's `ys_memory` entry with four scoped tools: `chat_status`, `chat_read`, `chat_reply`, and `chat_no_reply`. The bridge injects room identity, lease/fence, cursor, and completion deduplication data. Only those four exact project tool permissions are granted; a general `memory_call` permission is not implied. Existing three-tool installations require an explicit upgrade; ordinary compact MCP remains a separate mode.
 
 These instructions target the integrated implementation; confirm the options with your installed script's `--help`. A configured receipt is not native acceptance. Existing bindings stop for review.
 
@@ -79,7 +85,7 @@ For a dedicated Codex CLI receiver, follow the [Codex chat installation guide](C
 
 Idle waiting should not repeatedly ask a model to inspect an empty inbox. Retrieve new messages incrementally. This does not promise zero provider cost or a fixed token savings percentage.
 
-Acceptance requires an idle bound client reacting to a new human web message without an extra prompt; correct identity/room; matching delivery/read/reply receipts; observed budget/pause/stop/revocation/archive behavior; crash/restart recovery without duplicates or skipped human messages; and bounded AI follow-ups. Record exact commits, native versions, and passed/failed/skipped/not_run. [Delivery API](DELIVERY_API.md) defines the durable contract. Source/tests cannot certify native acceptance.
+Acceptance requires an idle bound client reacting to a new human web message without an extra prompt; correct identity/room; matching delivery/full-read and actual `replied` or `no_reply` receipts; observed budget/pause/stop/revocation/archive behavior; crash/restart recovery without duplicates or skipped human messages; and bounded AI follow-ups. Test substantive reply and intentional silent completion separately. A silent test must show no new room message/event and a terminal receipt; merely reading then returning is incomplete. Record exact commits, native versions, and passed/failed/skipped/not_run. [Delivery API](DELIVERY_API.md) defines the durable contract. Source/tests and historical reply passes cannot certify candidate native silent completion.
 
 ## Upgrade and lost-response recovery
 

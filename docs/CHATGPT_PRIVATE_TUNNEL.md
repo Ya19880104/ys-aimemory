@@ -6,6 +6,8 @@ This pilot connects **one dedicated Hub worker to one project and one shared roo
 
 Source tests are not ChatGPT acceptance. Record tool discovery, actual cloud tool calls, subscription verification, webhook receipt, model response and Hub write-back separately. A webhook `2xx` is only **received**, not **replied**.
 
+**New candidate boundary:** the fixed-room gateway adds `no_reply` as its fourth model tool. It is not yet deployed or natively accepted; the historical reply-only runs and tested request below remain unchanged. Update both Hub and gateway before using the candidate contract, and verify actual tool discovery rather than assuming an existing plugin already exposes it.
+
 
 
 ## Current evidence and version boundary
@@ -46,9 +48,10 @@ Final public Claude installer check: `97813588f2930fd7cfcf3f92fc67257a8f08cb98/s
 - `identity`: verifies the configured worker and room; returns the latest sequence and shared pause state.
 - `read_delta`: reads one full-text page of up to 10 events within 16 KiB. If one escaped message cannot fit, it retries once for one complete event within 64 KiB. It never substitutes a snippet for a complete delivery read.
 - `post_message`: posts up to 4,000 UTF-8 bytes. Before monitoring, manual posts require a caller-supplied idempotency key. Automatic replies use the Hub's saved delivery key and lease.
+- Candidate `no_reply`: input is exactly `{"notification_id":"<event.data.notification_id>"}`. It explicitly completes this notification after all full `read_delta` pages; no body, reason, manual mode or caller-selected scope is accepted. The fixed gateway injects the actual delivery/lease and stable Hub completion key.
 - `message.created`: one notification per authorized Hub batch, containing a preview and an opaque `notification_id`. Own messages and replies at automatic depth 2 do not trigger a new batch.
 
-The gateway does not expose a general Hub tool relay, caller-selected project, room, URL, task claim, administrator action or file access. It offers MCP 2.0 discovery and the three event methods over stdio. It does not provide a legacy MCP 1.x `initialize` interface.
+The candidate's four model tools are `identity`, `read_delta`, `post_message`, and `no_reply`; `message.created` is an event, not another tool. The gateway does not expose a general Hub tool relay, caller-selected project, room, URL, task claim, administrator action or file access. It offers MCP 2.0 discovery and the three event methods over stdio. It does not provide a legacy MCP 1.x `initialize` interface.
 
 ## Prerequisites
 
@@ -109,13 +112,15 @@ Start a **Work** chat on ChatGPT web, or **Work + Cloud** in the desktop app. In
 2. `read_delta` retrieves only explicitly requested sequences.
 3. `post_message` writes one test message, verified independently in the Hub.
 4. Ask ChatGPT to monitor `message.created` and specify how it should respond. Confirm signed callback verification and a Hub binding with `client:chatgpt`. The binding uses the subscription ID as a correlation identifier; it is not proof of a provider-native conversation ID.
-5. Send a new administrator message in the Hub. The event supplies `notification_id`, `after_sequence`, `through_sequence`, `message_ids` and `queued_until`, not `lease_until`. The reservation waits up to 1,800 seconds, bounded by the original binding lifetime. The first `read_delta` with that exact notification ID activates a reply lease of at most 300 seconds, also bounded by the binding lifetime. Follow `next_after_sequence` until `delivery_receipt.unread_message_ids` is empty, then call `post_message` with the same notification ID and reply body before that lease expires. Verify webhook receipt **and** an actual cloud model turn and Hub reply. Queue or reply-lease expiry ends this subscription's delivery; it does not silently retry under a new lease.
+5. Send a new administrator message in the Hub. The event supplies `notification_id`, `after_sequence`, `through_sequence`, `message_ids` and `queued_until`, not `lease_until`. The reservation waits up to 1,800 seconds, bounded by the original binding lifetime. The first `read_delta` with that exact notification ID activates an execution lease of at most 300 seconds, also bounded by the binding lifetime. Follow `next_after_sequence` until actual `delivery_receipt.status=tool_read`, `unread_message_ids=[]` and the cursor reaches `through_sequence`. Before expiry choose exactly one: a substantive `post_message` with the same notification ID/body, or candidate `no_reply` with that exact notification ID when no room reply is needed. Verify webhook receipt **and** the actual native completion plus matching Hub `replied` or `no_reply` receipt. Queue or execution-lease expiry ends this subscription's delivery; it does not silently retry under a new lease.
 6. Pause automatic chat in the Hub. New callbacks and gateway posts must stop. Resume and verify bounded delivery.
 7. Follow the operator stop sequence below, including provider UI pause, verified unsubscribe, gateway stop/disconnect and runtime shutdown. Test the public local stop command independently.
 
 Cloud event support uses the [official MCP Events contract](https://developers.openai.com/plugins/build/mcp-events). ChatGPT cloud availability and workspace policy still require actual account verification.
 
 ### Bounded request and observed permission
+
+For a candidate silent-completion test, instruct the event task to read every full page for the exact `event.data.notification_id`, then choose one completion. `post_message` is for a substantive reply; `no_reply({"notification_id":"<event.data.notification_id>"})` is for an intentional decision not to add a message. The gateway requires a durable full-read receipt, the same authenticated worker/current lease/generation and unchanged scope. It returns the actual Hub result with `delivery_receipt.status=no_reply` and `processed_sequence=through_sequence`; no message/event or reply receipt is created. Already admitted event/turn budget is not refunded. Identical notification/disposition recovery may return the stored result; changing post↔no_reply is rejected. Error, missing approval, stale lease or unknown post outcome must stop the task, never trigger automatic no_reply fallback. This candidate recipe is **untested**; it does not amend the successful historical prompt or its observed permission settings.
 
 For an already installed private plugin, the workflow is: confirm existing permission → paste the submitted request once → send messages on the Hub website → verify read/reply → perform operator stop. While monitoring is already enabled and within its lifetime and budget, everyday chat only requires entering a message on the website. The longer request below is for this bounded acceptance trial; it is not required before each chat message. Use a two-event Hub/event cap and a deadline within the original binding lifetime; fill the placeholders before submitting.
 

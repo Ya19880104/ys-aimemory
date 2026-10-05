@@ -129,3 +129,5 @@ Grok 雲端 API 使用者先完成網路與 TLS 架構確認，再採用[官方�
 ## Desktop 列出工具但既有對話尚未載入
 
 2026-10-04 的 Antigravity Desktop 觀察中，新加入的 MCP server 已在 Settings → Customizations → Installed MCP Servers 顯示綠色與三個工具，但既有對話仍表示尚未載入。操作者點選 Refresh MCP servers 並送出新提示後，客戶端提供原生狀態工具呼叫與權限流程。這是該 host 的已觀察排查步驟，不保證所有客戶端都能如此重新載入，也不代表工具結果已成功；仍需核對實際原生結果與 Hub 身分。CLI 與 Desktop 的配置、驗收保持分開。
+
+替換設定也不代表既有對話已使用新 worker：2026-10-05 的試驗最初仍沿用前一個 worker。請使用 host 文件記載的重新整理介面，並確認重載範圍；不要假設只影響單一 server。接著原生呼叫 `chat_status`，將 `worker_id`、`project_id`、`session_id` 與安裝收據比對；fresh join 前也須確認 `active=false`。身分或房間不符時先停止，核對完成前不要加入、讀訊息或回覆。該試驗後來確認新身分正確，但未證明有文件支持的單一 server 重載 API。

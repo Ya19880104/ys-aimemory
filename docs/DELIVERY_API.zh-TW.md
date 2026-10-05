@@ -4,6 +4,8 @@
 
 這份文件描述伺服器契約。REST 接線不會自行呼叫模型，也不會使任意桌面或雲端對話自動醒來；必須另有明確綁定且支援喚醒的客戶端接線。MCP 連線成功、接線待命、工具已讀、模型回覆是不同驗證事項。
 
+下方 `no_reply` 契約屬新候選，部署及原生 silent completion 驗收仍 **not_run**；歷史讀取／回覆 passed 不證明它。Hub 與 scoped receiver 須一起更新，舊客戶端不會自動取得工具。
+
 ## 加入與等待
 
 所有 `/v1/chat/` 路徑驗證自己的 Bearer worker Token。參數是直接 JSON 物件，沒有 MCP 的 `arguments` 外層。接線工具不加入 MCP discovery，因此一般模型不必載入接線管理 schema。
@@ -55,11 +57,29 @@
 
 1. `read_session` 增加同批 `delivery_id`、`lease_id`。從 `after_sequence` 開始，使用 `full_text:true`、適當的 `limit` / `max_bytes`，必要時分頁。讀取停在 `through_sequence`，不讓模型提前回覆還沒交付的新訊息。分頁時先預留最壞情況的回條大小，再挑選事件，加入實際回條不會擠爆原本可容納的頁面。
 2. `delivery_receipt.unread_message_ids` 為空，且 `status:"tool_read"`，才表示伺服器已透過工具完整回傳本批所有新訊息。預設 512-byte 截斷片段不會冒充完整已讀。一般未帶 delivery metadata 的讀取也不會更新接線收據。
-3. `post_session_message` 帶同一組 `delivery_id`、`lease_id`，使用 claim 回傳的 `reply_idempotency_key` 作為 `idempotency_key`。伺服器驗證本人的有效 lease、完整讀取及 room 狀態後，將訊息寫入、`replied` 收據與 durable cursor **同交易提交**。
+3. 全文已讀後明確二擇一：實質回覆或下節的無回覆完成。回覆時用 `post_session_message` 帶同一組 `delivery_id`、`lease_id`，使用 claim 回傳的 `reply_idempotency_key` 作為 `idempotency_key`。伺服器驗證本人的有效 lease、完整讀取及 room 狀態後，將訊息寫入、`replied` 收據與 durable cursor **同交易提交**。
 
 `tool_read` 是伺服器確實回傳內容的證據，不是模型理解、供應商身分或原生客戶端通過的獨立證明。REST 與 MCP 共用同一工具服務；原生驗收仍需另附客戶端工具收據。
 
 游標在通知或 dispatch 時不前進。lease 到期後，重新取得相同 delivery ID 和相同 reply key，但使用新 lease ID；舊 lease 不能讀取接線收據或寫回。成功寫入但回應遺失時，重送原本完全相同的 post 會拿到原本收據，不重複建立訊息。每批最多三次非管理操作中斷的 lease 嘗試；暫停或停用有效 lease 不算失敗嘗試，但實際模型啟動仍會計入 `turns_used`。批次建立後的新訊息保留到後續批次，不會被舊批次完成時跳過。
+
+## 明確無回覆完成（候選版本）
+
+此 `no_reply` 契約屬新候選；部署及原生 silent completion 驗收仍 **not_run**。既有讀取／回覆 passed 不證明此功能。Hub 與 scoped receiver 須一起更新，舊安裝不會自動取得工具。
+
+全文分頁已讀後，每筆 delivery 明確二擇一：有實質內容時用 `post_session_message` 回覆；不需發言時用 native MCP `complete_session_delivery` 完成。後者必須包含五個欄位，不接受 body 或 reason：
+
+```json
+{"arguments":{"project_id":"example","session_id":"11111111111111111111111111111111","delivery_id":"22222222222222222222222222222222","lease_id":"33333333333333333333333333333333","idempotency_key":"delivery-22222222222222222222222222222222"}}
+```
+
+使用實際批次的 `delivery_id`、目前 `lease_id` 及固定 `reply_idempotency_key`（`delivery-<delivery_id>`），不可另造 key；compact `memory_call` 仍依原規則在工具輸入外加轉送 envelope。Server 檢查已認證的同 worker、project／room、目前 binding generation、本人有效 lease、完整未截斷的全部訊息讀取，以及 pause／revoke／archive／expiry guards。終端 `no_reply` 收據與 `processed_sequence=through_sequence` 同交易提交；不新增訊息或房間事件，reply ID／sequence／time 保持 null。實際回傳為：
+
+```json
+{"project_id":"example","session_id":"11111111111111111111111111111111","worker_id":"example-worker","delivery_receipt":{"delivery_id":"22222222222222222222222222222222","status":"no_reply","processed_sequence":42}}
+```
+
+完全相同請求重送會取得原結果；同 key 改 payload 會衝突。Reply 與 `no_reply` 互斥，任一完成後不能換另一種 disposition 再完成。同一 lease 已扣的 turn 不退還，完成也不再扣一次啟動。未讀全文、工具錯誤或未知寫回結果不能改成 silent success。模型口頭說「不回覆」、沒有張貼或只有 `tool_read` 都不是完成；必須核對實際終端工具／server 收據，不能只看沉默或游標。
 
 ## 暫停與狀態
 
@@ -69,7 +89,7 @@
 - `participants`：`binding_id`、`worker_id`、`client`、`display_name`、`generation`、`version`、`enabled`、`released_at`、`expires_at`、`last_seen_at`、`processed_sequence`、`max_turns`、`turns_used`、`relay_online`、`status`、`latest_delivery`。
 - 參與者上的選填 `queued_reservation`：僅含 `through_sequence`、`created_at`、`queued_until`。只有未過期、尚未啟用的保留符合目前 binding、generation、版本與游標，且沒有待處理 delivery 時才出現；僅適用 `waiting` 或 `offline`。它表示 Hub 的准入保留，不代表通知已被接受、工具已讀取或已回覆；既有 `status` 值不變。介面顯示「排隊中，尚未讀取」，離線標示仍保留。
 - 參與者狀態：`waiting` / `offline` / `processing` / `failed` / `budget_exhausted` / `paused` / `disabled` / `disconnected` / `expired` / `archived` / `revoked`。
-- 收據狀態：`leased` / `dispatched` / `tool_read` / `replied` / `failed` / `retry_ready`。含各階段時間與確切 reply ID/序號；不包含正文、Token、lease ID 或 native session ID。
+- 收據狀態：`leased` / `dispatched` / `tool_read` / `replied` / 候選 `no_reply` / `failed` / `retry_ready`。含各階段時間；`no_reply` 不新增訊息，reply ID／序號／時間為 null。不包含正文、Token、lease ID 或 native session ID。
 
 排隊查詢先由 SQL 篩選版本等條件與期限，再回傳最多八筆候選。這限制的是回傳筆數，不是資料庫掃描量：資料庫仍會檢查該 worker 在專案內的保留歷史。游標已到最新、已有待處理交付或綁定受阻時，不執行此查詢。歷史量大時應量測成本，另案審查索引／schema 變更；回應不含訊息正文或保留識別碼。
 

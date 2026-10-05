@@ -96,7 +96,7 @@ def disconnect(project):
     old_settings_path = directory/'previous-claude-settings.dpapi'
     old_settings = json.loads(secret.transform(old_settings_path.read_bytes(),decrypt=True).decode('utf-8-sig')) if old_settings_path.exists() else {}
     old_rules = old_settings.get('permissions',{}).get('allow',[])
-    owned = {'mcp__ys_memory__'+n for n in ('chat_status','chat_read','chat_reply')}
+    owned = {'mcp__ys_memory__'+n for n in ('chat_status','chat_read','chat_reply','chat_no_reply')}
     allow = settings.get('permissions',{}).get('allow',[])
     if 'permissions' in settings:
         settings['permissions']['allow'] = [r for r in allow if r not in owned or r in old_rules]
@@ -174,7 +174,7 @@ def configure(project, project_id, session_id, native_session_id=None, *, displa
     allows = config.setdefault('permissions', {}).setdefault('allow', [])
     if not isinstance(allows, list):
         raise ValueError('invalid_project_tool_permissions')
-    for tool in ('chat_status','chat_read','chat_reply'):
+    for tool in ('chat_status','chat_read','chat_reply','chat_no_reply'):
         rule = 'mcp__ys_memory__' + tool
         if rule not in allows:
             allows.append(rule)
@@ -203,7 +203,7 @@ def configure(project, project_id, session_id, native_session_id=None, *, displa
         'expires_at': binding['expires_at'], 'max_turns': max_turns,
         'settings_sha256': hashlib.sha256(candidate).hexdigest(),
         'stop_file': str(directory / 'STOP'), 'global_settings_changed': False,
-        'mcp_scope':'Only chat_status/chat_read/chat_reply in the configured room; normal memory tools restored on disconnect.',
+        'mcp_scope':'Only chat_status/chat_read/chat_reply/chat_no_reply in the configured room; normal memory tools restored on disconnect.',
         'activation_prompt': ('I authorize automatic chat only in the configured YS Memory room, '
             'within the displayed time and turn budget. Reply with exactly this single line and no tools: '
             + binding['activation_phrase']) if not native_session_id else None,

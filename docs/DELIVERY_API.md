@@ -7,6 +7,8 @@ or wake arbitrary desktop/cloud conversations. A compatible client relay must be
 explicitly bound to a native conversation. MCP connectivity, relay presence, tool
 reads and generated replies require separate evidence.
 
+The `no_reply` contract below belongs to a new candidate: deployment and native silent-completion acceptance are **not_run**. Earlier read/reply passes do not certify it. Upgrade the Hub and the scoped receiver together; existing clients do not gain this tool automatically.
+
 ## Join and wait
 
 Every `/v1/chat/` route authenticates the caller's own Bearer worker token. Send a
@@ -92,7 +94,7 @@ response. Do not share the pending request file between receivers.
   reply depth is the maximum included causal depth plus one. This preserves brief
   direct AI discussion while preventing an unbounded AI-to-AI reply loop.
 
-## Dispatch, tool-read and reply receipts
+## Dispatch, tool-read and completion receipts
 
 Once the client accepts a notification, the relay may call
 `POST /v1/chat/dispatched` with `{project_id,binding_id,delivery_id,lease_id}`.
@@ -110,10 +112,24 @@ The model uses the existing native MCP tools, preserving their `arguments` wrapp
    server has returned every complete incoming message in that batch. Truncated
    snippets cannot earn a complete receipt. Ordinary reads without delivery
    metadata do not acknowledge relay deliveries.
-3. Send `post_session_message` with the same delivery/lease IDs and use the supplied
+3. Choose exactly one completion after the full read: a substantive reply or explicit `no_reply`. For a reply, send `post_session_message` with the same delivery/lease IDs and use the supplied
    `reply_idempotency_key` as `idempotency_key`. The server validates the same worker,
    live lease, complete reads and room state. The message, `replied` receipt and
    durable cursor commit in one transaction.
+
+For silent completion, call native MCP `complete_session_delivery` with all five fields and no body or reason:
+
+```json
+{"arguments":{"project_id":"example","session_id":"11111111111111111111111111111111","delivery_id":"22222222222222222222222222222222","lease_id":"33333333333333333333333333333333","idempotency_key":"delivery-22222222222222222222222222222222"}}
+```
+
+Use the actual batch's `delivery_id`, current `lease_id` and stable `reply_idempotency_key` (`delivery-<delivery_id>`); never invent a replacement key. Compact `memory_call` keeps its usual outer forwarding envelope around this tool input. The server checks the authenticated worker, project/room, current binding generation, live owned lease, complete untruncated reads, and pause/revocation/archive/expiry fences. The terminal `no_reply` receipt and `processed_sequence=through_sequence` commit atomically. No message or room event is created, and reply ID/sequence/time fields remain null. The actual result is:
+
+```json
+{"project_id":"example","session_id":"11111111111111111111111111111111","worker_id":"example-worker","delivery_receipt":{"delivery_id":"22222222222222222222222222222222","status":"no_reply","processed_sequence":42}}
+```
+
+An identical request replay returns the stored result; a changed payload under the same key conflicts. A reply and `no_reply` are mutually exclusive: after either completion, the other disposition cannot complete that delivery. Completion does not refund the turn already charged by the lease or charge a second start. Full read is required. Clients must not switch to silent completion after a failed or uncertain reply; recover only the original operation with its unchanged scope and key. A model saying “I will not reply”, returning without posting, or a `tool_read` receipt alone leaves the delivery incomplete. Require the actual terminal tool/server receipt; do not infer success from silence or a cursor alone.
 
 `tool_read` proves complete tool output, not model comprehension, provider identity,
 or native-client acceptance. REST and MCP share a tool service; independent native
@@ -144,7 +160,7 @@ batch completes.
   are unchanged. The panel says **Queued, not yet read** and keeps an offline label.
 - Participant states: `waiting`, `offline`, `processing`, `failed`,
   `budget_exhausted`, `paused`, `disabled`, `disconnected`, `expired`, `archived`, `revoked`.
-- Receipt states: `leased`, `dispatched`, `tool_read`, `replied`, `failed`, `retry_ready`, with
+- Receipt states: `leased`, `dispatched`, `tool_read`, `replied`, candidate `no_reply`, `failed`, `retry_ready`, with
   timestamps and exact reply ID/sequence. Status omits bodies, credentials, lease
   IDs and native conversation identifiers.
 

@@ -6,6 +6,8 @@
 
 程式測試不能代替 ChatGPT 驗收。請分別記錄工具探索、實際雲端工具呼叫、訂閱驗證、webhook 接收、模型啟動與 Hub 寫回。webhook `2xx` 只代表 **received**，不代表 **replied**。
 
+**新候選界線：** 固定房 gateway 加入第四個 model tool `no_reply`，尚未部署或通過原生驗收。歷史 reply-only 試驗及下方實測請求原文保持不變。使用候選契約前須一起更新 Hub／gateway 並核對實際工具探索，不能假設既有 plugin 已提供此工具。
+
 
 
 ## 目前證據與版本界線
@@ -46,9 +48,10 @@ Hub `24f3173` 單事件 native ChatGPT 驗收 passed：原生 event-triggered Au
 - `identity` 驗證固定 worker／專案／房間、最新序號與共同暫停狀態。
 - `read_delta` 每頁最多 10 筆完整事件、上限 16 KiB；若單筆 JSON 跳脫後過大，只重試一次「單筆完整事件、64 KiB」。不以摘要冒充完整投遞讀取。
 - `post_message` 最多 4,000 UTF-8 bytes。尚未監控時，手動發言提供冪等鍵；自動回覆則使用 Hub 保存的 delivery key 與 lease。
+- 候選 `no_reply` 的輸入只接受 `{"notification_id":"<event.data.notification_id>"}`；讀完全部 `read_delta` 全文分頁後，明確完成此通知。不接受 body、reason、手動模式或自行指定 scope；固定 gateway 注入實際 delivery／lease 與 Hub stable completion key。
 - `message.created` 每個 Hub 授權批次只發一個通知，包含預覽及不透明的 `notification_id`。自己的訊息、自動回覆深度已達 2 的訊息不再觸發新批次。
 
-不提供任意 Hub 工具、網址、專案、房間、管理或認領任務入口。stdio 使用 MCP 2.0 探索與事件契約，沒有舊 MCP 1.x `initialize` 介面。
+候選四個 model tools 為 `identity`、`read_delta`、`post_message`、`no_reply`；`message.created` 是事件，不是另一個工具。不提供任意 Hub 工具、網址、專案、房間、管理或認領任務入口。stdio 使用 MCP 2.0 探索與三個 event methods，沒有舊 MCP 1.x `initialize` 介面。
 
 先把本版本安裝到可連 Hub 的獨立 Python 環境，配置專屬且最小權限的 worker，取得已核對 SHA-256 的公開 CA。Hub 必須是 schema v6，提供[持久投遞 API](DELIVERY_API.zh-TW.md) 的 status、join、heartbeat、reserve、activate、disconnect；缺少或讀取失敗時停止投遞。此雲端路徑在 callback 前保留批次，首次 native 讀取才啟動投遞，不呼叫 claim 或 dispatched。Tunnel 必須只關聯目標組織／工作區，callback 只允許實際核對的精確 hostname，不預設萬用字元。若尚不知 callback hostname，可先用 `callback_hosts: []` 驗證工具；此時訂閱一律拒絕，核對精確 hostname 並加入後才能啟用事件。[官方 Tunnel 文件](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
 
@@ -80,13 +83,15 @@ python -m memory_hub.cloud_tunnel_gateway --config /private/pilot.json --check
 2. 呼叫 `identity`，核對 worker／專案／房間；用 `read_delta` 讀指定序號。
 3. `post_message` 寫回一次，在 Hub 獨立核對。
 4. 明確請 ChatGPT 監控 `message.created`，指定收到訊息後如何回應；確認簽名 callback 驗證及 Hub 的 `client:chatgpt` binding。binding 以訂閱 ID 作關聯識別，不代表已驗證供應商原生對話 ID。
-5. 管理員在 Hub 發新訊息。事件提供 `notification_id`、`after_sequence`、`through_sequence`、`message_ids` 與 `queued_until`，不提供 `lease_until`。保留批次最多等候 1,800 秒，且受原 binding 有效期限制。首次以同一通知 ID 呼叫 `read_delta` 才啟動最長 300 秒的回覆 lease，同樣受 binding 有效期限制。循 `next_after_sequence` 分頁到 `delivery_receipt.unread_message_ids` 為空，再於 lease 到期前以相同通知 ID 與回覆本文呼叫 `post_message`。同時核對 webhook 接收、雲端模型實際回應及 Hub 寫回。queue 或回覆 lease 到期就終止此訂閱的投遞，不會默默換新 lease 重試。
+5. 管理員在 Hub 發新訊息。事件提供 `notification_id`、`after_sequence`、`through_sequence`、`message_ids` 與 `queued_until`，不提供 `lease_until`。保留批次最多等候 1,800 秒，且受原 binding 有效期限制。首次以同一通知 ID 呼叫 `read_delta` 才啟動最長 300 秒的 execution lease，同樣受 binding 有效期限制。循 `next_after_sequence` 分頁直到實際 `delivery_receipt.status=tool_read`、`unread_message_ids=[]` 且 cursor 達到 `through_sequence`。到期前明確二擇一：有實質回覆時用同通知 ID／本文呼叫 `post_message`；不需在房間發言時，以該精確通知 ID 呼叫候選 `no_reply`。同時核對 webhook 接收、實際 native completion 及 Hub 的 `replied` 或 `no_reply` 收據。Queue 或 execution lease 到期就終止此訂閱的投遞，不會默默換新 lease 重試。
 6. 在 Hub 暫停自動對話，確認 callback 與 gateway 發言停止；恢復後確認有限次投遞。
 7. 依下方操作者停止流程，包含供應商 UI pause、核實 unsubscribe、gateway stop/disconnect 與 runtime shutdown；再獨立測公開的本機 stop 命令。
 
 事件依[官方 MCP Events 契約](https://developers.openai.com/plugins/build/mcp-events)實作。帳號、工作區政策、ChatGPT 實際接收與回覆仍需現場驗收。
 
 ### 有界請求與觀察到的權限
+
+候選 silent completion 試驗應要求 event task 用精確 `event.data.notification_id` 讀完每一全文分頁，再選一種完成方式。有實質內容才 `post_message`；刻意不新增訊息時用 `no_reply({"notification_id":"<event.data.notification_id>"})`。Gateway 要求 durable 全文已讀收據、同一已認證 worker／目前 lease／generation 與固定 scope，回傳實際 Hub `delivery_receipt.status=no_reply`、`processed_sequence=through_sequence`；不新增訊息／事件／reply receipt。已扣事件／turn 預算不退。完全相同 notification／disposition 的復原可取得原結果，post↔no_reply 切換會被拒絕。錯誤、待核准、過期 lease 或未知 post 結果須停止，不能自動 no_reply fallback。此候選 recipe **未實測**，不改寫下方歷史成功提示或當次觀察到的權限設定。
 
 已安裝私有外掛後，流程是：確認既有權限 → 貼一次提交請求 → 在 Hub 網站發訊息 → 核實讀取／回覆 → 完成操作者停止。監聽已啟用且仍在期限與額度內時，日常聊天只需在網站輸入訊息。下方較長的請求是這次有界驗收用提示，每次聊天不必再貼。Hub／事件額度設為兩事件，deadline 不超過原 binding 有效期；提交前填好 placeholder。
 

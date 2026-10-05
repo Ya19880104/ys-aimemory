@@ -39,10 +39,11 @@ def rig(tmp_path):
     return config, event, binding, Mock(post=post, get=get), calls, tmp_path
 
 
-def test_return_is_not_idle_and_second_send_needs_real_event(rig):
+@pytest.mark.parametrize('completion', ['replied', 'no_reply'])
+def test_return_is_not_idle_and_second_send_needs_real_event(rig,completion):
     config, event, binding, client, calls, directory = rig
     def send(*args, **kwargs):
-        binding['latest_delivery'] = {'delivery_id': 'delivery', 'status': 'replied'}
+        binding['latest_delivery'] = {'delivery_id': 'delivery', 'status': completion}
         return Mock(returncode=0)
     execute = Mock(side_effect=send)
     clock = [110]
@@ -53,6 +54,8 @@ def test_return_is_not_idle_and_second_send_needs_real_event(rig):
     assert states == ['needs_native_idle']
     assert execute.call_count == 1
     assert calls[0] == 'status'
+    journal=json.loads((directory/'receiver-journal.json').read_text())
+    assert journal['attempts'][0]['state']==completion
 
 
 @pytest.mark.parametrize('state', ['intent', 'unknown', 'returned'])

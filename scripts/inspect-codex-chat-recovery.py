@@ -24,7 +24,7 @@ HEX = re.compile('[0-9a-f]{32}')
 CODE = re.compile('[a-z0-9_]{1,80}')
 BINDING_STATES = {'revoked', 'disconnected', 'archived', 'paused', 'disabled', 'expired', 'failed',
                   'processing', 'budget_exhausted', 'waiting', 'offline'}
-DELIVERY_STATES = {'leased', 'dispatched', 'tool_read', 'failed', 'retry_ready', 'replied',
+DELIVERY_STATES = {'leased', 'dispatched', 'tool_read', 'failed', 'retry_ready', 'replied', 'no_reply',
                    'released', 'superseded'}
 FIXED = {'read_only': True, 'automatic_recovery': 'not_performed',
          'retry_permission': 'not_granted_by_this_report',
@@ -190,6 +190,18 @@ def read_state(directory, scope):
     if local['delivery']['status'] == 'valid':
         def completion(value):
             post = value.get('post_receipt')
+            silent = value.get('no_reply_receipt')
+            if post is not None and silent is not None:
+                return 'malformed'
+            if value.get('status') == 'passed' and value.get('completion_status') == 'no_reply' and post is None:
+                receipt = silent.get('delivery_receipt', {}) if isinstance(silent, dict) else {}
+                if (value.get('delivery_id') == local['delivery']['delivery_id'] and
+                        value.get('worker_id') == scope['worker_id'] and isinstance(silent, dict) and scoped(silent) and
+                        receipt.get('delivery_id') == value['delivery_id'] and receipt.get('status') == 'no_reply' and
+                        is_int(receipt.get('processed_sequence')) and
+                        receipt['processed_sequence'] == local['delivery']['through_sequence']):
+                    return {'disposition': 'no_reply', 'processed_sequence': receipt['processed_sequence']}
+                return 'malformed'
             if (value.get('status') != 'passed' or value.get('delivery_id') != local['delivery']['delivery_id']
                     or value.get('worker_id') != scope['worker_id'] or not isinstance(post, dict)
                     or not is_id(post.get('message_id')) or not is_int(post.get('sequence'))
@@ -312,9 +324,16 @@ def classify(local, hub, reason):
             and latest['reply_sequence'] is not None):
         if not recorded:
             return verdict('server-replied', 'local-completion-missing', 'do_not_resend_reply_exists')
-        same = (completion['message_id'], completion['sequence']) == (latest['reply_message_id'], latest['reply_sequence'])
+        same = (completion.get('message_id'), completion.get('sequence')) == (latest['reply_message_id'], latest['reply_sequence'])
         return verdict('server-replied', 'local-completion-recorded' if same else 'local-completion-mismatch',
                        *(() if same else ('ask_administrator',)))
+    if (latest['status'] == 'no_reply' and latest['read_at'] and not latest['replied_at'] and
+            latest['reply_message_id'] is None and latest['reply_sequence'] is None and
+            hub['processed_sequence'] >= latest['through_sequence']):
+        detail = 'local-completion-missing' if not recorded else 'local-completion-recorded' if (
+            completion.get('disposition') == 'no_reply' and
+            completion.get('processed_sequence') == latest['through_sequence']) else 'local-completion-mismatch'
+        return verdict('server-no-reply', detail, 'do_not_resend_delivery_complete')
     if recorded:
         missing.append('local_completion_not_confirmed_by_hub')
     missing.append('hub_reply_record')
@@ -391,6 +410,15 @@ TEXT = {
     's_server-replied/local-completion-mismatch': (
         'The Hub recorded a reply, but the local receipt names a different message. The two records disagree.',
         'Hub 已記錄回覆，但本機的執行回條指向不同的訊息，兩份紀錄不一致。'),
+    's_server-no-reply/local-completion-missing': (
+        'The Hub completed this fully read delivery without a reply. No room message was created; the local completion receipt is missing.',
+        'Hub 已將完整已讀的交付完成而不回覆，沒有建立聊天室訊息；本機完成回條仍缺少。'),
+    's_server-no-reply/local-completion-recorded': (
+        'The Hub and local receipt agree that this delivery completed without a reply. No room message was created.',
+        'Hub 與本機回條一致記錄此交付完成而不回覆，沒有建立聊天室訊息。'),
+    's_server-no-reply/local-completion-mismatch': (
+        'The Hub completed this delivery without a reply, but the local receipt claims a different disposition. Keep both records.',
+        'Hub 記錄此交付完成而不回覆，但本機回條聲稱不同結果，請保留兩份紀錄。'),
     's_server-read': (
         'The Hub returned the complete messages to a tool call, but recorded no reply. This is a read without a reply, not a completed turn.',
         'Hub 已透過工具回傳完整訊息，但沒有記錄回覆。這是已讀未回，不是完成的回合。'),
@@ -450,6 +478,8 @@ TEXT = {
         'Look in the Hub room for a reply from this worker after the delivery\'s last sequence before doing anything else.',
         '採取任何動作前，先到 Hub 聊天室確認此 worker 在該交付最後序號之後是否已有回覆。'),
     'a_do_not_resend_reply_exists': ('Do not resend or post a substitute: the reply is already in the room.', '不要重送或補發：回覆已在聊天室內。'),
+    'a_do_not_resend_delivery_complete': ('Do not resend or post a substitute: the delivery completed without a reply.',
+        '不要重送或補發：此交付已完成而不回覆。'),
     'a_do_not_post_substitute_reply': (
         'Do not post a substitute reply with this delivery\'s fields, and do not strip them to post manually.',
         '不要用此交付的欄位補發回覆，也不要拿掉欄位改成手動發文。'),

@@ -122,7 +122,7 @@ def test_mcp2_catalog_and_fixed_tool_scope(pilot):
     gateway = pilot.gateway
     assert rpc(gateway, 'server/discover')['result']['supportedVersions'] == ['2026-07-28']
     assert set(rpc(gateway, 'server/discover')['result']['capabilities']) == {'tools', 'events'}
-    assert {tool['name'] for tool in rpc(gateway, 'tools/list')['result']['tools']} == {'identity', 'read_delta', 'post_message'}
+    assert {tool['name'] for tool in rpc(gateway, 'tools/list')['result']['tools']} == {'identity', 'read_delta', 'post_message', 'no_reply'}
     assert rpc(gateway, 'events/list')['result']['events'][0]['name'] == cloud.EVENT_NAME
     identity = rpc(gateway, 'tools/call', {'name': 'identity'})['result']['structuredContent']
     assert identity['worker_id'] == 'chatgpt-pilot' and identity['latest_sequence'] == pilot.hub.sequence
@@ -1096,3 +1096,152 @@ def test_local_status_callback_counter_keeps_legacy_alias(pilot,monkeypatch,caps
     row=value['subscriptions'][0]
     assert row['delivered']==row['callbacks_accepted']==1
     assert value['delivered_meaning']=='callbacks_accepted_not_native_read_or_reply'
+
+
+def test_no_reply_requires_full_read_and_keeps_no_message_distinct(pilot):
+    pilot.gateway.subscribe(subscription())
+    for _ in range(2): pilot.hub.add()
+    pilot.gateway.tick(); identifier = notification(pilot)
+    with pytest.raises(cloud.GatewayError, match='Read'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+    pilot.gateway.call('read_delta', {'notification_id': identifier, 'limit': 1})
+    with pytest.raises(cloud.GatewayError, match='Read entire'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+    read_batch(pilot, identifier)
+    sequence = pilot.hub.sequence
+    first = pilot.gateway.call('no_reply', {'notification_id': identifier})
+    assert first['delivery_receipt']['status'] == 'no_reply'
+    assert first['delivery_receipt']['processed_sequence'] == sequence
+    assert pilot.hub.sequence == sequence and pilot.hub.posts == []
+    assert pilot.gateway.call('no_reply', {'notification_id': identifier}) == first
+    row = pilot.gateway.db.execute('SELECT * FROM batches WHERE notification_id=?', (identifier,)).fetchone()
+    assert row['state'] == 'no_reply'
+    binding = pilot.hub.relay('status', session_id=pilot.config['session_id'])['participants'][0]
+    assert binding['processed_sequence'] == sequence and binding['turns_used'] == 1
+    assert binding['latest_delivery']['status'] == 'no_reply'
+    assert binding['latest_delivery']['reply_sequence'] is None
+    with pytest.raises(cloud.GatewayError, match='without reply'):
+        pilot.gateway.call('post_message', {'notification_id': identifier, 'body': 'Filler'})
+
+
+def test_no_reply_after_reply_and_manual_completion_are_denied(pilot):
+    with pytest.raises(cloud.GatewayError): pilot.gateway.call('no_reply', {})
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    pilot.gateway.call('post_message', {'notification_id': identifier, 'body': 'Substantive reply'})
+    with pytest.raises(cloud.GatewayError, match='already replied'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+
+
+def test_no_reply_ambiguous_commit_preserves_intent_and_reconciles_after_restart(pilot, monkeypatch):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    original = pilot.hub.no_reply
+    def lost_response(delivery):
+        original(delivery)
+        raise cloud.GatewayError('Unknown transport outcome')
+    monkeypatch.setattr(pilot.hub, 'no_reply', lost_response)
+    with pytest.raises(cloud.GatewayError, match='Unknown transport'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+    with pytest.raises(cloud.GatewayError, match='differs'):
+        pilot.gateway.call('post_message', {'notification_id': identifier, 'body': 'Changed disposition'})
+    pilot.gateway.db.close()
+    monkeypatch.setattr(pilot.hub, 'no_reply', original)
+    restarted = cloud.Gateway(pilot.config, pilot.hub, box=cloud.SecretBox(KEY), sender=pilot.sender, clock=lambda: pilot.now[0])
+    pilot.gateway = restarted
+    restarted.tick()
+    row = restarted.db.execute('SELECT * FROM batches WHERE notification_id=?', (identifier,)).fetchone()
+    assert row['state'] == 'no_reply'
+    receipt = restarted.call('no_reply', {'notification_id': identifier})
+    assert receipt['delivery_receipt']['status'] == 'no_reply'
+    assert pilot.hub.posts == []
+
+
+def test_no_reply_does_not_create_event_or_refund_event_budget(pilot):
+    pilot.config['max_events_per_subscription'] = 2
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    pilot.gateway.call('no_reply', {'notification_id': identifier})
+    pilot.gateway.tick()
+    assert len([p for p in pilot.sent if 'eventId' in p[1]]) == 1
+    pilot.hub.add(); pilot.gateway.tick()
+    second = notification(pilot); assert second != identifier
+    read_batch(pilot, second); pilot.gateway.call('no_reply', {'notification_id': second})
+    pilot.gateway.tick(); pilot.hub.add(); pilot.gateway.tick()
+    assert len([p for p in pilot.sent if 'eventId' in p[1]]) == 2
+    with pytest.raises(cloud.GatewayError, match='budget'):
+        pilot.gateway.subscribe(subscription())
+
+
+@pytest.mark.parametrize('field,value', [('project_id', 'foreign'), ('worker_id', 'foreign')])
+def test_no_reply_rejects_false_scope_receipt_without_local_terminal(pilot, monkeypatch, field, value):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    def invalid(delivery):
+        return {'project_id':'pilot', 'session_id':pilot.config['session_id'], 'worker_id':pilot.config['worker_id'],
+                'delivery_receipt':{'delivery_id':delivery['delivery_id'], 'status':'no_reply', 'processed_sequence':delivery['through_sequence']}} | {field:value}
+    monkeypatch.setattr(pilot.hub, 'no_reply', invalid)
+    with pytest.raises(cloud.GatewayError, match='Invalid no-reply'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+    assert pilot.gateway.db.execute('SELECT state FROM batches WHERE notification_id=?', (identifier,)).fetchone()[0] == 'active'
+    assert pilot.hub.posts == []
+
+
+
+@pytest.mark.parametrize('blocked', ['pause', 'lease_expiry', 'foreign_field'])
+def test_no_reply_fail_closed_preserves_cursor_and_completion_intent(pilot, blocked):
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    args = {'notification_id': identifier}
+    if blocked == 'pause': pilot.hub.pause = True
+    elif blocked == 'lease_expiry': pilot.now[0] += 301
+    else: args['session_id'] = 'foreign'
+    with pytest.raises(cloud.GatewayError): pilot.gateway.call('no_reply', args)
+    batch = pilot.gateway.db.execute('SELECT state,post FROM batches WHERE notification_id=?', (identifier,)).fetchone()
+    assert batch['state'] == 'active' and batch['post'] is None
+    assert pilot.hub.posts == []
+
+
+def test_unknown_reply_intent_cannot_change_to_no_reply(pilot, monkeypatch):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    def unknown(*args, **kwargs): raise cloud.GatewayError('Unknown reply outcome')
+    monkeypatch.setattr(pilot.hub, 'post', unknown)
+    with pytest.raises(cloud.GatewayError):
+        pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Potential substantive contribution'})
+    with pytest.raises(cloud.GatewayError, match='intent differs'):
+        pilot.gateway.call('no_reply', {'notification_id':identifier})
+    assert pilot.gateway.db.execute('SELECT state FROM batches WHERE notification_id=?', (identifier,)).fetchone()[0] == 'active'
+
+
+def test_no_reply_forwards_exact_native_tool_and_reports_distinct_receipt(pilot, monkeypatch, capsys):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    calls=[]; original=pilot.hub._tool
+    def capture(name, **arguments):
+        calls.append((name,arguments));return original(name,**arguments)
+    monkeypatch.setattr(pilot.hub,'_tool',capture)
+    response=rpc(pilot.gateway,'tools/call',{'name':'no_reply','arguments':{'notification_id':identifier}})
+    assert response['result']['structuredContent']['delivery_receipt']['status']=='no_reply'
+    assert len(calls)==1 and calls[0][0]=='complete_session_delivery'
+    name,args=calls[0]
+    assert set(args)=={'session_id','delivery_id','lease_id','idempotency_key'}
+    assert args['idempotency_key']=='delivery-'+args['delivery_id']
+    records=[json.loads(line)for line in capsys.readouterr().err.splitlines()]
+    assert any(r.get('event')=='gateway_tool_completed' and r.get('tool')=='no_reply' and r.get('receipt_status')=='no_reply' for r in records)
+
+
+def test_existing_gateway_state_adds_read_completion_without_reclassifying_old_batch(pilot):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot)
+    before=pilot.gateway.db.execute('SELECT notification_id,state,delivery FROM batches').fetchone()
+    pilot.gateway.db.execute('ALTER TABLE batches DROP COLUMN read_complete');pilot.gateway.db.commit();pilot.gateway.db.close()
+    reopened=cloud.Gateway(pilot.config,pilot.hub,box=cloud.SecretBox(KEY),sender=pilot.sender,clock=lambda:pilot.now[0])
+    pilot.gateway=reopened
+    after=reopened.db.execute('SELECT notification_id,state,delivery,read_complete FROM batches').fetchone()
+    assert after[:3]==before[:] and after['read_complete']==0
+    with pytest.raises(cloud.GatewayError,match='Read'):
+        reopened.call('no_reply',{'notification_id':identifier})
+    read_batch(pilot,identifier)
+    assert reopened.call('no_reply',{'notification_id':identifier})['delivery_receipt']['status']=='no_reply'

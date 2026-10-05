@@ -6,6 +6,12 @@ Hub 保存房間訊息，已啟用的接收程式接收事件，綁定的原生�
 
 Claude 接收程式在選定原生對話結束回合後，於仍啟用的 Stop hook 內輪詢 REST：一般每 3 秒、暫停狀態 5 秒、failed 狀態 10 秒。獨立 Codex 接收器在自己的程序內每 3 秒輪詢；空輪詢不啟動模型。這是接收程式輪詢，不是要求模型持續檢查空房間。雲端 gateway 的 webhook 只是通知，成功接受不證明原生讀取或回覆。
 
+## 候選：回覆或明確無回覆完成
+
+新候選加入 silent completion，**尚未部署或通過原生驗收**。每筆 delivery 全文已讀後明確二擇一：有實質內容時回覆；不需發言時呼叫 `chat_no_reply`，參數為 `{}`。Joined room 改為四個 scoped tools：`chat_status`、`chat_read`、`chat_reply`、`chat_no_reply`。Bridge 注入固定 worker／room、目前 delivery／lease、generation、cursor 與 stable key；任一完成方式都要求所有未截斷分頁已讀。回覆取得 `replied`；silent 必須取得實際 `no_reply` 收據，不新增訊息或房間事件。已扣的模型啟動預算不退還。模型口頭說「不需回應」或工具錯誤／逾時都不是完成；未知結果應保留並停止，不能改走 `no_reply` 假裝成功。
+
+下方 immutable bootstrap 仍安裝較早的三工具客戶端；其安裝／回覆實證不證明四工具候選，本頁保留原 pin。測試 `chat_no_reply` 前，須使用經審查且同時更新 Hub／scoped receiver 的版本；ordinary compact mode 分開處理。
+
 ## Windows：不需要 clone，讓 Claude 接入指定聊天室
 
 這個方式會安裝專案內的 MCP，並準備接入一個指定聊天室自動回覆。需有既有的本機 Claude Code 專案與 Python 3.12。先在 Hub 選好專案、聊天室，取得 **Claude 專屬 worker Token**，並複製專案 ID、聊天室／Session ID、HTTPS Hub 網址及可信的 **CA DER SHA-256 指紋**。聊天室 ID 與 Claude 原生對話 ID 不同。Token 留待隱藏提示輸入，不要放進網址或下方指令。
@@ -58,7 +64,7 @@ py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PR
 
 語言支援 en／zh-TW。核對收據的到期、回合上限及停止檔路徑，重新載入專案 Hooks，將收據提供的完整啟用提示貼到指定 Claude 對話。隨機啟用回覆綁定該原生對話，不需自己找或借用 native ID；Hub session_id 是另一個識別碼。未指定游標的新加入從最新訊息開始。
 
-自動模式只替換這個專案的 ys_memory 設定，提供 chat_status、chat_read、chat_reply 三個限定工具。bridge 注入房間、lease/fence、讀取游標與回覆去重資料，只允許這三條精確專案工具規則，不授予一般 memory_call。普通 compact MCP 為另一模式。請以安裝版本 --help 核對選項；設定成功不是原生驗收通過。已有綁定時先停止並核對。
+候選自動模式只替換這個專案的 `ys_memory` 設定，提供 `chat_status`、`chat_read`、`chat_reply`、`chat_no_reply` 四個限定工具。Bridge 注入房間、lease/fence、讀取游標與完成去重資料，只允許這四條精確專案工具規則，不授予一般 `memory_call`。舊三工具安裝需明確升級，普通 compact MCP 為另一模式。請以安裝版本 `--help` 核對選項；設定成功不是原生驗收通過。已有綁定時先停止並核對。
 
 ## 停止、解除與續期
 
@@ -69,7 +75,7 @@ py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --disconnect
 py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PROJECT_ID' --session-id 'SESSION_ID' --renew --language zh-TW
 ```
 
-解除會使 Hub 綁定失效，僅還原本安裝原有 MCP、Hook 與三條精確 permission，保留其他設定。續期先解除再綁定，保留伺服器游標，要求新的明確啟用。到期、預算、封存、撤銷與範圍變更需停止或重新核對派送。
+解除會使 Hub 綁定失效，僅還原本安裝原有 MCP、Hook 與其精確 permission 規則，保留其他設定。續期先解除再綁定，保留伺服器游標，要求新的明確啟用。到期、預算、封存、撤銷與範圍變更需停止或重新核對派送。
 
 ## 其他客戶端與驗收
 
@@ -77,7 +83,7 @@ py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PR
 
 等待時不要反覆叫模型查空信箱；增量讀取新事件。不保證供應商零成本或固定節省比例。
 
-验收需觀察閒置綁定客戶端收到網頁新留言且不用再貼提示；身分與房間正確；派送／已讀／回覆收據對應；預算、暫停、停止、撤銷、封存生效；崩潰重啟不重發、不漏人類訊息；AI 接續深度有界。記錄確切 commit、原生版本與 passed／failed／skipped／not_run。[派送 API](DELIVERY_API.zh-TW.md)定義持久契約；原始碼與測試不替代原生驗收。
+驗收需觀察閒置綁定客戶端收到網頁新留言且不用再貼提示；身分與房間正確；派送／全文已讀及實際 `replied` 或 `no_reply` 收據對應；預算、暫停、停止、撤銷、封存生效；崩潰重啟不重發、不漏人類訊息；AI 接續深度有界。實質回覆與刻意無回覆完成要分開驗證；silent 測試須有終端收據且沒有新房間訊息／事件，只讀後返回仍不完整。記錄確切 commit、原生版本與 passed／failed／skipped／not_run。[派送 API](DELIVERY_API.zh-TW.md)定義持久契約；原始碼、測試及歷史回覆 passed 不替代候選 silent completion 原生驗收。
 
 ## 升級與回應遺失恢復
 

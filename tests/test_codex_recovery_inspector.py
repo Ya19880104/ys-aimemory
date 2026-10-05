@@ -67,7 +67,7 @@ def hub(*, status='processing', generation=1, delivery='dispatched', delivery_id
     latest = None if delivery is None else {'delivery_id': delivery_id, 'status': delivery,
         'after_sequence': 4, 'through_sequence': 6, 'attempts': 1, 'created_at': 90.0,
         'dispatched_at': None if delivery == 'leased' else 91.0,
-        'read_at': 92.0 if delivery in ('tool_read', 'replied') else None,
+        'read_at': 92.0 if delivery in ('tool_read', 'replied', 'no_reply') else None,
         'replied_at': 93.0 if delivery == 'replied' else None,
         'reply_message_id': REPLY if delivery == 'replied' else None,
         'reply_sequence': 7 if delivery == 'replied' else None}
@@ -107,6 +107,29 @@ def examine(directory, answer=None, calls=None, **options):
     assert {k: report[k] for k in inspector.FIXED} == {'read_only': True, 'automatic_recovery': 'not_performed',
         'retry_permission': 'not_granted_by_this_report', 'native_exit': 'not_established_by_this_report'}
     return report
+
+
+@pytest.mark.parametrize('local_kind', ['missing', 'no_reply', 'post'])
+def test_inspector_reports_authoritative_no_reply_without_claiming_a_message_or_exit(tmp_path,local_kind):
+    state=journal(tmp_path/'state',receipt=local_kind=='post',marker=True)
+    if local_kind=='no_reply':
+        (state/('receipt-'+DELIVERY+'.json')).write_text(json.dumps({'status':'passed',
+            'worker_id':SCOPE['worker_id'],'delivery_id':DELIVERY,'completion_status':'no_reply',
+            'post_receipt':None,'no_reply_receipt':SCOPE|{'delivery_receipt':{
+                'delivery_id':DELIVERY,'status':'no_reply','processed_sequence':6}}}),encoding='utf8')
+    before=snapshot(state)
+    with client(hub(delivery='no_reply',cursor=6)) as transport:
+        report=inspector.inspect(SCOPE,state,transport)
+    assert before==snapshot(state)
+    assert report['state']=='server-no-reply'
+    assert report['detail']=={'missing':'local-completion-missing','no_reply':'local-completion-recorded',
+                             'post':'local-completion-mismatch'}[local_kind]
+    assert 'hub_reply_record' not in report['evidence_missing']
+    assert 'native_exit_unconfirmed' in report['evidence_missing']
+    assert report['retry_permission']=='not_granted_by_this_report'
+    for language in ['en','zh-TW']:
+        assert inspector.render(report,language)
+    assert 'without a reply' in inspector.render(report)
 
 
 SCENARIOS = {

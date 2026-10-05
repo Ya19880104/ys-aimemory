@@ -42,7 +42,7 @@ def test_setup_is_scoped_and_disconnect_preserves_other_user_changes(installatio
     (project/'.mcp.json').write_text(json.dumps(mcp))
     current=json.loads((project/'.claude/settings.local.json').read_text())
     assert len(current['hooks']['Stop'])==2
-    assert set(current['permissions']['allow'])=={'Read',*(('mcp__ys_memory__'+n) for n in ('chat_status','chat_read','chat_reply'))}
+    assert set(current['permissions']['allow'])=={'Read',*(('mcp__ys_memory__'+n) for n in ('chat_status','chat_read','chat_reply','chat_no_reply'))}
     current['permissions']['allow'].append('user-later-rule')
     (project/'.claude/settings.local.json').write_text(json.dumps(current))
     result=setup.disconnect(project)

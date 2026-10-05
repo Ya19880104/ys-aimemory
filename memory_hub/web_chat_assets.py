@@ -113,7 +113,7 @@ CHAT_JS = r'''
   function rememberRoom(){try{localStorage.setItem(lastRoomKey,JSON.stringify({project:state.project,session:state.room.session_id}));}catch{/* Disabled browser storage must not prevent chat. */}}
   function forgetRoom(){try{localStorage.removeItem(lastRoomKey);}catch{}}
   const deliveryNames={disconnected:uiText('ui_de0237e92b37'),waiting:uiText('ui_fc8170d79b79'),offline:uiText('ui_458d710c8651'),processing:uiText('ui_c6bfc7ae370d'),failed:uiText('ui_4d95c10d81dd'),budget_exhausted:uiText('ui_5196d864fcd3'),paused:uiText('ui_30d72ffb8690'),disabled:uiText('ui_a8c3698b5b8c'),expired:uiText('ui_a3bb7ab2cefc'),archived:uiText('ui_e6f1be2983ca'),revoked:uiText('ui_f46283d40781')};
-  const receiptNames={retry_ready:uiText('ui_642fcc1b1e7f'),leased:uiText('ui_fa2386a4a00e'),dispatched:uiText('ui_558ebda656f2'),tool_read:uiText('ui_7526bccb9e0e'),replied:uiText('ui_c2d242f57244'),failed:uiText('ui_4d95c10d81dd'),superseded:uiText('ui_6b865761f9a9')};
+  const receiptNames={retry_ready:uiText('ui_642fcc1b1e7f'),leased:uiText('ui_fa2386a4a00e'),dispatched:uiText('ui_558ebda656f2'),tool_read:uiText('ui_7526bccb9e0e'),replied:uiText('ui_c2d242f57244'),no_reply:uiText('ui_c10d00000008'),failed:uiText('ui_4d95c10d81dd'),superseded:uiText('ui_6b865761f9a9')};
   // Hub admission state only: never an accepted notification, a tool read or a reply.
   function queuedReservation(person){const q=person.queued_reservation;return q&&(person.status==='waiting'||person.status==='offline')&&Number.isInteger(q.through_sequence)&&Number.isFinite(q.queued_until)?q:null;}
   let lastDeliveryView='',lastHistory=null,lastDeliveryRoom=null;

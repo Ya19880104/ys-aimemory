@@ -9,7 +9,7 @@ from mcp import ClientSession, types
 import mcp.server.stdio
 import pytest
 
-from test_codex_chat_runner import runner, CONFIG, DELIVERY, arguments, reading, reply
+from test_codex_chat_runner import runner, CONFIG, DELIVERY, arguments, reading, reply, no_reply
 
 
 def result(value, *, error=False):
@@ -44,6 +44,8 @@ class Upstream:
                 return result({'error': 'response_budget_too_small'}, error=True)
             after = wire['arguments']['after_sequence']
             return result(reading(after + 1, DELIVERY['message_ids'][after - 4], after == 5))
+        if name == 'complete_session_delivery':
+            return result(no_reply())
         return result(reply())
 
 
@@ -121,6 +123,21 @@ def test_scoped_identity_projects_only_after_validation_and_preserves_delivery(m
 
     exercise(monkeypatch, upstream, scenario)
     assert len(upstream.calls) == (5 if budget_retry else 4)
+
+
+def test_real_scoped_mcp_no_reply_requires_full_native_read_and_blocks_post_fallback(monkeypatch):
+    upstream=Upstream()
+    async def scenario(client, observed):
+        catalog=await client.list_tools()
+        assert {tool.name for tool in catalog.tools}==set(runner.TOOLS)
+        assert not (await client.call_tool('get_worker_inbox',arguments('get_worker_inbox'))).isError
+        assert not (await client.call_tool('read_session',arguments('read_session'))).isError
+        assert not (await client.call_tool('read_session',arguments('read_session',after_sequence=5))).isError
+        completed=await client.call_tool('complete_session_delivery',arguments('complete_session_delivery'))
+        assert not completed.isError and completed.structuredContent==no_reply()
+        assert (await client.call_tool('post_session_message',arguments('post_session_message'))).isError
+    exercise(monkeypatch,upstream,scenario)
+    assert [name for name,_ in upstream.calls]==['get_worker_inbox','read_session','read_session','complete_session_delivery']
 
 
 @pytest.mark.parametrize('failure', ['wrong_identity', 'missing_identity', 'upstream_error'])

@@ -96,11 +96,11 @@ def run(config, client, directory, executable, admission, *, now=time.time,
                 return 'disconnected'
             if binding['project_id'] != config['project_id'] or binding['session_id'] != config['session_id']:
                 return 'scope_mismatch'
-            active = next((item for item in journal['attempts'] if item['state'] != 'replied'), None)
+            active = next((item for item in journal['attempts'] if item['state'] not in {'replied', 'no_reply'}), None)
             if active:
                 latest = binding.get('latest_delivery') or {}
-                if latest.get('delivery_id') == active['delivery_id'] and latest.get('status') == 'replied':
-                    active['state'] = 'replied'
+                if latest.get('delivery_id') == active['delivery_id'] and latest.get('status') in {'replied', 'no_reply'}:
+                    active['state'] = latest['status']
                     durable(path, journal)
                 elif now() >= active['lease_until']:
                     return 'unresolved'

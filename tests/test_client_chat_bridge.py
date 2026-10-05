@@ -49,12 +49,90 @@ def test_status_retains_authenticated_identity_and_active_semantics(joined, monk
 
 @pytest.fixture
 def joined(tmp_path):
-    config = {'native_session_id':'native','expires_at':1000,'project_id':'p','session_id':'room','idempotency_key':'join'}
+    config = {'native_session_id':'native','expires_at':1000,'project_id':'p','session_id':'room','worker_id':'own','idempotency_key':'join'}
     delivery = {'delivery_id':'d','lease_id':'lease','lease_until':500,'after_sequence':10,
         'through_sequence':12,'reply_idempotency_key':'once','join_key':'join'}
     (tmp_path/'chat-binding.json').write_text(json.dumps(config))
     (tmp_path/'chat-delivery.json').write_text(json.dumps(delivery))
     return RoomGate(tmp_path,clock=lambda:100), config, delivery
+
+
+def complete_read(delivery):
+    return result({'session':{'project_id':'p','session_id':'room'},'items':[{'type':'message','body':'Full text'}],
+        'next_after_sequence':delivery['through_sequence'],'delivery_receipt':{'delivery_id':delivery['delivery_id'],
+        'status':'tool_read','unread_message_ids':[]}})
+
+
+def silent_result(delivery):
+    return result({'project_id':'p','session_id':'room','worker_id':'own','delivery_receipt':{
+        'delivery_id':delivery['delivery_id'],'status':'no_reply','processed_sequence':delivery['through_sequence']}})
+
+
+def test_no_reply_forwards_only_after_full_read_and_is_not_a_post(joined):
+    gate, config, delivery = joined; calls=[]
+    async def upstream(name, wire):
+        calls.append((name,wire))
+        if name=='read_session':return complete_read(delivery)
+        assert name=='complete_session_delivery'
+        assert wire=={'arguments':{'project_id':'p','session_id':'room','delivery_id':'d','lease_id':'lease','idempotency_key':'once'}}
+        return silent_result(delivery)
+    with pytest.raises(ScopeError,match='read_entire_delivery_first'):asyncio.run(gate.call('chat_no_reply',{},upstream))
+    asyncio.run(gate.call('chat_read',{},upstream))
+    completed=asyncio.run(gate.call('chat_no_reply',{},upstream))
+    assert asyncio.run(gate.call('chat_no_reply',{},upstream)) is completed
+    assert completed.structuredContent['delivery_receipt']['status']=='no_reply'
+    with pytest.raises(ScopeError,match='already_completed'):asyncio.run(gate.call('chat_reply',{'body':'ack'},upstream))
+    assert len(calls)==2
+
+
+@pytest.mark.parametrize('ambiguous', [False,True])
+def test_no_reply_intent_survives_error_and_restart_without_disposition_fallback(joined,ambiguous):
+    gate, _, delivery=joined; calls=[]
+    async def fail(name,wire):
+        calls.append((name,wire))
+        if name=='read_session':return complete_read(delivery)
+        assert name=='complete_session_delivery'
+        if ambiguous:raise TimeoutError('committed response lost')
+        return types.CallToolResult(isError=True,content=[])
+    asyncio.run(gate.call('chat_read',{},fail))
+    with pytest.raises((ScopeError,TimeoutError)):asyncio.run(gate.call('chat_no_reply',{},fail))
+    raw=next(gate.directory.glob('chat-completion-intent-*.json')).read_text()
+    assert 'body' not in json.loads(raw) and json.loads(raw)['disposition']=='no_reply'
+    restarted=RoomGate(gate.directory,clock=lambda:100)
+    with pytest.raises(ScopeError,match='already_completed'):asyncio.run(restarted.call('chat_reply',{'body':'fallback'},fail))
+    async def retry(name,wire):
+        assert name=='complete_session_delivery';calls.append((name,wire));return silent_result(delivery)
+    assert asyncio.run(restarted.call('chat_no_reply',{},retry)).structuredContent['delivery_receipt']['status']=='no_reply'
+    assert calls[1]==calls[2]  # Same completion intent and stable upstream arguments.
+
+
+def test_ambiguous_reply_intent_blocks_no_reply_and_changed_body_across_restart(joined):
+    gate,_,delivery=joined; calls=[]; body='Private generated reply'
+    async def upstream(name,wire):
+        calls.append((name,wire))
+        if name=='read_session':return complete_read(delivery)
+        raise TimeoutError('unknown post')
+    asyncio.run(gate.call('chat_read',{},upstream))
+    with pytest.raises(TimeoutError):asyncio.run(gate.call('chat_reply',{'body':body},upstream))
+    assert body not in next(gate.directory.glob('chat-completion-intent-*.json')).read_text()
+    restarted=RoomGate(gate.directory,clock=lambda:100)
+    with pytest.raises(ScopeError,match='already_completed'):asyncio.run(restarted.call('chat_no_reply',{},upstream))
+    with pytest.raises(ScopeError,match='intent_changed'):asyncio.run(restarted.call('chat_reply',{'body':'changed'},upstream))
+    with pytest.raises(TimeoutError):asyncio.run(restarted.call('chat_reply',{'body':body},upstream))
+    assert calls[1]==calls[2]
+
+
+def test_persisted_intent_never_authorizes_a_new_lease(joined):
+    gate,config,delivery=joined
+    async def upstream(name,wire):
+        if name=='read_session':return complete_read(delivery)
+        raise TimeoutError('unknown completion')
+    asyncio.run(gate.call('chat_read',{},upstream))
+    with pytest.raises(TimeoutError):asyncio.run(gate.call('chat_no_reply',{},upstream))
+    delivery['lease_id']='new-lease'
+    (gate.directory/'chat-delivery.json').write_text(json.dumps(delivery))
+    with pytest.raises(ScopeError,match='read_entire_delivery_first'):
+        asyncio.run(RoomGate(gate.directory,clock=lambda:100).call('chat_no_reply',{},upstream))
 
 
 def test_scoped_tools_cannot_choose_room_cursor_tool_or_write_key(joined):

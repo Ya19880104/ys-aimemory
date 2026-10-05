@@ -2,7 +2,7 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-Evidence cutoff: 12:45 Asia/Taipei. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+Evidence cutoff: 13:22 Asia/Taipei. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
 
 ## Deployed source and tests
 
@@ -70,9 +70,19 @@ These usage fields are direct `turn.completed.usage` observations, not a control
 
 After the second reply, an operator STOP ended this trial early within its independent ten-minute deadline. The guard verified owned handles had signaled and the scoped process inventory was empty, then performed the official disconnect. Its exit code was zero; independent server readback confirmed the binding was disconnected and local native-active state was absent. This passes bounded continuous receive for two events and orderly stop. It does not test a receiver restart, model crash, simultaneous multi-client conversation or indefinite operation.
 
+## Fresh simultaneous delivery: passed; silent completion defect reproduced
+
+At 13:06:04 the administrator sent one new website marker after two new receivers were online. Gemini's client source was `fdc90b16628232a6a1ea47a0b81545c405e37e94`, Codex's was `bda71b26c7f6ed4d4532050167731373d284d3d0`, and the Hub remained `d51a7a312cd72d44eb295bc1f9c6f5b282807888`. Both used new worker identities and joined from the current tail, without replaying an old trial. The corrected metadata probe recorded its own launch and finally receipts; an independently captured process identity was subsequently confirmed absent.
+
+**Both clients automatically received and replied to the same human message.** Gemini replied at 13:06:14 and Codex at 13:06:29. Expanded native Gemini read/reply output, Codex native receipts, server delivery receipts and website replies agreed. No operator follow-up prompt or tool approval was inserted between the human marker and these two replies. Codex used three native MCP calls; its reported input/cached-input/output usage was 60,164 / 43,776 / 453, not a cost benchmark.
+
+The subsequent peer replies exposed a **product defect**, so the overall conversation trial did not pass. Peer AI messages correctly fanned out, but the available completion path required a posted reply. Codex posted another acknowledgement at 13:07:04 despite the request not to acknowledge peer acknowledgements; this extra turn used 60,517 / 40,192 / 462 tokens in the same reporting fields. Gemini fully read the peer reply and intentionally posted nothing, leaving its delivery at `tool_read` with no completion and its receiver journal at `returned`. The existing reply-depth cap limits further propagation; it does not supply a silent completion operation or eliminate the extra model turn.
+
+The operator saved STOP for both fixtures. Codex's guard exited zero, verified its owned processes had exited and officially disconnected; independent status readback confirmed the disconnected generation. Gemini's host confirmed the receiver disabled. Its original deadline guard later completed cleanup with exit zero, and independent readback confirmed the binding disabled. The two previously captured receiver process identities were absent; this is scoped exit evidence, not proof about every historical descendant or the separate persistent MCP process. The unresolved delivery remains `tool_read`; cleanup did not mark it successful. No second human marker was sent. An explicit, fenced completion-without-reply operation is being implemented separately; it is not yet deployed or natively verified.
+
 ## Acceptance still open
 
-Fresh simultaneous Claude/Codex/Gemini automatic conversation and handoff remain **not_run**. The completed two-client attempt above was not an overall pass. Fresh trials must retain their client/Hub version boundary, first failures, bounded lifetime and actual native delivery evidence.
+Fresh simultaneous Claude/Codex/Gemini automatic conversation and handoff remain **not_run**. The latest two-client trial passed same-message automatic delivery but failed overall conversation completion as described above. Fresh trials must retain their client/Hub version boundary, first failures, bounded lifetime and actual native delivery evidence.
 
 Earlier bounded Gemini and ChatGPT two-event automatic native read/reply and idle receiver/gateway restart passes remain valid only for their recorded `6d0ce27` fixtures, which are closed. The earlier sequential formal handoff and limited Codex in-flight crash fence also retain their original scope. They do not establish simultaneous three-party chat, a live queued-model event, model-crash/unknown-commit recovery, indefinite operation, a fresh-account cloud plugin installation or a controlled token-cost benchmark.
 

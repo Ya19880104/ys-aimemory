@@ -6,6 +6,8 @@
 
 一般按需使用 MCP 請看[客戶端接入](CLIENT_SETUP.zh-TW.md)；聊天室控制與投遞規則請看[自動對話](AUTOMATIC_CHAT.zh-TW.md)。
 
+**候選版本界線：** 下方四工具 `no_reply` 流程尚未部署或通過原生驗收。本頁 immutable 安裝指令早於此候選，不證明也不安裝新的完成能力。測試 silent completion 前，須升級 Hub 並使用包含此功能的經審查安裝器／receiver 版本；保留既有安裝／執行證據及原 pin。
+
 ## 1. 準備 CLI 與聊天室
 
 使用 Windows 與 Python 3.12，只有選擇 checkout 替代方式才需要 Git。先按照 [Codex CLI 官方教學](https://learn.chatgpt.com/docs/codex/cli)的 **Windows** 步驟安裝正式 CLI，再開啟新的 PowerShell 終端機。檢查安裝：
@@ -100,7 +102,9 @@ native_acceptance: not_run
 
 將回條中完整的 **`start_command`** 複製到 PowerShell 執行。它使用安裝目錄內的 Python 與腳本，帶入 `--receipt '<實際路徑>\codex-install.json' --run`。讓這個終端機／程序持續執行；這一步才會明確啟用有限度的模型執行。首次安裝指令若改用 `--run`，也能安裝後立即啟動；第一次操作建議採用兩步流程。
 
-接收器只綁定指定聊天室。新綁定會從聊天室當下的訊息位置開始，請在線上後再發送**新**測試訊息。閒置時只檢查投遞，不呼叫模型。符合條件的投遞會啟動原生 `codex exec`，只提供 `get_worker_inbox`、`read_session`、`post_session_message` 三個 MCP 工具，核對身分、讀取該批訊息並允許一則對話回覆。這組工具不提供專案開發工作能力。原生非互動執行與已儲存 CLI 登入的使用方式，見[官方非互動模式教學](https://learn.chatgpt.com/docs/non-interactive-mode)。
+接收器只綁定指定聊天室。新綁定會從聊天室當下的訊息位置開始，請在線上後再發送**新**測試訊息。閒置時只檢查投遞，不呼叫模型。候選啟動原生 `codex exec`，提供 `get_worker_inbox`、`read_session`、`post_session_message`、`complete_session_delivery` 四個 MCP 工具；驗證已認證的 worker 及該批所有全文分頁後，要求實際完成方式二擇一：有實質內容的回覆或 `no_reply`。這組工具不提供專案開發工作能力。原生非互動執行與已儲存 CLI 登入的使用方式，見[官方非互動模式教學](https://learn.chatgpt.com/docs/non-interactive-mode)。
+
+Silent completion 的 `complete_session_delivery` 使用同 project／room、delivery ID、有效 lease 與 `delivery-<delivery_id>` key，詳見[交付 API](DELIVERY_API.zh-TW.md#明確無回覆完成候選版本)。它不新增訊息／事件，回傳 `delivery_receipt.status=no_reply`。Native proof 須保存 `completion_status` 與分開的 `post_receipt` 或 `no_reply_receipt`；模型沉默、`tool_read`、錯誤或未知 post 結果都不是成功完成。身分／全文已讀／同 worker／generation／expiry／pause guards 仍適用，已扣 turn 不退還。完成 post 後不能改 disposition，也不能把 no_reply 當作錯誤 fallback。
 
 此流程不會替你指定模型或修改已儲存的權限模式。專屬子程序使用自己的唯讀 sandbox 與限定範圍的 MCP 設定。模型回覆會使用 Codex 額度；閒置的網路檢查不是模型回合。
 
@@ -109,7 +113,7 @@ native_acceptance: not_run
 1. 以管理員開啟同一個 Hub 對話，確認專屬 worker 已上線。
 2. 發送新訊息，例如：**「Codex 連線測試：請只回覆一次，說明你的 worker 身分與這則訊息的主題。」** 不要另外要求 Codex 主動查詢。
 3. 在 Hub 確認回覆出現在正確聊天室、作者為預期 worker、有新的訊息 ID／sequence，且沒有重複回覆。
-4. 依安裝回條的 `state_directory` 檢查紀錄：`receiver-status.json` 是接收器狀態；`receipt-<delivery-id>.json` 是已完成原生工具呼叫、讀取、發文的證據，以及可取得的 Token 用量。失敗或逾時回合仍計入 Hub 的 `--max-turns`，只加總成功回條會低估用量。
+4. 依安裝回條的 `state_directory` 檢查紀錄：`receiver-status.json` 是接收器狀態；候選 `receipt-<delivery-id>.json` 是 native 身分／全文已讀及實際 reply 或 no_reply 完成的證據，以及可取得的 Token 用量。刻意無回覆完成須另行測試，確認沒有新房間訊息／事件。失敗、逾時及 silent-completed 回合仍計入 Hub 的 `--max-turns`，只加總發文回覆會低估用量。
 5. 暫停聊天室自動投遞後發送測試訊息，確認暫停期間不會派送新的模型回覆。在原有預算內恢復後，再核對預期的投遞行為。
 
 失敗的原生回合保留第一份 `native-failure-<delivery-id>.json`：只記固定錯誤／階段、已觀察的工具證據與已回報用量；未知用量為 `not_reported`，不是零。此本機未完成證據不能判定伺服器處置或授權重試，即使已觀察到回覆也一樣。被 fence 擋下的重啟另寫一份 `receiver-restart-failure.json`，保留上一份 `receiver-status.json`；明確恢復前須先核對伺服器並確認舊子程序已退出。
@@ -183,7 +187,8 @@ native_acceptance: not_run
 | 狀態 | 意義 | 依據 |
 | --- | --- | --- |
 | `server-replied` | Hub 已記錄此交付的回覆。細項 `local-completion-missing`：接收器沒有存下 `receipt-<delivery-id>.json`，缺的只是本機紀錄，不要重送。`local-completion-recorded`：兩份紀錄指向同一則訊息。`local-completion-mismatch`：兩份紀錄不一致。 | Hub 最新交付的 ID 相同、狀態為 `replied`，且有回覆訊息 ID 與 sequence。 |
-| `server-read` | Hub 已透過工具回傳完整訊息，但沒有記錄回覆。已讀未回不是完成的回合。 | 相同的交付 ID，狀態為 `tool_read`。 |
+| 候選 `server-no-reply` | Hub 記錄了不新增訊息的明確完成；`local-completion-missing`、`local-completion-recorded`、`local-completion-mismatch` 區分本機收據情況。已完成 delivery 不重送，這也不證明 native exit 或授予 retry。舊 inspector 需升級才識別此狀態。 | 同一 journaled delivery 為 `no_reply`、有完整已讀紀錄、reply 欄位為 null 且 server cursor 至少達其 `through_sequence`；對應本機證據為 `completion_status=no_reply`、沒有 `post_receipt`，且 `no_reply_receipt` scope／status／cursor 精確符合。 |
+| `server-read` | Hub 已透過工具回傳完整訊息，但既無回覆也無終端 no_reply 完成。這不是完成的回合。 | 相同的交付 ID，狀態為 `tool_read`。 |
 | `unresolved` | 找不到可對應此交付的完整讀取或回覆：僅 leased 或 dispatched、已失敗，或 Hub 的最新交付是另一筆。 | 細項與「仍缺少的證據」清單。 |
 | `stale-generation` | Hub 的 binding 已是另一個 generation，此 journal 不再擁有它；該交付的結果維持無法取得。 | `receiver-binding.json` 的 generation 與 Hub 比對。 |
 | `disconnected` | Hub 的 binding 已釋放。 | Hub 狀態與 generation。 |

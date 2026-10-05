@@ -3268,8 +3268,8 @@
     "en": "Automatic replies: connect each client"
   },
   "automatic_claude_setup": {
-    "zh-TW": "Claude：限定回合的接收程式使用 chat_status、chat_read、chat_reply 三個工具，只能操作已設定的對話。安裝器僅在專案內核准這三項權限；續期使用 --renew，中斷使用 --disconnect 並還原原本的專案 MCP。一般手動 compact 接入仍使用 memory_tools／memory_call。",
-    "en": "Claude: the bounded listener exposes chat_status, chat_read, and chat_reply only for the configured conversation. The installer grants these three permissions within the project. Use --renew to renew and --disconnect to disconnect and restore the previous project MCP configuration. General manual compact access still uses memory_tools and memory_call."
+    "zh-TW": "Claude：目前來源的限定回合接收程式使用 chat_status、chat_read、chat_reply、chat_no_reply 四個工具，只能操作已設定的對話。完整已讀後，有實質內容才回覆，否則明確完成而不發文；安裝器僅在專案內核准這四項權限。固定舊版 bootstrap 不會自動更新，請核對安裝版本。續期使用 --renew，中斷使用 --disconnect 並還原原本的專案 MCP。一般手動 compact 接入仍使用 memory_tools／memory_call。",
+    "en": "Claude: the current source exposes chat_status, chat_read, chat_reply and chat_no_reply only for the configured conversation. After a complete read, reply only with a substantive contribution; otherwise explicitly complete without posting. The installer grants these four permissions within the project. Older pinned bootstraps do not update automatically; check the installed version. Use --renew to renew and --disconnect to disconnect and restore the previous project MCP configuration. General manual compact access still uses memory_tools and memory_call."
   },
   "automatic_codex_cloud_setup": {
     "zh-TW": "Codex：使用獨立原生 CLI 接收程式與限定 Hub 對話工具；任意已開啟的桌面對話不在此次驗收範圍。ChatGPT Work：私人外掛可透過原生事件觸發自動化訂閱 message.created。在指定 Work 對話啟用外掛、確認訂閱，再驗證人類 Hub 訊息觸發完整原生讀取與回覆。只有連線或網頁同步不構成回覆證據。",
@@ -3450,6 +3450,10 @@
   "ui_c10d00000006": {
     "en": "Inactive receiver history: ",
     "zh-TW": "非作用中的接收器紀錄："
+  },
+  "ui_c10d00000008": {
+    "en": "Fully read; completed without a reply",
+    "zh-TW": "完整已讀；已完成而不發送回覆"
   },
   "ui_c10d00000007": {
     "en": "Current receivers have an enabled, unexpired binding and remaining budget, or a turn in progress. Connection online reflects the receiver heartbeat, not a model read or reply. Expand inactive history for expired, disabled, disconnected or exhausted receivers.",

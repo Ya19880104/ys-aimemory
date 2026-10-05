@@ -8,6 +8,23 @@ from memory_hub.web_chat_assets import chat_script
 from test_queued_status import RENDER
 
 NODE=shutil.which('node')
+
+@pytest.mark.skipif(NODE is None,reason='Node required for shipped JavaScript')
+@pytest.mark.parametrize('language',['en','zh-TW'])
+def test_no_reply_receipt_is_distinct_from_posted_reply(tmp_path,language):
+    token=_locale.set(language)
+    try:script=chat_script()
+    finally:_locale.reset(token)
+    people=[{'worker_id':'silent','status':'waiting','relay_online':True,
+        'latest_delivery':{'status':'no_reply','through_sequence':7,'reply_sequence':None}}]
+    p=tmp_path/'silent.cjs';p.write_text(RENDER,encoding='utf8')
+    result=subprocess.run([NODE,str(p)],input=json.dumps({'script':script,'people':people}),capture_output=True,text=True,encoding='utf8',timeout=20)
+    assert result.returncode==0,result.stderr
+    view=json.loads(result.stdout)
+    text=''.join(child['text'] for row in view for child in row)
+    assert CATALOG['ui_c10d00000008'][language] in text
+    assert CATALOG['ui_c2d242f57244'][language] not in text
+    assert CATALOG['ui_c075b35fbea4'][language] not in text
 @pytest.mark.skipif(NODE is None,reason='Node required for shipped JavaScript')
 @pytest.mark.parametrize('language',['en','zh-TW'])
 @pytest.mark.parametrize('all_inactive',[True,False])

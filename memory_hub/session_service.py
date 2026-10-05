@@ -107,7 +107,14 @@ class SessionService:
                 a['_automatic_reply_depth'], actor = self.delivery.validate_tool_reply(conn, a, actor)
             elif name == 'post_session_message' and self.delivery is not None:
                 self.delivery.guard_unbound_post(conn, a, actor)
-            result = self._write(name, a, actor, conn, state, room, self.clock())
+            if name == 'complete_session_delivery':
+                require(self.delivery is not None, 'delivery_unavailable', 'Delivery service unavailable', 503)
+                result = self.delivery.complete_tool_no_reply(conn, a, actor)
+                self.store.audit(conn, project, state, {'operation': name, 'worker_id': actor.id,
+                    'actor_kind': actor.kind, 'at': self.clock(), 'context_revision': state['revision'],
+                    'references': {'session_id': a['session_id'], 'delivery_id': a['delivery_id']}})
+            else:
+                result = self._write(name, a, actor, conn, state, room, self.clock())
             if name == 'post_session_message' and a.get('delivery_id') is not None:
                 self.delivery.record_tool_reply(conn, a, actor, result)
             conn.execute(requests.insert().values(**key, payload_hash=digest, result=result))

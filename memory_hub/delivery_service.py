@@ -606,3 +606,19 @@ class DeliveryService:
             reply_sequence=result['sequence']))
         result['delivery_receipt'] = {'delivery_id': delivery['delivery_id'], 'status': 'replied',
                                      'processed_sequence': delivery['through_sequence']}
+
+    def complete_tool_no_reply(self, conn, a, actor):
+        binding, delivery = self._tool_delivery(conn, a, actor)
+        require(delivery['read_at'] is not None and
+                set(delivery['read_message_ids']) == {m['message_id'] for m in delivery['messages']},
+                'delivery_not_read', 'Read complete delivery messages with the tool first')
+        require(a['idempotency_key'] == 'delivery-' + delivery['delivery_id'],
+                'delivery_key_required', 'Use the stable delivery completion idempotency key')
+        binding['processed_sequence'] = delivery['through_sequence']
+        self._save_binding(conn, binding, 'processed_sequence')
+        t = self.tables['deliveries']
+        conn.execute(t.update().where(t.c.delivery_id == delivery['delivery_id']).values(status='no_reply'))
+        return {'project_id': binding['project_id'], 'session_id': binding['session_id'],
+                'worker_id': binding['worker_id'], 'delivery_receipt': {
+                    'delivery_id': delivery['delivery_id'], 'status': 'no_reply',
+                    'processed_sequence': delivery['through_sequence']}}
