@@ -20,13 +20,13 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Publish this immutable revision and these LF source digests as one unit.
-$SourceRevision = 'b2c193e12988bcaacd07423e2aeac17b0442c455'
+$SourceRevision = 'a614e2d24e35734bfb0c64b1158a629689b30441'
 $SourceRoot = 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/' + $SourceRevision + '/'
 $SourceFiles = @(
-    @{ Source = 'scripts/setup-chat.py'; Sha256 = '0f99d983bf9eee3ff67d19ea6965e4d8d86a46bdc1cbd54a8d92076d0fc7011b' },
+    @{ Source = 'scripts/setup-chat.py'; Sha256 = 'a14083ab560d96dfd41d1854d5b980799716dddd9c7b26af366ce77e54ad0940' },
     @{ Source = 'scripts/setup-claude.py'; Sha256 = 'd3c7e1108e624e24d749cb59e0ca06fe0de14d4eab48ef7b74233098a0d24098' },
-    @{ Source = 'memory_hub/client_watch.py'; Sha256 = '2c5f3b07f10f6f00e72f1b505fced14f1b0246408240cf75a7410f740fc10856' },
-    @{ Source = 'memory_hub/client_chat_bridge.py'; Sha256 = '4ef9d0869349b9fca53ceb58332bd1a67784c8b528d4c125d33d8667309aa82a' },
+    @{ Source = 'memory_hub/client_watch.py'; Sha256 = 'a29d342f216b167db57e21438933c21598617214c8c2b98aad839ef2be557b90' },
+    @{ Source = 'memory_hub/client_chat_bridge.py'; Sha256 = '561874fb430f5cba1ad425eb9451a4e4e145b6659fad1798d403040cff2f9629' },
     @{ Source = 'memory_hub/client_secret.py'; Sha256 = '11f2312b254a1c17761d2adb402f4ed6fc73eaa344a98994c695a6175ea1d469' }
 )
 
