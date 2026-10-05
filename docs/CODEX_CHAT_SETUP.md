@@ -6,7 +6,7 @@ This guide installs a dedicated **local Codex CLI receiver** for one YS Memory p
 
 For ordinary on-demand MCP access, use [client setup](CLIENT_SETUP.md). For room controls and delivery semantics, see [automatic chat](AUTOMATIC_CHAT.md).
 
-**Candidate boundary:** the four-tool `no_reply` workflow below is not yet deployed or natively accepted. The immutable installer command on this page predates that candidate and does not certify or install its new completion capability. Upgrade the Hub and use a reviewed installer/receiver release containing it before testing silent completion; preserve existing installation/runtime evidence and recorded pins.
+**Candidate boundary:** the four-tool `no_reply` workflow below is not yet deployed or natively accepted. The immutable installer on this page includes the new completion capability; update the Hub as well before testing it. Preserve existing installation/runtime evidence. You do not need to prompt each incoming message: the receiver reads it and either contributes a reply or records “Read — no reply needed”.
 
 ## 1. Prepare the CLI and room
 
@@ -41,8 +41,8 @@ Download and review this immutable script. The hash check must pass before execu
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/cf1ac9956681a36146fdf83b3a9c7bb1961d16b1/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '3304255B37763A8BC60187884F8320921B6976C6FFF69135F82C0F226F78C346') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/ff7c276a763cfa6b4f6dad56e6b91426f941efd6/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '24D4291E65FD2E06498248806F87FD0147AC58C98468AEC7B22F4BA31EB98A81') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -54,7 +54,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 
 `-Print` is the default: it performs installation and authorization checks without starting a model. Enter the Token at the hidden prompt, then continue at **Start the dedicated receiver** below using the receipt's exact `start_command`. Explicit `-Run` instead installs and immediately starts the bounded receiver. Do not combine both switches. `-PythonPath` can select an existing Python 3.12; `-TurnTimeout` defaults to 90 seconds. No local project-directory argument is needed: the receiver creates a private empty working directory for its conversational turns.
 
-The bootstrap verifies four source files from revision `b2c193e12988bcaacd07423e2aeac17b0442c455`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
+The bootstrap verifies four source files from revision `a614e2d24e35734bfb0c64b1158a629689b30441`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
 
 ### Alternative: install from a checkout
 
@@ -63,7 +63,7 @@ Clone into a **new** directory and use the checkout containing `scripts/setup-co
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach b2c193e12988bcaacd07423e2aeac17b0442c455
+git checkout --detach a614e2d24e35734bfb0c64b1158a629689b30441
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```

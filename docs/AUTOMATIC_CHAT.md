@@ -10,7 +10,7 @@ The Claude receiver polls REST from the selected native conversation's Stop hook
 
 The new candidate adds explicit silent completion; it is **not yet deployed or natively accepted**. After every complete delivery read, choose exactly one: post a substantive reply, or call `chat_no_reply` with `{}` when nothing needs saying. The joined room now exposes four scoped tools: `chat_status`, `chat_read`, `chat_reply`, `chat_no_reply`. The bridge supplies the fixed worker/room, current delivery/lease, generation, cursor and stable key; it requires all untruncated pages before either completion. Reply returns `replied`; silent completion must return an actual `no_reply` delivery receipt, without adding a message or room event. The admitted model-start budget is not refunded. Neither a model's “no response needed” statement nor tool error/timeout counts as completion; preserve unknown outcomes and stop instead of falling back to `no_reply`.
 
-The immutable bootstrap below still installs the earlier three-tool client. Its successful installation/reply evidence does not prove the four-tool candidate, and its pins are not silently changed here. Use a reviewed release containing the updated Hub and scoped receiver before testing `chat_no_reply`; ordinary compact mode is separate.
+The immutable bootstrap below installs this four-tool client. Update the Hub as well before using silent completion; installation alone does not prove native delivery. You do not need to paste a command for each message: the receiver chooses reply or silent completion after reading it. The room shows “Read — no reply needed” for a confirmed silent completion. Ordinary compact mode is separate.
 
 ## Windows: connect Claude to one room without cloning
 
@@ -20,8 +20,8 @@ Download this immutable installer in PowerShell, check its hash and review it:
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/cf1ac9956681a36146fdf83b3a9c7bb1961d16b1/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '3925B0A6598EF7D232095AFEDED41D9D7F2DD8667883C684A8003727B72FCF32') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/ff7c276a763cfa6b4f6dad56e6b91426f941efd6/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '8BEFD020A56BC8B060006D9897BEBD7F23985852C61FACB3FB817EB40FB793E7') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -39,7 +39,7 @@ If Python is not detected, append `-PythonPath 'C:\Python312\python.exe'`. `Lang
 2. The receipt reports `configured_waiting_for_native_hook`, expiry, turn budget, a stop-file path and **`activation_prompt`**. Open a new local Claude conversation in the same project, or reload that project's MCP and hooks in your client. Paste the receipt's complete `activation_prompt` into the intended conversation. Claude must reply with the exact generated `YS_MEMORY_JOIN_...` line; do not substitute a conversation ID or simply paste that line yourself.
 3. After the reply, check the Hub room for the participant/receiver state. Send a new human message in the Hub and leave Claude idle. Acceptance requires an actual native `chat_read` and `chat_reply` with matching delivery/read/reply receipts, visible in the room. A successful installer or online receiver alone is **not** native acceptance. New joins start from the latest message; send the test message after activation.
 
-The bootstrap downloads exactly five SHA-256-checked files from source revision `b2c193e12988bcaacd07423e2aeac17b0442c455`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the three exact `chat_status`, `chat_read`, `chat_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
+The bootstrap downloads exactly five SHA-256-checked files from source revision `a614e2d24e35734bfb0c64b1158a629689b30441`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the four exact `chat_status`, `chat_read`, `chat_reply`, `chat_no_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
 
 An existing `ys_memory` entry is reused only when its complete config hash, installer receipt, launcher, Hub/CA and verified bundle match. Unknown, edited or active-chat configurations are preserved and rejected; do not delete them to bypass the check. Review the configuration or use the original receipt's disconnect procedure first. If MCP installation completes but the chat step fails, that MCP installation remains available for inspection; no model turn is started by the installer.
 

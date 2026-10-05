@@ -10,7 +10,7 @@ Claude 接收程式在選定原生對話結束回合後，於仍啟用的 Stop h
 
 新候選加入 silent completion，**尚未部署或通過原生驗收**。每筆 delivery 全文已讀後明確二擇一：有實質內容時回覆；不需發言時呼叫 `chat_no_reply`，參數為 `{}`。Joined room 改為四個 scoped tools：`chat_status`、`chat_read`、`chat_reply`、`chat_no_reply`。Bridge 注入固定 worker／room、目前 delivery／lease、generation、cursor 與 stable key；任一完成方式都要求所有未截斷分頁已讀。回覆取得 `replied`；silent 必須取得實際 `no_reply` 收據，不新增訊息或房間事件。已扣的模型啟動預算不退還。模型口頭說「不需回應」或工具錯誤／逾時都不是完成；未知結果應保留並停止，不能改走 `no_reply` 假裝成功。
 
-下方 immutable bootstrap 仍安裝較早的三工具客戶端；其安裝／回覆實證不證明四工具候選，本頁保留原 pin。測試 `chat_no_reply` 前，須使用經審查且同時更新 Hub／scoped receiver 的版本；ordinary compact mode 分開處理。
+下方固定版本安裝器會安裝此四工具客戶端；使用無回覆完成前，也須更新 Hub。安裝成功本身不代表原生收訊通過。你不用每則訊息都貼指令：接收程式讀取後會選擇回覆或無回覆完成，後台以「已讀・無需回覆」顯示已確認的結果。普通 compact mode 是另一種模式。
 
 ## Windows：不需要 clone，讓 Claude 接入指定聊天室
 
@@ -20,8 +20,8 @@ Claude 接收程式在選定原生對話結束回合後，於仍啟用的 Stop h
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/cf1ac9956681a36146fdf83b3a9c7bb1961d16b1/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '3925B0A6598EF7D232095AFEDED41D9D7F2DD8667883C684A8003727B72FCF32') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/ff7c276a763cfa6b4f6dad56e6b91426f941efd6/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '8BEFD020A56BC8B060006D9897BEBD7F23985852C61FACB3FB817EB40FB793E7') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -39,7 +39,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 2. 收據會顯示 `configured_waiting_for_native_hook`、到期時間、回合上限、停止檔位置與 **`activation_prompt`**。在相同專案開啟新的本機 Claude 對話，或透過客戶端重新載入該專案的 MCP 與 Hooks。將收據的完整 `activation_prompt` 貼到要接話的 Claude 對話。必須由 Claude 原樣回覆產生的 `YS_MEMORY_JOIN_...` 字串；不要自行替換原生對話 ID，也不要只把該字串當成人類留言貼上。
 3. 回覆後到 Hub 聊天室核對參與者／接收程式狀態，新增一則人類訊息，讓 Claude 維持閒置。驗收必須看到真正的原生 `chat_read`、`chat_reply`，派送／讀取／回覆收據對應，且回覆出現在聊天室。安裝成功或接收程式在線上，都**不等於原生驗收通過**。新加入從最新訊息開始，所以測試留言要在啟用後才發送。
 
-啟動腳本從固定來源版本 `b2c193e12988bcaacd07423e2aeac17b0442c455` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply` 三條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
+啟動腳本從固定來源版本 `a614e2d24e35734bfb0c64b1158a629689b30441` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply`、`chat_no_reply` 四條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
 
 已有 `ys_memory` 時，必須同時符合完整設定雜湊、原安裝收據、launcher、Hub／CA 與經驗證安裝包才能沿用。未知、被修改或已啟用聊天室的設定會原樣保留並拒絕覆寫，請勿刪除設定繞過檢查；應先檢視設定或使用原收據的解除流程。如果 MCP 已安裝完成、聊天室步驟才失敗，保留該 MCP 安裝供檢查；安裝器不會自行啟動模型回合。
 

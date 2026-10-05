@@ -6,7 +6,7 @@
 
 一般按需使用 MCP 請看[客戶端接入](CLIENT_SETUP.zh-TW.md)；聊天室控制與投遞規則請看[自動對話](AUTOMATIC_CHAT.zh-TW.md)。
 
-**候選版本界線：** 下方四工具 `no_reply` 流程尚未部署或通過原生驗收。本頁 immutable 安裝指令早於此候選，不證明也不安裝新的完成能力。測試 silent completion 前，須升級 Hub 並使用包含此功能的經審查安裝器／receiver 版本；保留既有安裝／執行證據及原 pin。
+**候選版本界線：** 下方四工具 `no_reply` 流程尚未部署或通過原生驗收。本頁固定版本安裝器已包含此能力；測試前也須更新 Hub，並保留既有安裝／執行證據。你不用為每則新訊息另貼提示：接收器讀取後會回覆，或記錄「已讀・無需回覆」。
 
 ## 1. 準備 CLI 與聊天室
 
@@ -41,8 +41,8 @@ py -3.12 --version
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/cf1ac9956681a36146fdf83b3a9c7bb1961d16b1/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '3304255B37763A8BC60187884F8320921B6976C6FFF69135F82C0F226F78C346') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/ff7c276a763cfa6b4f6dad56e6b91426f941efd6/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '24D4291E65FD2E06498248806F87FD0147AC58C98468AEC7B22F4BA31EB98A81') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -54,7 +54,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 
 預設 `-Print` 會安裝並核對授權，不啟動模型。於隱藏提示輸入 Token 後，依下方「啟動專用接收器」複製收據的完整 `start_command`。明確使用 `-Run` 則會安裝後立即啟動有限額接收器，兩個開關不可同時使用。`-PythonPath` 可指定既有 Python 3.12；`-TurnTimeout` 預設 90 秒。不需要填本機專案資料夾：接收器會建立私有空白工作目錄進行對話回合。
 
-啟動腳本核對來源版本 `b2c193e12988bcaacd07423e2aeac17b0442c455` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
+啟動腳本核對來源版本 `a614e2d24e35734bfb0c64b1158a629689b30441` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
 
 ### 替代方式：從 checkout 安裝
 
@@ -63,7 +63,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach b2c193e12988bcaacd07423e2aeac17b0442c455
+git checkout --detach a614e2d24e35734bfb0c64b1158a629689b30441
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
