@@ -639,11 +639,14 @@ class Gateway:
                 if batch['post'] and self.box.decrypt(batch['post']) != request:
                     raise GatewayError('Retry an ambiguous reply with the identical body')
                 if batch['result']:
-                    return self.box.decrypt(batch['result'])
+                    result = self.box.decrypt(batch['result'])
+                    self._validate_reply_receipt(result, delivery)
+                    return result
                 with self.db:
                     self.db.execute('UPDATE batches SET post=? WHERE notification_id=?',
                                     (self.box.encrypt(request), arguments['notification_id']))
                 result = self.hub.post(body, key, delivery=delivery)
+                self._validate_reply_receipt(result, delivery)
                 with self.db:
                     self.db.execute("UPDATE batches SET state='replied',result=? WHERE notification_id=?",
                                     (self.box.encrypt(result), arguments['notification_id']))
@@ -677,6 +680,21 @@ class Gateway:
                                     (self.box.encrypt(result), arguments['notification_id']))
                 return result
             raise GatewayError('Unknown fixed-room tool', -32601)
+
+    def _validate_reply_receipt(self, result, delivery):
+        actor = result.get('actor') if isinstance(result, dict) else None
+        receipt = result.get('delivery_receipt') if isinstance(result, dict) else None
+        if (not isinstance(actor, dict) or not isinstance(receipt, dict)
+                or any(result.get(k) != self.config[k] for k in ('project_id', 'session_id'))
+                or actor.get('kind') != 'worker' or actor.get('id') != self.config['worker_id']
+                or not isinstance(result.get('message_id'), str)
+                or re.fullmatch('[0-9a-f]{32}', result['message_id']) is None
+                or type(result.get('sequence')) is not int
+                or not delivery['through_sequence'] < result['sequence'] <= MAX_SEQUENCE
+                or receipt.get('delivery_id') != delivery['delivery_id'] or receipt.get('status') != 'replied'
+                or type(receipt.get('processed_sequence')) is not int
+                or receipt['processed_sequence'] != delivery['through_sequence']):
+            raise GatewayError('Invalid automatic reply receipt', -32001)
 
     def tick(self):
         """At most one small page/subscription and one delivery per tick."""

@@ -1,5 +1,6 @@
 """Private gateway contracts; no provider account, live Token or callback used."""
 import base64
+import copy
 import hashlib
 import hmac
 import io
@@ -1245,3 +1246,85 @@ def test_existing_gateway_state_adds_read_completion_without_reclassifying_old_b
         reopened.call('no_reply',{'notification_id':identifier})
     read_batch(pilot,identifier)
     assert reopened.call('no_reply',{'notification_id':identifier})['delivery_receipt']['status']=='no_reply'
+
+
+@pytest.mark.parametrize('fault', ['project', 'session', 'actor_missing', 'actor_kind', 'actor_id',
+    'receipt_missing', 'delivery', 'status', 'cursor', 'cursor_bool', 'message',
+    'sequence_bool', 'sequence_float', 'sequence_old', 'sequence_oversize', 'not_object'])
+def test_rejects_automatic_reply_wrong_receipt_without_terminal_or_fallback(pilot,monkeypatch,fault):
+    pilot.gateway.subscribe(subscription());pilot.hub.add();pilot.gateway.tick()
+    identifier=notification(pilot);read_batch(pilot,identifier)
+    row,delivery=pilot.gateway._batch(identifier)
+    valid={'project_id':pilot.config['project_id'],'session_id':pilot.config['session_id'],
+        'actor':{'kind':'worker','id':pilot.config['worker_id']},'message_id':'f'*32,
+        'sequence':delivery['through_sequence']+1,'delivery_receipt':{
+            'delivery_id':delivery['delivery_id'],'status':'replied','processed_sequence':delivery['through_sequence']}}
+    value=copy.deepcopy(valid)
+    if fault=='project':value['project_id']='other'
+    elif fault=='session':value['session_id']='0'*32
+    elif fault=='actor_missing':value.pop('actor')
+    elif fault=='actor_kind':value['actor']['kind']='human'
+    elif fault=='actor_id':value['actor']['id']='other'
+    elif fault=='receipt_missing':value.pop('delivery_receipt')
+    elif fault=='delivery':value['delivery_receipt']['delivery_id']='0'*32
+    elif fault=='status':value['delivery_receipt']['status']='no_reply'
+    elif fault=='cursor':value['delivery_receipt']['processed_sequence']+=1
+    elif fault=='cursor_bool':value['delivery_receipt']['processed_sequence']=True
+    elif fault=='message':value['message_id']='not-an-id'
+    elif fault=='sequence_bool':value['sequence']=True
+    elif fault=='sequence_float':value['sequence']=float(value['sequence'])
+    elif fault=='sequence_old':value['sequence']=delivery['through_sequence']
+    elif fault=='sequence_oversize':value['sequence']=cloud.MAX_SEQUENCE+1
+    else:value=[]
+    calls=[]
+    def malformed(body,key,**kwargs):calls.append((body,key,kwargs));return value
+    monkeypatch.setattr(pilot.hub,'post',malformed)
+    body='Exact original reply'
+    with pytest.raises(cloud.GatewayError,match='Invalid automatic reply receipt'):
+        pilot.gateway.call('post_message',{'notification_id':identifier,'body':body})
+    stored=pilot.gateway.db.execute('SELECT state,post,result FROM batches WHERE notification_id=?',(identifier,)).fetchone()
+    assert stored['state']=='active' and stored['result'] is None
+    assert pilot.gateway.box.decrypt(stored['post'])=={'body':body,'idempotency_key':delivery['reply_idempotency_key']}
+    with pytest.raises(cloud.GatewayError):pilot.gateway.call('no_reply',{'notification_id':identifier})
+    with pytest.raises(cloud.GatewayError):pilot.gateway.call('post_message',{'notification_id':identifier,'body':'replacement'})
+    assert len(calls)==1
+
+
+def test_committed_reply_with_invalid_response_keeps_intent_and_identical_retry_has_one_message(pilot,monkeypatch):
+    pilot.gateway.subscribe(subscription());pilot.hub.add();pilot.gateway.tick()
+    identifier=notification(pilot);read_batch(pilot,identifier)
+    original=pilot.hub.post;calls=[]
+    def committed(body,key,**kwargs):
+        calls.append((body,key,kwargs));value=original(body,key,**kwargs)
+        if len(calls)==1:
+            value=copy.deepcopy(value);value.pop('delivery_receipt')
+        return value
+    monkeypatch.setattr(pilot.hub,'post',committed)
+    request={'notification_id':identifier,'body':'One actual committed reply'}
+    with pytest.raises(cloud.GatewayError,match='Invalid automatic reply receipt'):
+        pilot.gateway.call('post_message',request)
+    stored=pilot.gateway.db.execute('SELECT state,post,result FROM batches WHERE notification_id=?',(identifier,)).fetchone()
+    assert stored['state']=='active' and stored['post'] is not None and stored['result'] is None
+    latest=pilot.hub.relay('status',session_id=pilot.config['session_id'])['participants'][0]['latest_delivery']
+    assert latest['status']=='replied'  # Genuine server disposition, not forged by the gateway.
+    completed=pilot.gateway.call('post_message',request)
+    assert completed['delivery_receipt']['status']=='replied' and calls[0]==calls[1]
+    assert pilot.gateway.call('post_message',request)==completed and len(calls)==2
+    messages=pilot.hub.real.call('read_session',{'project_id':'pilot','session_id':pilot.config['session_id']},pilot.hub.principal)['items']
+    assert len([m for m in messages if m.get('actor',{}).get('id')==pilot.config['worker_id']])==1
+
+
+def test_cached_automatic_reply_is_validated_without_repair_or_resend(pilot,monkeypatch):
+    pilot.gateway.subscribe(subscription());pilot.hub.add();pilot.gateway.tick()
+    identifier=notification(pilot);read_batch(pilot,identifier)
+    request={'notification_id':identifier,'body':'Original reply'}
+    value=pilot.gateway.call('post_message',request)
+    assert value['delivery_receipt']['status']=='replied'
+    malformed=copy.deepcopy(value);malformed['actor']['id']='other'
+    cipher=pilot.gateway.box.encrypt(malformed)
+    with pilot.gateway.db:pilot.gateway.db.execute('UPDATE batches SET result=? WHERE notification_id=?',(cipher,identifier))
+    monkeypatch.setattr(pilot.hub,'post',lambda *args,**kwargs:pytest.fail('No resend from an invalid cached result'))
+    with pytest.raises(cloud.GatewayError,match='Invalid automatic reply receipt'):
+        pilot.gateway.call('post_message',request)
+    stored=pilot.gateway.db.execute('SELECT state,result FROM batches WHERE notification_id=?',(identifier,)).fetchone()
+    assert stored['state']=='replied' and stored['result']==cipher  # Preserve evidence, no automatic reclassification.
