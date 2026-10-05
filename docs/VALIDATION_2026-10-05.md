@@ -2,11 +2,19 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-Evidence cutoff: 16:39:29.778 Asia/Taipei. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+Evidence cutoff: 17:10:17 Asia/Taipei, including the 17:07 deployment and subsequent browser checks. Deployment and native client checks have separate version boundaries. Earlier attempts remain in the [2026-10-04 record](VALIDATION_2026-10-04.md); this record supersedes its latest deployment snapshot, not its historical results.
+
+## Current deployment and help-link check
+
+Source **`2472280979733d4d08a1498b9318dba725209dff`** completed one promotion at **17:07:25.683792 Taipei**, in **22.127 seconds**. Image: `sha256:5d3b1c78b153b56c7c7ccc3c3cc13ee3aae8882d07f18b222621d39cfe53c116`. All **469 promotion checks passed**, including backups, schema 6, 26 tables, data and package/image guards. The isolated suite before deployment reported **1,254 passed / 74 skipped / 3 warnings, 238.31 seconds**; its disposable database was removed.
+
+This update pins the website's Cloud guide link to the current guide. Actual Chrome loads of English and Traditional Chinese `/help` both passed the corresponding Cloud-guide link check. Updating that link adds no native-chat acceptance and does not change the public installation test's Hub `fadee9d` version boundary below.
+
+CI for this version reported Windows **358 passed / 1 warning, 13.46 seconds**; SQLite **1,017 passed / 34 skipped / 3 warnings, 146.02 seconds**; and PostgreSQL **1,296 passed / 32 skipped / 3 warnings, 224.31 seconds**. Counts from separate environments are not added; historical failures and native/cloud limits below remain preserved.
 
 ## Deployed receipt and client hardening
 
-Final source **`fadee9d36025d6309c59859d48bacc86e9bcaacd`** was promoted once at **16:39:07.131–16:39:29.778 Taipei**, in **22.647 seconds**. Image: `sha256:328c1dc26ef3fb91388085b0e4844a744d27aef2940288630bff47a1498c32e8`. All **469 promotion checks passed**; backups, schema 6, 26 tables, data and package/image guards were verified. The archive matched **194 raw Git-source members**.
+Earlier source **`fadee9d36025d6309c59859d48bacc86e9bcaacd`** was promoted once at **16:39:07.131–16:39:29.778 Taipei**, in **22.647 seconds**. Image: `sha256:328c1dc26ef3fb91388085b0e4844a744d27aef2940288630bff47a1498c32e8`. All **469 promotion checks passed**; backups, schema 6, 26 tables, data and package/image guards were verified. The archive matched **194 raw Git-source members**.
 
 Its product changes come from source `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`: one larger read is retried only for an actual read-budget error, and automatic cloud reply receipts are validated before completion is recorded. Successful message text mentioning an error cannot trigger the retry. Mismatched receipts preserve the original request intent instead of claiming success or automatically resending. These fixes do not explain or establish a solution to the cloud trials' missing native event-tool calls.
 
@@ -18,9 +26,17 @@ Its product changes come from source `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`:
 | Isolated deployment-host suite | 1,254 passed / 74 skipped / 3 warnings; 242.51 seconds | Isolated stage, not native-client acceptance |
 | Public publication artifacts | Both bootstrap URLs and all nine source entries returned HTTP 200; exact raw-byte hashes matched | Published bytes, not installation execution |
 
-The installer chain uses that product source and bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`. A fresh public interactive-installer end-to-end run remains **not_run** at this checkpoint. Counts belong to separate environments and must not be added; skips and warnings remain visible.
+The installer chain uses that product source and bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`. At the 16:39 deployment checkpoint, a fresh public interactive installation was still **not_run**; the later installation-only result is recorded below. Counts belong to separate environments and must not be added; skips and warnings remain visible.
 
 Earlier `7087bbf` CI failed a stale bootstrap source assertion in each environment: Windows **357 passed / 1 failed**, SQLite **1,016 passed / 1 failed**, and PostgreSQL **1,295 passed / 1 failed**. Those first failures are preserved separately from the final passing runs. The prior local checks also remain separate: bridge/runner **127 tests**, gateway **120 tests**, client/bootstrap bundle **52 tests**, and web/help/language **153 tests**. Deployment does not upgrade the historical native/cloud results below into new-version acceptance.
+
+## Public Codex installation-only check
+
+At 16:55:33 Taipei, a new Windows installation through the official public `07d575a` bootstrap **passed**, using its four pinned `7087bbf` source downloads against Hub `fadee9d`. The actual terminal reported interactive stdin/stdout; the real hidden `getpass` prompt was used without replacement or monkeypatching. The operator entered a fresh test worker Token privately. The tested path used `-Print`, explicitly verified Codex/Python 3.12 executables, Traditional Chinese, one hour, three turns and a 90-second turn timeout.
+
+The installer exited zero, passed REST worker/room checks, created the real virtual environment and pip dependencies, stored the credential with current-user DPAPI and verified eight installed file hashes. The installed official `--receipt --print` check also passed. The receiver state directory was absent: no Hub join or model turn was started. The copied website instructions separately passed bootstrap/hash/worker checks. This is a real interactive installation gate, not native chat end-to-end acceptance or proof of default PATH, autostart, a clean account or unattended installation.
+
+At 16:56:12, official worker revocation returned HTTP 303. The issued Token matched the installed DPAPI credential, and subsequent read-only authentication using that same Token returned HTTP 401. Test credential cleanup **passed**; protected local installation files remain evidence. Fresh native chat end to end remains **not_run** for this installation.
 
 ## Deployed no-reply update and bounded native test
 

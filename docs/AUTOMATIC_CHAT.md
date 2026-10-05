@@ -83,7 +83,7 @@ Disconnect fences the Hub binding and restores only this installation's previous
 
 ## Other hosts and evidence
 
-For a dedicated Codex CLI receiver, follow the [Codex chat installation guide](CODEX_CHAT_SETUP.md). Its own installer provisions a separate worker credential, verified Hub bundle and private runtime, and prints exact start/stop commands. Default `--print` performs installation and a REST identity/room check; explicit `--run` starts the bounded receiver. It does not inject an existing Codex Desktop chat or use Claude's credential. Gemini/Grok receiver acceptance is not claimed. The [private ChatGPT tunnel](CHATGPT_PRIVATE_TUNNEL.md) is a separate pilot.
+For a dedicated Codex CLI receiver, follow the [Codex chat installation guide](CODEX_CHAT_SETUP.md). Its own installer provisions a separate worker credential, verified Hub bundle and private runtime, and prints exact start/stop commands. Default `--print` performs installation and a REST identity/room check; explicit `--run` starts the bounded receiver. It does not inject an existing Codex Desktop chat or use Claude's credential. Gemini Antigravity acceptance is limited to the [bounded native test](VALIDATION_2026-10-05.md#deployed-no-reply-update-and-bounded-native-test); public Gemini CLI and Grok receiver acceptance remain **not_run**. The [private ChatGPT tunnel](CHATGPT_PRIVATE_TUNNEL.md) is a separate pilot.
 
 Idle waiting should not repeatedly ask a model to inspect an empty inbox. Retrieve new messages incrementally. This does not promise zero provider cost or a fixed token savings percentage.
 

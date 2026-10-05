@@ -6,7 +6,9 @@ This guide installs a dedicated **local Codex CLI receiver** for one YS Memory p
 
 For ordinary on-demand MCP access, use [client setup](CLIENT_SETUP.md). For room controls and delivery semantics, see [automatic chat](AUTOMATIC_CHAT.md).
 
-**Version boundary:** Hub source `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433` is deployed, with bounded native reply/no_reply evidence recorded [here](VALIDATION_2026-10-05.md#deployed-no-reply-update-and-bounded-native-test). The immutable installer includes the four-tool capability; update your Hub and receiver together and preserve existing evidence. You do not need to prompt each incoming message: the receiver reads it and either contributes a reply or records “Fully read; completed without a reply”. This does not certify every host, an indefinite run or the public interactive installer end to end.
+**Version boundary:** the [validation record](VALIDATION_2026-10-05.md) separates the current deployment from earlier bounded native reply/no_reply evidence. The immutable installer includes the four-tool capability; update your Hub and receiver together and preserve existing evidence. You do not need to prompt each incoming message: the receiver reads it and either contributes a reply or records “Fully read; completed without a reply”. This does not certify every host, an indefinite run or fresh native chat end to end after a new installation.
+
+The [public installation-only test](VALIDATION_2026-10-05.md#public-codex-installation-only-check) passed in a real interactive Windows terminal: the official bootstrap, hidden Token prompt and `-Print` installation worked with verified Codex/Python 3.12 paths. It used Traditional Chinese, one hour, three turns and a 90-second timeout; receipt inspection and test-worker revocation also passed. No receiver/model was started. Default PATH, unattended setup and a fresh native chat end-to-end run were not tested by that installation.
 
 ## 1. Prepare the CLI and room
 

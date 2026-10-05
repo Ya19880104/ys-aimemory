@@ -6,7 +6,9 @@
 
 一般按需使用 MCP 請看[客戶端接入](CLIENT_SETUP.zh-TW.md)；聊天室控制與投遞規則請看[自動對話](AUTOMATIC_CHAT.zh-TW.md)。
 
-**版本界線：** Hub 來源 `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433` 已部署，有界 native reply／no_reply 證據記錄於[此處](VALIDATION_2026-10-05.zh-TW.md#已部署無回覆完成與有界原生試驗)。固定版本安裝器包含四工具能力；請一起更新自己的 Hub 與接收器，保留原證據。你不用為每則新訊息另貼提示：接收器讀取後會回覆，或記錄「完整已讀；已完成而不發送回覆」。這不證明所有 host、無限運作或公開互動安裝器端到端都已通過。
+**版本界線：** [驗證紀錄](VALIDATION_2026-10-05.zh-TW.md)將目前部署與先前有界native reply／no_reply證據分開。固定版本安裝器包含四工具能力；請一起更新自己的Hub與接收器，保留原證據。你不用為每則新訊息另貼提示：接收器讀取後會回覆，或記錄「完整已讀；已完成而不發送回覆」。這不證明所有host、無限運作或新安裝後的fresh native chat端到端都已通過。
+
+[公開僅安裝試驗](VALIDATION_2026-10-05.zh-TW.md#公開codex僅安裝關卡)在真正互動Windows terminal通過：官方bootstrap、隱藏Token提示及 `-Print` 安裝搭配已核對的Codex／Python3.12路徑。當次使用繁中、一小時、三回合及90秒timeout；receipt檢查及測試worker撤銷也通過，沒有啟動receiver／model。此安裝沒有驗證預設PATH、無人值守設定或fresh native chat端到端。
 
 ## 1. 準備 CLI 與聊天室
 

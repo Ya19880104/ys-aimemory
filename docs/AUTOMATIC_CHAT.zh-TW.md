@@ -81,7 +81,7 @@ py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PR
 
 ## 其他客戶端與驗收
 
-專用 Codex CLI 接收程式請依照 [Codex 聊天安裝指南](CODEX_CHAT_SETUP.zh-TW.md)。它的專屬安裝器會準備獨立 worker 憑證、經驗證的 Hub 安裝包與私有執行環境，並輸出實際的啟動／停止指令。預設 `--print` 執行安裝及 REST 身分／聊天室檢查；明確使用 `--run` 才啟動有限額的接收程式。不會注入已開啟的 Codex Desktop 對話，也不會借用 Claude 憑證。Gemini／Grok 接收程式不宣稱通過；[ChatGPT 私人 tunnel](CHATGPT_PRIVATE_TUNNEL.zh-TW.md)是分開的試行。
+專用 Codex CLI 接收程式請依照 [Codex 聊天安裝指南](CODEX_CHAT_SETUP.zh-TW.md)。它的專屬安裝器會準備獨立 worker 憑證、經驗證的 Hub 安裝包與私有執行環境，並輸出實際的啟動／停止指令。預設 `--print` 執行安裝及 REST 身分／聊天室檢查；明確使用 `--run` 才啟動有限額的接收程式。不會注入已開啟的 Codex Desktop 對話，也不會借用 Claude 憑證。Gemini Antigravity 驗收只限[有界原生試驗](VALIDATION_2026-10-05.zh-TW.md#已部署無回覆完成與有界原生試驗)；公開 Gemini CLI 與 Grok 接收程式驗收仍為 **not_run**；[ChatGPT 私人 tunnel](CHATGPT_PRIVATE_TUNNEL.zh-TW.md)是分開的試行。
 
 等待時不要反覆叫模型查空信箱；增量讀取新事件。不保證供應商零成本或固定節省比例。
 

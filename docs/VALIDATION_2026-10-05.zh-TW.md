@@ -2,11 +2,19 @@
 
 [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md)
 
-證據截至台北時間16:39:29.778。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
+證據截至台北時間17:10:17，包含17:07部署及隨後的瀏覽器核對。部署與原生客戶端測試分開記錄版本。先前試驗保留在 [2026-10-04 紀錄](VALIDATION_2026-10-04.zh-TW.md)；本頁更新目前部署狀態，不改寫歷史結果。
+
+## 目前部署與說明連結核對
+
+來源 **`2472280979733d4d08a1498b9318dba725209dff`** 已於台北時間 **17:07:25.683792** 完成一次promotion，**22.127秒 passed**；映像為 `sha256:5d3b1c78b153b56c7c7ccc3c3cc13ee3aae8882d07f18b222621d39cfe53c116`。**469項promotion checks全部passed**，備份、schema6、26tables、資料及package／image guards仍通過。部署前的隔離套件為 **1,254 passed／74 skipped／3 warnings，238.31秒**，disposable DB已移除。
+
+本次將網站Cloud指南連結改為目前指南的固定版本；實際Chrome載入英繁 `/help` 後，兩種語言的Cloud指南連結都核對passed。此說明連結更新不新增原生接話驗收，也不改變下方公開安裝試驗使用Hub `fadee9d` 的版本界線。
+
+該版本CI分別為Windows **358 passed／1 warning，13.46秒**；SQLite **1,017 passed／34 skipped／3 warnings，146.02秒**；PostgreSQL **1,296 passed／32 skipped／3 warnings，224.31秒**。不同環境counts不相加；下方歷史失敗及原生／Cloud限制均保留。
 
 ## 已部署的收據與客戶端修正
 
-最終來源 **`fadee9d36025d6309c59859d48bacc86e9bcaacd`** 已於台北時間 **16:39:07.131–16:39:29.778** 執行一次promotion，**22.647秒 passed**。映像 `sha256:328c1dc26ef3fb91388085b0e4844a744d27aef2940288630bff47a1498c32e8`；**469項promotion checks全部passed**，備份、schema6、26tables、資料及package／image guards均已核對。封裝符合 **194個raw Git來源成員**。
+前次來源 **`fadee9d36025d6309c59859d48bacc86e9bcaacd`** 已於台北時間 **16:39:07.131–16:39:29.778** 執行一次promotion，**22.647秒 passed**。映像 `sha256:328c1dc26ef3fb91388085b0e4844a744d27aef2940288630bff47a1498c32e8`；**469項promotion checks全部passed**，備份、schema6、26tables、資料及package／image guards均已核對。封裝符合 **194個raw Git來源成員**。
 
 Product修正來自來源 `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`：只在真正read-budget錯誤時重試一次較大讀取，先驗證自動Cloud回覆收據再記錄完成。成功訊息提到錯誤不會觸發retry；收據不符時保留原請求意圖，不假稱成功或自動重送。這些修正不能解釋或證明已解決Cloud試驗缺少native event-tool呼叫的問題。
 
@@ -18,9 +26,17 @@ Product修正來自來源 `7087bbf1beca7ba1d7965cd46ef9ab0315bdfd26`：只在真
 | 部署主機隔離套件 | 1,254 passed／74 skipped／3 warnings；242.51秒 | Isolated stage，不是native client驗收 |
 | 公開發布檔案 | 兩個bootstrap URL及九筆source entries均HTTP200，精確raw-byte hashes相符 | 公開位元組，不是安裝執行 |
 
-安裝鏈固定上述product來源及bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`。此checkpoint的全新公開互動installer端到端仍 **not_run**。不同環境的counts不相加；skip及warning均保留。
+安裝鏈固定上述product來源及bootstrap `07d575a3bce654bf572b430609a467d1879c6fc9`。16:39部署checkpoint時，全新公開互動安裝仍 **not_run**；之後的installation-only結果另記於下方。不同環境的counts不相加；skip及warning均保留。
 
 先前 `7087bbf` CI在各環境都因過期bootstrap source assertion失敗：Windows **357 passed／1 failed**、SQLite **1,016 passed／1 failed**、PostgreSQL **1,295 passed／1 failed**。首次失敗與最終passing runs分別保留。原本local checks也分開：bridge／runner **127項**、gateway **120項**、client／bootstrap bundle **52項**、web／help／language **153項**。Deployment不將下方歷史native／Cloud結果升格成新版本驗收。
+
+## 公開Codex僅安裝關卡
+
+台北16:55:33，新的Windows安裝透過官方公開 `07d575a` bootstrap **passed**，下載四個固定 `7087bbf` 來源檔，連向Hub `fadee9d`。實際terminal的stdin／stdout為interactive，使用真正隱藏 `getpass` 提示，沒有替代或monkeypatch；操作員私下輸入新的測試worker Token。實測使用 `-Print`、明確核對的Codex／Python3.12執行檔、繁中、一小時、三回合及90秒turn timeout。
+
+Installer exit0、REST worker／room核對passed，實際建立venv及pip dependencies、以目前使用者DPAPI保存憑證，八個安裝檔hash均passed。Installed官方 `--receipt --print` 也passed；receiver state目錄不存在，沒有Hub join或model turn。網站複製指令另通過bootstrap／hash／worker核對。這是真正互動installation關卡，不是native chat端到端驗收，也不證明預設PATH、自動啟動、全新帳號或無人值守安裝。
+
+16:56:12，官方worker revoke回HTTP303；issued Token與installed DPAPI憑證相同，之後以同一Token做read-only authentication回HTTP401。測試憑證cleanup **passed**，受保護的local安裝檔保留為證據。此安裝的fresh native chat端到端仍 **not_run**。
 
 ## 已部署無回覆完成與有界原生試驗
 
