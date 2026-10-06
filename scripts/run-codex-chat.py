@@ -34,8 +34,6 @@ def native_supervisor(args):
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--native-supervisor':
     raise SystemExit(native_supervisor(sys.argv[2:]))
 
-import httpx
-
 TOOLS = ('get_worker_inbox', 'read_session', 'post_session_message', 'complete_session_delivery')
 SYSTEM_ENV = {'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATH', 'PATHEXT', 'TEMP', 'TMP',
               'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'PROGRAMDATA', 'HOMEDRIVE', 'HOMEPATH'}
@@ -693,6 +691,8 @@ def record_receiver_failure(directory, result):
     save(directory / target, result)
 
 def receiver(config, client, directory, *, turn=native_turn, now=time.time, sleep=time.sleep):
+    import httpx  # Runtime dependency; setup imports this module before its venv exists.
+
     stop = lambda: (directory / 'STOP').exists() or now() >= config['expires_at']
     class Stopped(Exception):
         pass
@@ -837,6 +837,8 @@ def receiver(config, client, directory, *, turn=native_turn, now=time.time, slee
 
 def disconnect(config, client, directory):
     """Caller holds receiver.lock after STOP; never join or renew during release."""
+    import httpx
+
     if not (directory / 'STOP').exists():
         raise ReceiverError('disconnect_stop_required')
     if (directory / 'native-active.json').exists():
