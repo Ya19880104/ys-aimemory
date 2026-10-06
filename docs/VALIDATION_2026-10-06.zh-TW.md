@@ -53,3 +53,48 @@ Gemini 的 Windows CLI 程序現在以單一操作建立為暫停狀態並加入
 Codex bootstrap `d688fbfcd132ec8ed9b05937438320ab1c9b94a6` 的 raw Git SHA-256 為 `edf5651aaae0a2cdf319d75b1bbdbf370972e7316f5cfa610d3873be518141a4`，固定上述來源；成對教學與聊天室指令使用相同版本鏈。此來源檢查點的修正版新 CI、部署、公開安裝及原生驗收仍為 **not_run**，前次部署或 helper 測試不能替代。
 
 已關閉 Cloud 日誌的診斷使用獨立記錄的 callback／guard 時間窗，保留無法解析的行，不代表原生執行或完成，也不改寫先前 failed。全新 Cloud 自動收訊、Gemini 原生生命週期與三客戶端對話／任務交接仍為 **not_run**。目前工作階段未提供必要的官方 host／事件控制工具；這不代表整個帳號都無法使用。
+
+## stdlib-safe Codex 安裝器的 exact-head CI
+
+候選 `418173134fa1c6cce17e99830a5b5faebbc97475` 的兩次 CI 執行均於 attempt 1 完成，各自三個 job 全部 success：
+
+| 執行（attempt 1） | windows-installer | sqlite | postgres |
+| --- | --- | --- | --- |
+| [Push 37418044541](https://github.com/Ya19880104/ys-aimemory/actions/runs/37418044541) | 449 passed、2 warnings | 1098 passed、53 skipped、3 warnings | 1394 passed、51 skipped、3 warnings |
+| [PR 37418050461](https://github.com/Ya19880104/ys-aimemory/actions/runs/37418050461) | 449 passed、2 warnings | 1098 passed、53 skipped、3 warnings | 1394 passed、51 skipped、3 warnings |
+
+限定本機測試為 **344 passed、2 warnings**。這是不同環境的結果，不能加成總數；skipped 仍是 skipped。此紀錄只更新前一來源檢查點對本候選尚待完成的 CI 狀態，不能證明公開安裝、原生執行或部署。
+
+Codex 來源／bootstrap 鏈仍為 `3e6166789fa938afc58a78565c625fc73888acb9`／`d688fbfcd132ec8ed9b05937438320ab1c9b94a6`，bootstrap raw Git SHA-256 為 `edf5651aaae0a2cdf319d75b1bbdbf370972e7316f5cfa610d3873be518141a4`。
+
+[`96177fe` 三項 Linux 失敗及 `a42630c` 成功修正](VALIDATION_2026-10-05.zh-TW.md)、[`c199d23` 第一次 failed／cancelled 與第二次成功](VALIDATION_2026-10-06.zh-TW.md)、[`38a49cf` 部署](VALIDATION_2026-10-06.zh-TW.md)，以及[已關閉的公開安裝失敗與已核發 Token 撤銷](VALIDATION_2026-10-06.zh-TW.md) 均不改寫。初次 `httpx` 回歸仍是 failed，後續限定 passed 有不同來源界線。
+
+### C418 部署與全新公開安裝
+
+部署後檢查點的本機候選、公開 PR18 head 與獨立確認的線上版本均為 `418173134fa1c6cce17e99830a5b5faebbc97475`。Stage 為 **1352 passed、93 skipped、3 warnings，251.18 秒**；promotion 通過 **483 項檢查，23.432 秒**，於 **2026-10-06 05:42:24.336493 UTC** 完成。回讀確認映像完全一致、應用程式／PostgreSQL 健康、TLS 通過、成對教學網址固定 C418、升級前備份可讀且前一版映像保留。
+
+全新正常公開 Codex 安裝經真正的隱藏 Token 提示後 **passed**。公開收據與八個已安裝檔案符合來源／bootstrap／候選版本鏈及 **3600 秒／單一 turn／90 秒**限制；安裝器程序樹已退出、所屬 handle 已關閉。這只驗證安裝，不能證明模型 turn。
+
+後續原生 guard 在聊天室 join／收訊前以 `cannot_hold_owned_process` **failed**。STOP 保留、未建立 binding、未送出 human stimulus。自動／原生收訊、完整讀取、回覆及原生 Job 退出為 **not_run**；完整 held-child 退出證據為 **failed**。官方停止通過；後續限定程序清單為空、已記錄程序身分不存在，但不將歷史退出證據升級為 passed。同一已核發及已安裝 Token 已撤銷（HTTP 303），以該已安裝 Token 配合嚴格 TLS 驗證得到 **HTTP 401**。試驗已關閉，不再重啟；較早被限流拒絕的閉包回讀仍保留。
+
+全新 Cloud 自動收訊／無回覆完成、Gemini 完整原生生命週期、Claude／Codex／Gemini 同時對話與任務交接仍為 **not_run**。目前工具脈絡未提供必要的 Cloud／Gemini host 控制，不能推論整個帳號不可用。先前 Cloud 失敗仍為 failed；被特定 Auto 審查拒絕的 Claude adoption 未嘗試。PR18 維持 draft，不宣稱整體產品驗收通過。
+
+### 第二次全新公開安裝與外層 Job 關閉
+
+第二個全新公開安裝與八檔收據驗證，在同一 C418 部署及 S/B 安裝器版本鏈上通過。新的外部守衛以原子操作將公開收據程序建立於專屬 Windows Job 內，並保留根程序 handle。它在 join 前以 `HOLD_member_unavailable` 停止，未建立 binding、未送出人類測試訊息。原始固定錯誤子類未被記錄，因此原因仍未確認。
+
+外層 Job 涵蓋五個程序，作用中程序數歸零、持有的根程序已退出、所屬 handle 已關閉。這份外層清理證據通過；原生收訊／完整讀取／回覆及接收器內層原生 Job 收據仍為 **not_run**。官方停止另外在專屬 Job 中執行並通過。同一已核發及已安裝 Token 已撤銷（HTTP 303），並在驗證 TLS 下遭拒（HTTP 401）。第二個 fixture 也已關閉，兩個失敗 fixture 均不會重啟。
+
+外部守衛診斷屬私有測試工具工作，與產品 CI 分開。初始 deadline／GO 競態及 final callback 錯誤均在後續合成修正前保留。新的純來源 packet 不代表另一次安裝或原生驗收已完成。
+
+## C418 的全新有界 Codex 原生生命週期
+
+第三次獨立全新正常公開 Codex 安裝在 `418173134fa1c6cce17e99830a5b5faebbc97475` 上通過，使用不變的 S/B 安裝器鏈；八檔案收據與 **3600 秒／單一 turn／90 秒**限制均核對一致。一個全新 human 問題自動產生 **3 次原生 MCP 呼叫**：身分確認、完整 delivery 讀取及一則回覆。實際原生收據為 `passed/replied`，具有 `native_containment=windows_job` 與已驗證的原生程序樹退出；獨立 Hub 回讀對上同一 human／讀取／回覆收據，以及含本次 marker 的 324 字元回覆。沒有以追補模型提示或 SDK 替代來建立這項結果。
+
+外層專屬 Job 的 **22 個程序**全部收束：active 為零、held root 已 signaled、Job 與所屬 handle 關閉。中繼資料辨識到 **16 個已觀察程序身分**；未觀察的身分仍為 **not_observed**。另行執行的官方停止及斷線 Job 也通過並收束各自程序樹。STOP 保留、binding 已 disconnected，native-active 狀態不存在。程序及服務端證據仍與實際原生收據分開。
+
+同一已核發與已安裝 Token 已撤銷（HTTP 303）；使用該已安裝 Token 配合嚴格 TLS 驗證的認證檢查得到 **HTTP 401**。試驗現已關閉，STOP、journal 與原始嘗試均保留，不再重啟。
+
+本紀錄的線上 Hub 與來源／CI／原生證據仍固定 C418。隨附的純文件修改具有不同的公開／本機 Git head，不代表新產品部署或另一次原生試驗。
+
+這只通過本次觀察到的單一問題有界 Codex 流程。前兩次 guard failed／HOLD 試驗仍保留原結果及已關閉／撤銷狀態，個別清理證據不改寫。此候選的 Cloud 自動收訊／無回覆完成、Gemini 完整原生生命週期、三客戶端同時對話／任務交接、全新 peer no_reply、接收器重新啟動及無限期運行仍為 **not_run**。被特定 Auto 審查拒絕的 Claude adoption 未嘗試，不宣稱整體產品或 Token 成本驗收通過。

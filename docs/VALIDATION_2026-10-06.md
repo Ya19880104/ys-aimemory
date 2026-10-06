@@ -53,3 +53,48 @@ A credential-free reproduction under real base Python 3.12 with `-I -S` failed w
 Codex bootstrap `d688fbfcd132ec8ed9b05937438320ab1c9b94a6`, raw Git SHA-256 `edf5651aaae0a2cdf319d75b1bbdbf370972e7316f5cfa610d3873be518141a4`, pins this source. The paired guide and room command use the same chain. This fix's new CI, deployment, public installation and native acceptance are **not_run** at this source checkpoint; the prior deployment and helper tests cannot substitute for them.
 
 Closed Cloud log diagnostics use independently recorded callback/guard windows and preserve unparsed lines. They do not establish native execution or completion, and do not change earlier failed results. Fresh Cloud automatic receive, Gemini native lifecycle and three-client conversation/task handoff remain **not_run**. The required official host/event controls are unavailable in the current session; this does not establish account-wide unavailability.
+
+## Exact-head CI for the stdlib-safe Codex installer
+
+Candidate `418173134fa1c6cce17e99830a5b5faebbc97475` completed both CI runs on attempt 1, with all three jobs successful:
+
+| Run (attempt 1) | windows-installer | sqlite | postgres |
+| --- | --- | --- | --- |
+| [Push 37418044541](https://github.com/Ya19880104/ys-aimemory/actions/runs/37418044541) | 449 passed, 2 warnings | 1098 passed, 53 skipped, 3 warnings | 1394 passed, 51 skipped, 3 warnings |
+| [PR 37418050461](https://github.com/Ya19880104/ys-aimemory/actions/runs/37418050461) | 449 passed, 2 warnings | 1098 passed, 53 skipped, 3 warnings | 1394 passed, 51 skipped, 3 warnings |
+
+The focused local suite passed **344 tests, 2 warnings**. These are separate environment results, not a combined count. Skipped tests remain skipped. This supersedes only the prior source checkpoint's pending CI status for this candidate; it does not certify public installation, native execution or deployment.
+
+The Codex source/bootstrap chain remains `3e6166789fa938afc58a78565c625fc73888acb9` / `d688fbfcd132ec8ed9b05937438320ab1c9b94a6`, with bootstrap raw Git SHA-256 `edf5651aaae0a2cdf319d75b1bbdbf370972e7316f5cfa610d3873be518141a4`.
+
+[The three `96177fe` Linux failures and successful `a42630c` correction](VALIDATION_2026-10-05.md#test-fixture-fix-ci-and-deployment-of-a42630c), [`c199d23` failed/cancelled first attempts and successful second attempts](#ci-on-the-continuation-baseline), [`38a49cf` deployment](#deployment-and-ci-of-38a49cf), and [the closed public install failure and issued-Token revocation](#codex-public-installer-dependency-fix) remain unchanged. The initial `httpx` regression failure remains failed; its later focused pass has a different source boundary.
+
+### Deployment and fresh public installation at C418
+
+At the post-deployment checkpoint, the local candidate, public PR18 head and independently verified live release were `418173134fa1c6cce17e99830a5b5faebbc97475`. Stage passed **1352 tests, 93 skipped, 3 warnings in 251.18s**; promotion passed **483 checks in 23.432s**, finishing **2026-10-06 05:42:24.336493 UTC**. Readback confirmed the exact image, healthy application/PostgreSQL, verified TLS, paired tutorial URLs pinned to C418, a readable pre-upgrade backup and the retained previous image.
+
+A fresh normal public Codex installation **passed** through the real hidden Token prompt. The public receipt and all eight installed files matched the source/bootstrap/candidate chain and the **3600-second / one-turn / 90-second** limits. The installer process tree exited and its owned handles closed. This validates installation, not a model turn.
+
+The subsequent native guard **failed** with `cannot_hold_owned_process` before room join/receive. STOP was preserved; no binding was created and no human stimulus was sent. Automatic/native receive, complete read, reply and native Job exit are **not_run**; complete held-child exit proof is **failed**. Official stop passed. Later scoped inventories were empty and recorded process identities absent, without upgrading the failed historical exit proof. The same issued and installed Token was revoked (HTTP 303), and strict-TLS authentication with that installed Token returned **HTTP 401**. The fixture is closed and will not be restarted; earlier rate-limited closure readbacks remain recorded.
+
+Fresh Cloud automatic receive/silent completion, Gemini complete native lifecycle, and simultaneous Claude/Codex/Gemini conversation/task handoff remain **not_run**. Required Cloud/Gemini host controls are unavailable in the current tool context; this does not establish account-wide unavailability. Earlier Cloud failures remain failed. The specifically Auto-denied Claude adoption remains unattempted. PR18 remains draft; no overall product acceptance is claimed.
+
+### Second fresh public installation and outer Job closure
+
+A second fresh public installation and its eight-file receipt verification passed on the same C418 release and S/B installer chain. A new external guard created the public receipt process inside an owned Windows Job atomically and retained the root handle. It stopped before join with `HOLD_member_unavailable`; no binding or human stimulus was created. The original fixed error subtype was not recorded, so the cause remains unconfirmed.
+
+The outer Job covered five processes and reached zero active processes, with the held root signaled and owned handles closed. This outer cleanup evidence passed; native receive/full read/reply and the receiver's inner native Job receipt remain **not_run**. Official stop ran inside a separate owned Job and passed. The same issued and installed Token was revoked (HTTP 303) and rejected over verified TLS (HTTP 401). This second fixture is also closed; neither failed fixture will be restarted.
+
+External guard diagnostics are private test-harness work, separate from product CI. Initial deadline/GO races and a final-callback error were preserved before later synthetic corrections. A new source-only packet does not establish another installation or native result.
+
+## Fresh bounded Codex native lifecycle at C418
+
+A third, independent fresh normal public Codex installation passed on `418173134fa1c6cce17e99830a5b5faebbc97475`, using the unchanged S/B installer chain and an eight-file receipt verified against the **3600-second / one-turn / 90-second** limits. One new human question automatically produced **3 native MCP calls**: identity, complete delivery read and one reply. The actual native receipt was `passed/replied`, with `native_containment=windows_job` and verified native tree exit. Independent Hub readback matched the same human/read/reply receipts and the 324-character reply containing the trial marker. No follow-up model prompt or SDK substitute established this result.
+
+The outer owned Job settled all **22 job processes**: zero active processes, the held root signaled, Job and owned handles closed. Metadata identified **16 observed process identities**; unobserved identities remain **not_observed**. Separate official stop and disconnect Jobs also passed and settled their own trees. STOP remains, the binding is disconnected and native-active state is absent. These process and server proofs remain separate from the actual native receipt.
+
+The same issued and installed Token was revoked (HTTP 303); a strict-TLS authentication check with that installed Token returned **HTTP 401**. The fixture is now closed. STOP, journals and all original attempts are preserved; it will not be restarted.
+
+The live Hub and the source/CI/native evidence in this record remain pinned to C418. The accompanying documentation-only change has a separate public/local Git head; it does not represent a new product deployment or another native trial.
+
+This passes only the observed one-question bounded Codex sequence. The earlier first guard failure and second HOLD fixture remain failed/HOLD and closed/revoked; their different cleanup proofs are unchanged. Cloud automatic receive/silent completion, Gemini's complete native lifecycle, simultaneous three-client conversation/task handoff, fresh peer no_reply, receiver restart and indefinite operation remain **not_run** for this candidate. The specifically Auto-denied Claude adoption remains unattempted. No overall product or token-cost acceptance is claimed.
