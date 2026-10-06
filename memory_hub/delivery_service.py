@@ -107,6 +107,8 @@ class DeliveryService:
             self._save_binding(conn, binding, 'last_seen_at')
             if name == 'heartbeat':
                 return self._public_binding(conn, binding, room, now)
+            if name in {'reserve', 'activate'}:
+                return self._queued_admission(conn, binding, room, a, now, name)
             if name == 'claim':
                 return self._claim(conn, binding, room, a, now)
             delivery = self._owned_delivery(conn, a['delivery_id'], binding)
@@ -276,8 +278,137 @@ class DeliveryService:
             t.c.session_id == a['session_id']).order_by(t.c.worker_id).limit(101)).mappings().all()
         return {'project_id': a['project_id'], 'session_id': a['session_id'],
             'control': self._control(conn, room), 'latest_sequence': room['latest_sequence'],
-            'participants': [self._public_binding(conn, dict(b), room, self.clock()) for b in rows[:100]],
+            'participants': [self._status_binding(conn, dict(b), room, self.clock()) for b in rows[:100]],
             'has_more': len(rows) > 100, 'receipt_semantics': 'tool_read means complete messages returned by a tool; not proof of model comprehension'}
+
+    def _status_binding(self, conn, binding, room, now):
+        # Optional and additive: receivers compare the existing status values.
+        value = self._public_binding(conn, binding, room, now)
+        queued = self._queued_reservation(conn, binding, room, value['status'], now)
+        return {**value, 'queued_reservation': queued} if queued else value
+
+    def _queued_reservation(self, conn, binding, room, state, now):
+        """Range and expiry of the newest reservation that activation would still accept.
+
+        A reservation is Hub admission state only: not callback acceptance, a tool
+        read or a reply. Nothing that identifies or could activate it is returned.
+        """
+        if (state not in {'waiting', 'offline'} or room['latest_sequence'] <= binding['processed_sequence']
+                or self._pending(conn, binding) is not None):
+            return None
+        t = self.tables['joins']
+        scope = (t.c.project_id == binding['project_id'], t.c.actor_kind == 'worker',
+                 t.c.worker_id == binding['worker_id'])
+
+        def field(name):
+            return t.c.result[('reservation', name)]
+        # Fences are compared as text; only Hub-written numbers are cast, for expiry and order.
+        fence = {'after_sequence': binding['processed_sequence'], 'binding_id': binding['binding_id'],
+                 'generation': binding['generation'], 'binding_version': binding['version'],
+                 'control_version': self._control(conn, room)['version']}
+        # The primary-key prefix limits the scan to this worker's reservations in the project.
+        # Stale ones are excluded by the database, so the limit can only trim reservations
+        # that are all still valid, and the newest comes first. No history is returned.
+        rows = conn.execute(select(t.c.request_key, t.c.result).where(*scope, t.c.operation == 'reserve',
+            *(field(name).as_string() == str(value) for name, value in fence.items()),
+            field('queued_until').as_float() > now).order_by(field('created_at').as_float().desc(),
+            field('through_sequence').as_float().desc(), field('queued_until').as_float().desc()).limit(8)).all()
+        for key, result in rows:
+            reservation = result['reservation']
+            try:
+                self._reservation_live(conn, binding, room, reservation, now)
+            except HubError:
+                continue
+            if conn.execute(select(t.c.request_key).where(*scope, t.c.operation == 'activate',
+                    t.c.request_key == key)).first() is None:
+                return {k: reservation[k] for k in ('through_sequence', 'created_at', 'queued_until')}
+        return None
+
+    def _queued_admission(self, conn, binding, room, a, now, operation):
+        # Durable immutable reservations use the existing scoped idempotency store.
+        # Queue lifetime is independent of execution lease and consumes no turns.
+        require(a['generation'] == binding['generation'], 'stale_binding', 'Binding generation changed')
+        blocked = self._blocked(conn, binding, room, now)
+        require(blocked is None, 'delivery_stopped', 'Delivery is ' + (blocked or 'stopped'))
+        t = self.tables['joins']
+        identifier = a['request_id'] if operation == 'reserve' else a['reservation_id']
+        key = {'project_id': binding['project_id'], 'operation': operation,
+               'actor_kind': 'worker', 'worker_id': binding['worker_id'], 'request_key': identifier}
+        digest = hashlib.sha256(json.dumps(a, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        previous = conn.execute(select(t).where(*(t.c[k] == v for k, v in key.items()))).mappings().one_or_none()
+        if previous:
+            require(previous['payload_hash'] == digest, 'idempotency_conflict', 'Admission arguments changed')
+            result = previous['result']
+            if operation == 'reserve':
+                reservation = result['reservation']
+                self._reservation_live(conn, binding, room, reservation, now)
+            else:
+                d = result['delivery']
+                current = self._owned_delivery(conn, d['delivery_id'], binding)
+                self._live(conn, binding, room, current, d['lease_id'], now)
+            return result
+        if operation == 'reserve':
+            pending = self._pending(conn, binding)
+            require(pending is None, 'delivery_busy', 'Resolve existing delivery before queuing')
+            require(binding['turns_used'] < binding['max_turns'], 'budget_exhausted', 'Turn budget exhausted')
+            e = SESSION_TABLES['events']
+            rows = conn.execute(select(e.c.payload).where(e.c.project_id == binding['project_id'],
+                e.c.session_id == binding['session_id'], e.c.sequence > binding['processed_sequence'])
+                .order_by(e.c.sequence).limit(20)).scalars().all()
+            messages = [{'message_id': x['message_id'], 'sequence': x['sequence'],
+                         'actor_kind': x['actor']['kind'], 'actor_id': x['actor']['id'],
+                         'automatic_reply_depth': x.get('automatic_reply_depth', 0)}
+                        for x in rows if x['type'] == 'message' and x.get('automatic_reply_depth', 0) < 2 and
+                        not (x['actor']['kind'] == 'worker' and x['actor']['id'] == binding['worker_id'])]
+            if not messages:
+                if rows:
+                    binding['processed_sequence'] = rows[-1]['sequence']
+                    self._save_binding(conn, binding, 'processed_sequence')
+                return {'status': 'idle', 'reservation': None}
+            reservation = {'reservation_id': identifier, 'binding_id': binding['binding_id'],
+                'generation': binding['generation'], 'project_id': binding['project_id'],
+                'session_id': binding['session_id'], 'worker_id': binding['worker_id'],
+                'control_version': self._control(conn, room)['version'], 'binding_version': binding['version'],
+                'after_sequence': binding['processed_sequence'], 'through_sequence': rows[-1]['sequence'],
+                'messages': messages, 'message_ids': [m['message_id'] for m in messages],
+                'queued_until': min(now + a['queue_seconds'], binding['expires_at']), 'created_at': now}
+            result = {'status': 'queued', 'reservation': reservation}
+        else:
+            reservation_row = conn.execute(select(t).where(t.c.project_id == binding['project_id'],
+                t.c.operation == 'reserve', t.c.actor_kind == 'worker', t.c.worker_id == binding['worker_id'],
+                t.c.request_key == identifier)).mappings().one_or_none()
+            require(reservation_row is not None, 'reservation_unknown', 'Reservation not found', 404)
+            reservation = reservation_row['result']['reservation']
+            self._reservation_live(conn, binding, room, reservation, now)
+            require(self._pending(conn, binding) is None, 'delivery_busy', 'Another delivery owns admission')
+            require(binding['turns_used'] < binding['max_turns'], 'budget_exhausted', 'Turn budget exhausted')
+            delivery = {'delivery_id': uuid.uuid4().hex, 'binding_id': binding['binding_id'],
+                'generation': binding['generation'], 'after_sequence': reservation['after_sequence'],
+                'through_sequence': reservation['through_sequence'], 'messages': reservation['messages'],
+                'read_message_ids': [], 'status': 'leased', 'lease_id': uuid.uuid4().hex,
+                'lease_until': min(now + a['lease_seconds'], binding['expires_at']), 'attempts': 1,
+                'created_at': now, 'dispatched_at': None, 'read_at': None, 'replied_at': None,
+                'reply_message_id': None, 'reply_sequence': None}
+            conn.execute(self.tables['deliveries'].insert().values(**delivery))
+            binding['turns_used'] += 1
+            self._save_binding(conn, binding, 'turns_used')
+            result = {'status': 'ready', 'delivery': {**self._public_delivery(delivery),
+                'lease_id': delivery['lease_id'], 'lease_until': delivery['lease_until'],
+                'messages': delivery['messages'], 'message_ids': reservation['message_ids'],
+                'reply_idempotency_key': 'delivery-' + delivery['delivery_id']}}
+        conn.execute(t.insert().values(**key, payload_hash=digest, result=result))
+        return result
+
+    def _reservation_live(self, conn, binding, room, reservation, now):
+        require(all(reservation[k] == binding[k] for k in
+                    ('binding_id', 'generation', 'project_id', 'session_id', 'worker_id')),
+                'reservation_scope', 'Reservation scope changed')
+        require(reservation['binding_version'] == binding['version'] and
+                reservation['control_version'] == self._control(conn, room)['version'],
+                'reservation_fenced', 'Reservation was administratively fenced')
+        require(reservation['queued_until'] > now, 'reservation_expired', 'Reservation queue expired')
+        require(reservation['after_sequence'] == binding['processed_sequence'],
+                'reservation_cursor', 'Reservation cursor changed')
 
     def _claim(self, conn, binding, room, a, now):
         request_key, request_digest, previous = None, None, None
@@ -475,3 +606,19 @@ class DeliveryService:
             reply_sequence=result['sequence']))
         result['delivery_receipt'] = {'delivery_id': delivery['delivery_id'], 'status': 'replied',
                                      'processed_sequence': delivery['through_sequence']}
+
+    def complete_tool_no_reply(self, conn, a, actor):
+        binding, delivery = self._tool_delivery(conn, a, actor)
+        require(delivery['read_at'] is not None and
+                set(delivery['read_message_ids']) == {m['message_id'] for m in delivery['messages']},
+                'delivery_not_read', 'Read complete delivery messages with the tool first')
+        require(a['idempotency_key'] == 'delivery-' + delivery['delivery_id'],
+                'delivery_key_required', 'Use the stable delivery completion idempotency key')
+        binding['processed_sequence'] = delivery['through_sequence']
+        self._save_binding(conn, binding, 'processed_sequence')
+        t = self.tables['deliveries']
+        conn.execute(t.update().where(t.c.delivery_id == delivery['delivery_id']).values(status='no_reply'))
+        return {'project_id': binding['project_id'], 'session_id': binding['session_id'],
+                'worker_id': binding['worker_id'], 'delivery_receipt': {
+                    'delivery_id': delivery['delivery_id'], 'status': 'no_reply',
+                    'processed_sequence': delivery['through_sequence']}}

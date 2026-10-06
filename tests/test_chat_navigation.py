@@ -20,6 +20,9 @@ pytestmark = pytest.mark.skipif(NODE is None, reason="Node.js is required for ch
 
 @pytest.mark.parametrize("language", ["en", "zh-TW"])
 @pytest.mark.parametrize("scenario", [
+    "csrf_draft_recovery",
+    "draft_reload_recovery",
+    "draft_unknown_write",
     "deep_link_outside_first_page",
     "project_change_during_deep_link",
     "project_change_clears_old_rooms",

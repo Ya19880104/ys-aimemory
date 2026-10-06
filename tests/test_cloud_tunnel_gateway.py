@@ -1,5 +1,6 @@
 """Private gateway contracts; no provider account, live Token or callback used."""
 import base64
+import copy
 import hashlib
 import hmac
 import io
@@ -7,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import threading
 from types import SimpleNamespace
 
 import pytest
@@ -122,7 +124,7 @@ def test_mcp2_catalog_and_fixed_tool_scope(pilot):
     gateway = pilot.gateway
     assert rpc(gateway, 'server/discover')['result']['supportedVersions'] == ['2026-07-28']
     assert set(rpc(gateway, 'server/discover')['result']['capabilities']) == {'tools', 'events'}
-    assert {tool['name'] for tool in rpc(gateway, 'tools/list')['result']['tools']} == {'identity', 'read_delta', 'post_message'}
+    assert {tool['name'] for tool in rpc(gateway, 'tools/list')['result']['tools']} == {'identity', 'read_delta', 'post_message', 'no_reply'}
     assert rpc(gateway, 'events/list')['result']['events'][0]['name'] == cloud.EVENT_NAME
     identity = rpc(gateway, 'tools/call', {'name': 'identity'})['result']['structuredContent']
     assert identity['worker_id'] == 'chatgpt-pilot' and identity['latest_sequence'] == pilot.hub.sequence
@@ -495,8 +497,90 @@ def test_protocol_success_envelopes_and_callback_diagnostic_are_bounded(pilot, c
     with pytest.raises(cloud.GatewayError):
         cloud.callback_url('https://' + host + '/private-callback?secret=do-not-log', [])
     diagnostic = capsys.readouterr().err
-    assert json.loads(diagnostic) == {'event':'callback_host_not_allowed', 'hostname':host}
+    assert json.loads(diagnostic.splitlines()[-1]) == {'event':'callback_host_not_allowed', 'hostname':host}
     assert 'private-callback' not in diagnostic and 'do-not-log' not in diagnostic
+
+
+@pytest.mark.parametrize('message,category', [
+    ('Notification lease expired', 'notification_expired'),
+    ('Notification lease was superseded', 'notification_superseded'),
+    ('Subscription is not active; old notifications cannot write', 'subscription_inactive')])
+def test_rpc_failure_diagnostic_categories_and_fingerprint_are_private(pilot, capsys, monkeypatch, message, category):
+    def failed(*args):
+        raise cloud.GatewayError(message, -32001)
+    monkeypatch.setattr(pilot.gateway, 'call', failed)
+    identifier = 'synthetic-private-notification'
+    result = rpc(pilot.gateway, 'tools/call', {'name': 'read_delta', 'arguments': {
+        'notification_id': identifier, 'body': 'synthetic-private-body', 'token': SECRET, 'url': URL}})
+    log = capsys.readouterr().err
+    record = json.loads(log.splitlines()[-1])
+    assert result['error']['code'] == -32001
+    assert record == {'event': 'gateway_request_error', 'timestamp': cloud.iso(pilot.now[0]),
+                      'method': 'tools/call', 'tool': 'read_delta', 'error_code': category,
+                      'notification_fingerprint': hashlib.sha256(identifier.encode()).hexdigest()[:16]}
+    assert all(value not in log for value in (identifier, 'synthetic-private-body', SECRET, URL))
+    assert len(log) < 512
+
+
+def test_untrusted_method_tool_exception_and_id_are_never_logged(pilot, capsys, monkeypatch):
+    marker = 'synthetic-secret-do-not-log'
+    result = pilot.gateway.dispatch({'jsonrpc': '2.0', 'id': marker, 'method': marker,
+                                     'params': {'name': marker, 'arguments': {'body': marker}}})
+    assert result['error']['code'] == -32601
+    log = capsys.readouterr().err
+    assert marker not in log and json.loads(log.splitlines()[-1])['method'] == 'unknown'
+    def failed(*args):
+        raise RuntimeError(marker)
+    monkeypatch.setattr(pilot.gateway, 'call', failed)
+    result = rpc(pilot.gateway, 'tools/call', {'name': marker, 'arguments': {'notification_id': marker * 1000}})
+    log = capsys.readouterr().err
+    assert result['error']['code'] == -32603 and marker not in log
+    assert json.loads(log.splitlines()[-1])['tool'] == 'unknown'
+    assert 'notification_fingerprint' not in json.loads(log.splitlines()[-1])
+
+
+@pytest.mark.parametrize('tool,status', [('read_delta', 'partial_tool_read'),
+                                      ('read_delta', 'tool_read'), ('post_message', 'replied')])
+def test_success_diagnostics_preserve_wire_and_only_report_receipt_milestone(pilot, capsys, monkeypatch, tool, status):
+    value = {'body': 'synthetic-private-reply', 'delivery_receipt': {'status': status}}
+    monkeypatch.setattr(pilot.gateway, 'call', lambda *args: value)
+    result = rpc(pilot.gateway, 'tools/call', {'name': tool, 'arguments': {'body': SECRET}})
+    log = capsys.readouterr().err
+    assert result['result']['structuredContent'] == value
+    record = json.loads(log.splitlines()[-1])
+    assert record['event'] == 'gateway_tool_completed' and record['receipt_status'] == status
+    assert SECRET not in log and value['body'] not in log
+
+
+def test_diagnostic_write_failure_never_retries_or_changes_committed_post(pilot, monkeypatch):
+    class BrokenStderr:
+        def write(self, text): raise OSError('synthetic-output-unavailable')
+    calls = []
+    monkeypatch.setattr(cloud.sys, 'stderr', BrokenStderr())
+    monkeypatch.setattr(pilot.gateway, 'call', lambda *args: calls.append(args) or {'delivery_receipt': {'status': 'replied'}})
+    result = rpc(pilot.gateway, 'tools/call', {'name': 'post_message', 'arguments': {'body': 'fixture'}})
+    assert result['result']['isError'] is False and len(calls) == 1
+
+
+def test_real_expired_notification_logs_rejection_without_read_or_cursor_change(pilot, capsys):
+    pilot.config['subscription_ttl'] = 600
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add(body='synthetic-private-source')
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    binding = active_binding(pilot)
+    pilot.gateway.call('read_delta', {'notification_id': identifier, 'limit': 1})
+    before = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
+    capsys.readouterr()
+    pilot.now[0] += 301
+    result = rpc(pilot.gateway, 'tools/call', {'name': 'read_delta',
+                 'arguments': {'notification_id': identifier}})
+    record = json.loads(capsys.readouterr().err.splitlines()[-1])
+    assert record['error_code'] == 'notification_expired'
+    assert result['error']['code'] == -32001
+    after = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
+    assert after['processed_sequence'] == before['processed_sequence']
+    assert after['latest_delivery']['read_at'] == before['latest_delivery']['read_at']
 
 
 def test_native_batch_pages_full_escaped_message_receipts_and_stable_reply(pilot):
@@ -508,10 +592,10 @@ def test_native_batch_pages_full_escaped_message_receipts_and_stable_reply(pilot
     identifier = notification(pilot)
     binding = active_binding(pilot)
     state = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
-    assert state['latest_delivery']['status'] == 'dispatched'
-    assert state['latest_delivery']['read_at'] is None
+    assert state['latest_delivery'] is None
+    assert state['turns_used'] == 0
     assert state['processed_sequence'] == binding['processed_sequence']
-    with pytest.raises(cloud.GatewayError, match='delivery_not_read'):
+    with pytest.raises(cloud.GatewayError, match='Read this notification'):
         pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Complete reply'})
     pages = read_batch(pilot, identifier)
     assert len(pages) == 5 and pages[0]['items'][0]['body'] == huge
@@ -573,36 +657,35 @@ def test_pause_fences_old_notification_and_never_rebinds_it_to_new_batch(pilot):
         pilot.gateway.call('post_message', {'notification_id':old, 'body':'Late reply'})
     pilot.hub.real.delivery.call('pause', {**common, 'paused':False, 'expected_version':2}, admin)
     pilot.gateway.tick()
-    new = notification(pilot)
-    assert new != old
-    with pytest.raises(cloud.GatewayError, match='superseded'):
+    assert notification(pilot) == old
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0] == 'admission_failed'
+    with pytest.raises(cloud.GatewayError):
         pilot.gateway.call('read_delta', {'notification_id':old})
-    read_batch(pilot, new)
-    pilot.gateway.call('post_message', {'notification_id':new, 'body':'Fresh fenced reply'})
 
 
-def test_claim_response_loss_waits_for_lease_and_does_not_double_claim(pilot):
+def test_reservation_response_loss_replays_exact_queue_without_turn_charge(pilot):
     pilot.config['subscription_ttl'] = 900
     pilot.gateway.subscribe(subscription())
     pilot.hub.add()
     relay = pilot.hub.relay
     dropped = [False]
-    def lose_claim(operation, **kwargs):
+    def lose_reserve(operation, **kwargs):
         result = relay(operation, **kwargs)
-        if operation == 'claim' and result['status'] == 'ready' and not dropped[0]:
+        if operation == 'reserve' and result['status'] == 'queued' and not dropped[0]:
             dropped[0] = True
             raise cloud.GatewayError('Synthetic response lost')
         return result
-    pilot.hub.relay = lose_claim
+    pilot.hub.relay = lose_reserve
     with pytest.raises(cloud.GatewayError): pilot.gateway.tick()
-    for _ in range(4): pilot.gateway.tick()
-    assert len(pilot.sent) == 1  # Only callback verification, no model start via a callback.
     binding = active_binding(pilot)
-    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 0
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 2
     pilot.now[0] += 301
     pilot.gateway.tick()
     assert len(pilot.sent) == 2
-    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 2
+    read_batch(pilot, notification(pilot))
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
 
 
 def test_reply_response_loss_reconciles_and_retries_without_duplicate(pilot):
@@ -669,27 +752,22 @@ def test_hub_http_budget_error_retries_one_full_event_only(tmp_path, monkeypatch
     assert all(x['full_text'] and x['delivery_id']=='d'*32 and x['lease_id']=='e'*32 for x in calls)
 
 
-def test_expired_batch_gets_fresh_notification_and_old_reply_cannot_write(pilot):
+def test_expired_execution_is_terminal_without_retargeting_notification(pilot):
     pilot.config['subscription_ttl'] = 900
     pilot.gateway.subscribe(subscription())
     pilot.hub.add()
     pilot.gateway.tick()
     old = notification(pilot)
     read_batch(pilot, old)
+    binding = active_binding(pilot)
     pilot.now[0] += 301
     with pytest.raises(cloud.GatewayError, match='expired'):
         pilot.gateway.call('post_message', {'notification_id':old, 'body':'Late reply'})
     pilot.gateway.tick()
-    new = notification(pilot)
-    assert new != old
-    rows = pilot.gateway.db.execute('SELECT delivery FROM batches ORDER BY rowid').fetchall()
-    before, after = [pilot.gateway.box.decrypt(x[0]) for x in rows]
-    assert before['delivery_id'] == after['delivery_id']
-    assert before['reply_idempotency_key'] == after['reply_idempotency_key']
-    assert before['lease_id'] != after['lease_id']
+    assert notification(pilot) == old
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0] == 'admission_failed'
+    assert pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
     assert not pilot.hub.posts
-    read_batch(pilot, new)
-    pilot.gateway.call('post_message', {'notification_id':new, 'body':'Live reply'})
 
 
 def test_ambiguous_join_reuses_key_and_never_resets_cursor_or_budget(pilot):
@@ -708,7 +786,7 @@ def test_ambiguous_join_reuses_key_and_never_resets_cursor_or_budget(pilot):
     binding = active_binding(pilot)
     assert binding['generation'] == 1
     pilot.gateway.tick()
-    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 1
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 0
     assert len(pilot.sent[-1][1]['data']['message_ids']) == 1
 
 
@@ -719,3 +797,739 @@ def test_manual_read_has_full_text_path_before_monitoring(pilot):
     page = pilot.gateway.call('read_delta', {'after_sequence':before})
     assert page['items'][0]['body'] == body and not page['items'][0]['body_truncated']
     assert 'delivery_receipt' not in page
+
+
+def test_ack_queue_restart_delayed_activation_exact_range_and_no_redelivery(pilot):
+    pilot.config['subscription_ttl'] = 1800
+    pilot.gateway.subscribe(subscription())
+    first = pilot.hub.add(body='reserved first')
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    binding = active_binding(pilot)
+    original = pilot.sent[-1][1]
+    pilot.gateway.db.close()
+    pilot.now[0] += 420
+    later = pilot.hub.add(body='outside immutable range')
+    pilot.gateway = cloud.Gateway(pilot.config, pilot.hub, box=cloud.SecretBox(KEY), sender=pilot.sender, clock=lambda:pilot.now[0])
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 2
+    assert pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 0
+    pages = read_batch(pilot, identifier)
+    assert [i['message_id'] for p in pages for i in p['items'] if i['type']=='message'] == [first['message_id']]
+    result = pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Exact reserved reply'})
+    assert result['delivery_receipt']['processed_sequence'] == original['data']['through_sequence'] < later['sequence']
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 3
+    read_batch(pilot, notification(pilot))
+    assert pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 2
+
+
+def test_activation_response_loss_restart_replays_one_lease_and_turn(pilot):
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    binding = active_binding(pilot)
+    relay = pilot.hub.relay
+    dropped = [False]
+    def lose_activate(operation, **kwargs):
+        result = relay(operation, **kwargs)
+        if operation == 'activate' and not dropped[0]:
+            dropped[0] = True
+            raise cloud.GatewayError('Synthetic activation response lost')
+        return result
+    pilot.hub.relay = lose_activate
+    with pytest.raises(cloud.GatewayError): read_batch(pilot, identifier)
+    first = relay('heartbeat', binding_id=binding['binding_id'])
+    pilot.gateway.db.close()
+    pilot.gateway = cloud.Gateway(pilot.config, pilot.hub, box=cloud.SecretBox(KEY), sender=pilot.sender, clock=lambda:pilot.now[0])
+    read_batch(pilot, identifier)
+    second = relay('heartbeat', binding_id=binding['binding_id'])
+    assert first['latest_delivery']['delivery_id'] == second['latest_delivery']['delivery_id']
+    assert first['turns_used'] == second['turns_used'] == 1
+    assert len(pilot.sent) == 2
+
+
+def test_queue_expiry_terminal_no_replacement_or_cursor_change(pilot):
+    pilot.config['subscription_ttl'] = 3600
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    binding = active_binding(pilot)
+    identifier = notification(pilot)
+    pilot.now[0] += 1801
+    with pytest.raises(cloud.GatewayError, match='queue expired'):
+        pilot.gateway.call('read_delta', {'notification_id':identifier})
+    pilot.gateway.tick()
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 2
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0] == 'queue_expired'
+    state = pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])
+    assert state['turns_used'] == 0 and state['processed_sequence'] == binding['processed_sequence']
+    assert state['latest_delivery'] is None
+
+
+def test_ambiguous_callback_restart_uses_same_event_id_without_admission(pilot):
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    def receipt_lost(*args):
+        pilot.sender(*args)
+        raise cloud.GatewayError('Synthetic remote receipt/local response loss')
+    pilot.gateway.sender = receipt_lost
+    pilot.gateway.tick()
+    first = pilot.sent[-1]
+    binding = active_binding(pilot)
+    pilot.gateway.db.close()
+    pilot.now[0] += 5
+    pilot.gateway = cloud.Gateway(pilot.config, pilot.hub, box=cloud.SecretBox(KEY), sender=pilot.sender, clock=lambda:pilot.now[0])
+    pilot.gateway.tick()
+    second = pilot.sent[-1]
+    assert first[1] == second[1]
+    assert first[2]['webhook-id'] == second[2]['webhook-id']
+    assert first[2]['webhook-timestamp'] != second[2]['webhook-timestamp']
+    assert pilot.hub.relay('heartbeat', binding_id=binding['binding_id'])['turns_used'] == 0
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 3  # verification + ambiguous receipt + identical retry.
+
+
+@pytest.mark.parametrize('status', [202, 429, 410, 0])
+def test_event_trace_correlates_native_ingress_and_preserves_retry(pilot, capsys, status):
+    pilot.gateway.subscribe(subscription())
+    verification = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+    assert [r['event'] for r in verification] == ['callback_verification_dispatch', 'callback_verification_completed']
+    assert verification[-1]['http_status'] == 200
+    pilot.hub.add(body='canary-private-body')
+    pilot.result['status'] = status
+    if status == 0:
+        def failed(*args):
+            raise RuntimeError('canary-private-exception')
+        pilot.gateway.sender = failed
+    pilot.gateway.tick()
+    identifier = pilot.gateway.db.execute('SELECT event_id FROM outbox').fetchone()[0]
+    logs = capsys.readouterr().err
+    records = [json.loads(line) for line in logs.splitlines()]
+    assert len(records) == 2
+    assert records[0]['event'] == 'gateway_event_dispatch'
+    assert records[1]['event'] == ('gateway_event_received' if status == 202 else 'gateway_event_failed')
+    assert records[1]['http_status'] == status and records[1]['attempt'] == 1
+    expected = hashlib.sha256(identifier.encode()).hexdigest()[:16]
+    assert all(r['notification_fingerprint'] == expected and r['timestamp'] == cloud.iso(pilot.now[0]) for r in records)
+    assert all(value not in logs for value in [identifier, URL, SECRET, 'canary-private-body', 'canary-private-exception'])
+    row = pilot.gateway.db.execute('SELECT state, attempts FROM outbox').fetchone()
+    assert tuple(row) == ('received' if status == 202 else 'failed' if status == 410 else 'queued', 1)
+    pilot.gateway.dispatch({'jsonrpc':'2.0', 'id':'canary-request-id', 'method':'tools/call',
+        'params':{'name':'read_delta', 'arguments':{'notification_id':identifier}}})
+    native = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+    assert native[0]['event'] == 'gateway_request_ingress'
+    assert native[0]['notification_fingerprint'] == expected
+    assert native[-1]['event'] == ('gateway_request_error' if status == 410 else 'gateway_tool_completed')
+    assert native[-1]['notification_fingerprint'] == expected
+    if status != 410:
+        assert native[-1]['receipt_status'] == 'tool_read'
+
+
+@pytest.mark.parametrize('failure', ['transport', 'challenge', 'http'])
+def test_verification_failure_trace_is_redacted_and_does_not_join(pilot, capsys, failure):
+    def failed(*args):
+        if failure == 'transport':
+            raise RuntimeError('canary-private-exception')
+        return (500 if failure == 'http' else 200), cloud.compact({'challenge':'canary-private-challenge'})
+    pilot.gateway.sender = failed
+    with pytest.raises(cloud.GatewayError, match='Callback verification failed'):
+        pilot.gateway.subscribe(subscription())
+    logs = capsys.readouterr().err
+    records = [json.loads(line) for line in logs.splitlines()]
+    assert [r['event'] for r in records] == ['callback_verification_dispatch', 'callback_verification_failed']
+    assert records[-1]['http_status'] == (0 if failure == 'transport' else 500 if failure == 'http' else 200)
+    assert records[0]['notification_fingerprint'] == records[1]['notification_fingerprint']
+    assert all(value not in logs for value in [URL, SECRET, 'canary-private-exception', 'canary-private-challenge'])
+    assert pilot.gateway.db.execute('SELECT count(*) FROM subscriptions').fetchone()[0] == 0
+
+
+def test_delivery_logging_failure_preserves_receipt_and_dedup(pilot, monkeypatch):
+    class BrokenStderr:
+        def write(self, text):
+            raise OSError('synthetic-unavailable')
+    monkeypatch.setattr(cloud.sys, 'stderr', BrokenStderr())
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    pilot.gateway.tick()
+    assert len(pilot.sent) == 2
+    assert tuple(pilot.gateway.db.execute('SELECT state,attempts FROM outbox').fetchone()) == ('received', 1)
+    assert pilot.gateway.db.execute('SELECT delivered FROM subscriptions').fetchone()[0] == 1
+
+
+def test_event_read_metadata_declares_delivery_state_effects(pilot):
+    tool = next(t for t in pilot.gateway.tools() if t['name'] == 'read_delta')
+    assert tool['annotations']['readOnlyHint'] is False
+    assert 'event.data.notification_id' in tool['description']
+    assert 'delivery lease' in tool['description']
+    assert 'notification_id' not in tool['inputSchema'].get('required', [])
+
+
+def test_trace_retry_recovery_reuses_fingerprint_and_does_not_redeliver(pilot, capsys):
+    pilot.gateway.subscribe(subscription())
+    capsys.readouterr()
+    pilot.hub.add()
+    pilot.result['status'] = 429
+    pilot.gateway.tick()
+    failed = [json.loads(line) for line in capsys.readouterr().err.splitlines()][-1]
+    pilot.now[0] += 5
+    pilot.result['status'] = 202
+    pilot.gateway.tick()
+    recovered = [json.loads(line) for line in capsys.readouterr().err.splitlines()][-1]
+    assert failed['notification_fingerprint'] == recovered['notification_fingerprint']
+    assert failed['attempt'] == 1 and failed['terminal'] is False
+    assert recovered['attempt'] == 2 and recovered['event'] == 'gateway_event_received'
+    pilot.gateway.tick()
+    assert capsys.readouterr().err == ''
+    assert tuple(pilot.gateway.db.execute('SELECT state, attempts FROM outbox').fetchone()) == ('received', 2)
+    assert len(pilot.sent) == 3
+
+
+@pytest.mark.parametrize('reason', ['reservation_expired', 'reservation_fenced', 'reservation_cursor'])
+def test_rejected_saved_reservation_terminalizes_without_new_request(pilot, reason):
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    original = pilot.hub.relay
+    keys = []
+    def fail(operation, **args):
+        if operation == 'reserve':
+            keys.append(args['request_id'])
+            raise cloud.GatewayError('Hub request unavailable', -32001, reason)
+        return original(operation, **args)
+    pilot.hub.relay = fail
+    before = active_binding(pilot)
+    pilot.gateway.tick()
+    pilot.gateway.tick()
+    assert len(keys) == 1
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0] == reason
+    assert not pilot.gateway.db.execute("SELECT 1 FROM meta WHERE key LIKE 'reserve:%'").fetchone()
+    assert pilot.gateway.db.execute('SELECT count(*) FROM batches').fetchone()[0] == 0
+    after = original('heartbeat', binding_id=before['binding_id'])
+    assert after['processed_sequence'] == before['processed_sequence'] and after['turns_used'] == 0
+    assert len(pilot.sent) == 1
+
+
+@pytest.mark.parametrize('status,body,expected', [
+    (409, {'error':'reservation_expired'}, 'reservation_expired'),
+    (409, {'error':'reservation_fenced'}, 'reservation_fenced'),
+    (409, {'error':'reservation_cursor'}, 'reservation_cursor'),
+    (409, {'error':'stale_claim'}, None),
+    (409, {'error':['reservation_fenced']}, None),
+    (422, {'error':'reservation_fenced'}, None),
+    (422, {'error':'response_budget_too_small'}, 'response_budget_too_small'),
+])
+def test_hub_error_reason_is_status_specific_allowlist(status, body, expected):
+    client = object.__new__(cloud.HubClient)
+    client.config = {'hub_url':'https://hub.example.test'}
+    with httpx.Client(transport=httpx.MockTransport(lambda request:httpx.Response(status,json=body))) as client.http:
+        with pytest.raises(cloud.GatewayError) as error:
+            client._request('POST','/v1/chat/reserve')
+    assert error.value.reason == expected
+
+
+def test_lost_real_reservation_then_pause_resume_terminal_without_poll_replay(pilot):
+    from memory_hub.store import HubError
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    relay = pilot.hub.relay
+    keys = []
+    def lost(operation, **args):
+        if operation == 'reserve':
+            keys.append(args['request_id'])
+        try:
+            result = relay(operation, **args)
+        except HubError as exc:
+            raise cloud.GatewayError('Hub request unavailable', -32001, exc.code) from None
+        if operation == 'reserve' and len(keys) == 1:
+            raise cloud.GatewayError('Synthetic lost response', -32001)
+        return result
+    pilot.hub.relay = lost
+    with pytest.raises(cloud.GatewayError): pilot.gateway.tick()
+    binding = active_binding(pilot)
+    from memory_hub.session_service import SessionActor
+    admin = SessionActor('human', 'operator', 'Fixture operator', ('pilot',), 'admin')
+    pilot.hub.real.delivery.call('pause', {'project_id':'pilot','session_id':pilot.config['session_id'],
+        'paused':True,'expected_version':1}, admin)
+    pilot.hub.real.delivery.call('pause', {'project_id':'pilot','session_id':pilot.config['session_id'],
+        'paused':False,'expected_version':2}, admin)
+    pilot.gateway.tick()
+    pilot.gateway.tick()
+    assert len(keys)==2 and keys[0]==keys[1]
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0]=='reservation_fenced'
+    assert pilot.gateway.db.execute('SELECT count(*) FROM batches').fetchone()[0]==0
+    assert len(pilot.sent)==1
+    assert relay('heartbeat', binding_id=binding['binding_id'])['turns_used']==0
+
+
+def test_nonterminal_reservation_failure_preserves_saved_key(pilot):
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    keys=[]
+    relay=pilot.hub.relay
+    def failed(operation, **args):
+        if operation=='reserve':
+            keys.append(args['request_id'])
+            raise cloud.GatewayError('Synthetic unavailable', -32001)
+        return relay(operation, **args)
+    pilot.hub.relay=failed
+    for _ in range(2):
+        with pytest.raises(cloud.GatewayError): pilot.gateway.tick()
+    assert keys[0]==keys[1]
+    assert pilot.gateway.db.execute('SELECT status FROM subscriptions').fetchone()[0]=='active'
+    assert pilot.gateway.db.execute("SELECT count(*) FROM meta WHERE key LIKE 'reserve:%'").fetchone()[0]==1
+
+
+
+def test_local_status_callback_counter_keeps_legacy_alias(pilot,monkeypatch,capsys):
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add()
+    pilot.gateway.tick()
+    monkeypatch.setattr(cloud,'load_config',lambda path:pilot.config)
+    monkeypatch.setattr(cloud,'Gateway',lambda *a,**k:pilot.gateway)
+    monkeypatch.setattr(cloud.sys,'argv',['gateway','--config',__file__,'--status'])
+    assert cloud.main()==0
+    value=json.loads(capsys.readouterr().out)
+    row=value['subscriptions'][0]
+    assert row['delivered']==row['callbacks_accepted']==1
+    assert value['delivered_meaning']=='callbacks_accepted_not_native_read_or_reply'
+
+
+def test_no_reply_requires_full_read_and_keeps_no_message_distinct(pilot):
+    pilot.gateway.subscribe(subscription())
+    for _ in range(2): pilot.hub.add()
+    pilot.gateway.tick(); identifier = notification(pilot)
+    with pytest.raises(cloud.GatewayError, match='Read'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+    pilot.gateway.call('read_delta', {'notification_id': identifier, 'limit': 1})
+    with pytest.raises(cloud.GatewayError, match='Read entire'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+    read_batch(pilot, identifier)
+    sequence = pilot.hub.sequence
+    first = pilot.gateway.call('no_reply', {'notification_id': identifier})
+    assert first['delivery_receipt']['status'] == 'no_reply'
+    assert first['delivery_receipt']['processed_sequence'] == sequence
+    assert pilot.hub.sequence == sequence and pilot.hub.posts == []
+    assert pilot.gateway.call('no_reply', {'notification_id': identifier}) == first
+    row = pilot.gateway.db.execute('SELECT * FROM batches WHERE notification_id=?', (identifier,)).fetchone()
+    assert row['state'] == 'no_reply'
+    binding = pilot.hub.relay('status', session_id=pilot.config['session_id'])['participants'][0]
+    assert binding['processed_sequence'] == sequence and binding['turns_used'] == 1
+    assert binding['latest_delivery']['status'] == 'no_reply'
+    assert binding['latest_delivery']['reply_sequence'] is None
+    with pytest.raises(cloud.GatewayError, match='without reply'):
+        pilot.gateway.call('post_message', {'notification_id': identifier, 'body': 'Filler'})
+
+
+def test_no_reply_after_reply_and_manual_completion_are_denied(pilot):
+    with pytest.raises(cloud.GatewayError): pilot.gateway.call('no_reply', {})
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    pilot.gateway.call('post_message', {'notification_id': identifier, 'body': 'Substantive reply'})
+    with pytest.raises(cloud.GatewayError, match='already replied'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+
+
+def test_no_reply_ambiguous_commit_preserves_intent_and_reconciles_after_restart(pilot, monkeypatch):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    original = pilot.hub.no_reply
+    def lost_response(delivery):
+        original(delivery)
+        raise cloud.GatewayError('Unknown transport outcome')
+    monkeypatch.setattr(pilot.hub, 'no_reply', lost_response)
+    with pytest.raises(cloud.GatewayError, match='Unknown transport'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+    with pytest.raises(cloud.GatewayError, match='differs'):
+        pilot.gateway.call('post_message', {'notification_id': identifier, 'body': 'Changed disposition'})
+    pilot.gateway.db.close()
+    monkeypatch.setattr(pilot.hub, 'no_reply', original)
+    restarted = cloud.Gateway(pilot.config, pilot.hub, box=cloud.SecretBox(KEY), sender=pilot.sender, clock=lambda: pilot.now[0])
+    pilot.gateway = restarted
+    restarted.tick()
+    row = restarted.db.execute('SELECT * FROM batches WHERE notification_id=?', (identifier,)).fetchone()
+    assert row['state'] == 'no_reply'
+    receipt = restarted.call('no_reply', {'notification_id': identifier})
+    assert receipt['delivery_receipt']['status'] == 'no_reply'
+    assert pilot.hub.posts == []
+
+
+def test_no_reply_does_not_create_event_or_refund_event_budget(pilot):
+    pilot.config['max_events_per_subscription'] = 2
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    pilot.gateway.call('no_reply', {'notification_id': identifier})
+    pilot.gateway.tick()
+    assert len([p for p in pilot.sent if 'eventId' in p[1]]) == 1
+    pilot.hub.add(); pilot.gateway.tick()
+    second = notification(pilot); assert second != identifier
+    read_batch(pilot, second); pilot.gateway.call('no_reply', {'notification_id': second})
+    pilot.gateway.tick(); pilot.hub.add(); pilot.gateway.tick()
+    assert len([p for p in pilot.sent if 'eventId' in p[1]]) == 2
+    with pytest.raises(cloud.GatewayError, match='budget'):
+        pilot.gateway.subscribe(subscription())
+
+
+@pytest.mark.parametrize('field,value', [('project_id', 'foreign'), ('worker_id', 'foreign')])
+def test_no_reply_rejects_false_scope_receipt_without_local_terminal(pilot, monkeypatch, field, value):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    def invalid(delivery):
+        return {'project_id':'pilot', 'session_id':pilot.config['session_id'], 'worker_id':pilot.config['worker_id'],
+                'delivery_receipt':{'delivery_id':delivery['delivery_id'], 'status':'no_reply', 'processed_sequence':delivery['through_sequence']}} | {field:value}
+    monkeypatch.setattr(pilot.hub, 'no_reply', invalid)
+    with pytest.raises(cloud.GatewayError, match='Invalid no-reply'):
+        pilot.gateway.call('no_reply', {'notification_id': identifier})
+    assert pilot.gateway.db.execute('SELECT state FROM batches WHERE notification_id=?', (identifier,)).fetchone()[0] == 'active'
+    assert pilot.hub.posts == []
+
+
+
+@pytest.mark.parametrize('blocked', ['pause', 'lease_expiry', 'foreign_field'])
+def test_no_reply_fail_closed_preserves_cursor_and_completion_intent(pilot, blocked):
+    pilot.config['subscription_ttl'] = 900
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    args = {'notification_id': identifier}
+    if blocked == 'pause': pilot.hub.pause = True
+    elif blocked == 'lease_expiry': pilot.now[0] += 301
+    else: args['session_id'] = 'foreign'
+    with pytest.raises(cloud.GatewayError): pilot.gateway.call('no_reply', args)
+    batch = pilot.gateway.db.execute('SELECT state,post FROM batches WHERE notification_id=?', (identifier,)).fetchone()
+    assert batch['state'] == 'active' and batch['post'] is None
+    assert pilot.hub.posts == []
+
+
+def test_unknown_reply_intent_cannot_change_to_no_reply(pilot, monkeypatch):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    def unknown(*args, **kwargs): raise cloud.GatewayError('Unknown reply outcome')
+    monkeypatch.setattr(pilot.hub, 'post', unknown)
+    with pytest.raises(cloud.GatewayError):
+        pilot.gateway.call('post_message', {'notification_id':identifier, 'body':'Potential substantive contribution'})
+    with pytest.raises(cloud.GatewayError, match='intent differs'):
+        pilot.gateway.call('no_reply', {'notification_id':identifier})
+    assert pilot.gateway.db.execute('SELECT state FROM batches WHERE notification_id=?', (identifier,)).fetchone()[0] == 'active'
+
+
+def test_no_reply_forwards_exact_native_tool_and_reports_distinct_receipt(pilot, monkeypatch, capsys):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot); read_batch(pilot, identifier)
+    calls=[]; original=pilot.hub._tool
+    def capture(name, **arguments):
+        calls.append((name,arguments));return original(name,**arguments)
+    monkeypatch.setattr(pilot.hub,'_tool',capture)
+    response=rpc(pilot.gateway,'tools/call',{'name':'no_reply','arguments':{'notification_id':identifier}})
+    assert response['result']['structuredContent']['delivery_receipt']['status']=='no_reply'
+    assert len(calls)==1 and calls[0][0]=='complete_session_delivery'
+    name,args=calls[0]
+    assert set(args)=={'session_id','delivery_id','lease_id','idempotency_key'}
+    assert args['idempotency_key']=='delivery-'+args['delivery_id']
+    records=[json.loads(line)for line in capsys.readouterr().err.splitlines()]
+    assert any(r.get('event')=='gateway_tool_completed' and r.get('tool')=='no_reply' and r.get('receipt_status')=='no_reply' for r in records)
+
+
+def test_existing_gateway_state_adds_read_completion_without_reclassifying_old_batch(pilot):
+    pilot.gateway.subscribe(subscription()); pilot.hub.add(); pilot.gateway.tick()
+    identifier = notification(pilot)
+    before=pilot.gateway.db.execute('SELECT notification_id,state,delivery FROM batches').fetchone()
+    pilot.gateway.db.execute('ALTER TABLE batches DROP COLUMN read_complete');pilot.gateway.db.commit();pilot.gateway.db.close()
+    reopened=cloud.Gateway(pilot.config,pilot.hub,box=cloud.SecretBox(KEY),sender=pilot.sender,clock=lambda:pilot.now[0])
+    pilot.gateway=reopened
+    after=reopened.db.execute('SELECT notification_id,state,delivery,read_complete FROM batches').fetchone()
+    assert after[:3]==before[:] and after['read_complete']==0
+    with pytest.raises(cloud.GatewayError,match='Read'):
+        reopened.call('no_reply',{'notification_id':identifier})
+    read_batch(pilot,identifier)
+    assert reopened.call('no_reply',{'notification_id':identifier})['delivery_receipt']['status']=='no_reply'
+
+
+@pytest.mark.parametrize('fault', ['project', 'session', 'actor_missing', 'actor_kind', 'actor_id',
+    'receipt_missing', 'delivery', 'status', 'cursor', 'cursor_bool', 'message',
+    'sequence_bool', 'sequence_float', 'sequence_old', 'sequence_oversize', 'not_object'])
+def test_rejects_automatic_reply_wrong_receipt_without_terminal_or_fallback(pilot,monkeypatch,fault):
+    pilot.gateway.subscribe(subscription());pilot.hub.add();pilot.gateway.tick()
+    identifier=notification(pilot);read_batch(pilot,identifier)
+    row,delivery=pilot.gateway._batch(identifier)
+    valid={'project_id':pilot.config['project_id'],'session_id':pilot.config['session_id'],
+        'actor':{'kind':'worker','id':pilot.config['worker_id']},'message_id':'f'*32,
+        'sequence':delivery['through_sequence']+1,'delivery_receipt':{
+            'delivery_id':delivery['delivery_id'],'status':'replied','processed_sequence':delivery['through_sequence']}}
+    value=copy.deepcopy(valid)
+    if fault=='project':value['project_id']='other'
+    elif fault=='session':value['session_id']='0'*32
+    elif fault=='actor_missing':value.pop('actor')
+    elif fault=='actor_kind':value['actor']['kind']='human'
+    elif fault=='actor_id':value['actor']['id']='other'
+    elif fault=='receipt_missing':value.pop('delivery_receipt')
+    elif fault=='delivery':value['delivery_receipt']['delivery_id']='0'*32
+    elif fault=='status':value['delivery_receipt']['status']='no_reply'
+    elif fault=='cursor':value['delivery_receipt']['processed_sequence']+=1
+    elif fault=='cursor_bool':value['delivery_receipt']['processed_sequence']=True
+    elif fault=='message':value['message_id']='not-an-id'
+    elif fault=='sequence_bool':value['sequence']=True
+    elif fault=='sequence_float':value['sequence']=float(value['sequence'])
+    elif fault=='sequence_old':value['sequence']=delivery['through_sequence']
+    elif fault=='sequence_oversize':value['sequence']=cloud.MAX_SEQUENCE+1
+    else:value=[]
+    calls=[]
+    def malformed(body,key,**kwargs):calls.append((body,key,kwargs));return value
+    monkeypatch.setattr(pilot.hub,'post',malformed)
+    body='Exact original reply'
+    with pytest.raises(cloud.GatewayError,match='Invalid automatic reply receipt'):
+        pilot.gateway.call('post_message',{'notification_id':identifier,'body':body})
+    stored=pilot.gateway.db.execute('SELECT state,post,result FROM batches WHERE notification_id=?',(identifier,)).fetchone()
+    assert stored['state']=='active' and stored['result'] is None
+    assert pilot.gateway.box.decrypt(stored['post'])=={'body':body,'idempotency_key':delivery['reply_idempotency_key']}
+    with pytest.raises(cloud.GatewayError):pilot.gateway.call('no_reply',{'notification_id':identifier})
+    with pytest.raises(cloud.GatewayError):pilot.gateway.call('post_message',{'notification_id':identifier,'body':'replacement'})
+    assert len(calls)==1
+
+
+def test_committed_reply_with_invalid_response_keeps_intent_and_identical_retry_has_one_message(pilot,monkeypatch):
+    pilot.gateway.subscribe(subscription());pilot.hub.add();pilot.gateway.tick()
+    identifier=notification(pilot);read_batch(pilot,identifier)
+    original=pilot.hub.post;calls=[]
+    def committed(body,key,**kwargs):
+        calls.append((body,key,kwargs));value=original(body,key,**kwargs)
+        if len(calls)==1:
+            value=copy.deepcopy(value);value.pop('delivery_receipt')
+        return value
+    monkeypatch.setattr(pilot.hub,'post',committed)
+    request={'notification_id':identifier,'body':'One actual committed reply'}
+    with pytest.raises(cloud.GatewayError,match='Invalid automatic reply receipt'):
+        pilot.gateway.call('post_message',request)
+    stored=pilot.gateway.db.execute('SELECT state,post,result FROM batches WHERE notification_id=?',(identifier,)).fetchone()
+    assert stored['state']=='active' and stored['post'] is not None and stored['result'] is None
+    latest=pilot.hub.relay('status',session_id=pilot.config['session_id'])['participants'][0]['latest_delivery']
+    assert latest['status']=='replied'  # Genuine server disposition, not forged by the gateway.
+    completed=pilot.gateway.call('post_message',request)
+    assert completed['delivery_receipt']['status']=='replied' and calls[0]==calls[1]
+    assert pilot.gateway.call('post_message',request)==completed and len(calls)==2
+    messages=pilot.hub.real.call('read_session',{'project_id':'pilot','session_id':pilot.config['session_id']},pilot.hub.principal)['items']
+    assert len([m for m in messages if m.get('actor',{}).get('id')==pilot.config['worker_id']])==1
+
+
+def test_cached_automatic_reply_is_validated_without_repair_or_resend(pilot,monkeypatch):
+    pilot.gateway.subscribe(subscription());pilot.hub.add();pilot.gateway.tick()
+    identifier=notification(pilot);read_batch(pilot,identifier)
+    request={'notification_id':identifier,'body':'Original reply'}
+    value=pilot.gateway.call('post_message',request)
+    assert value['delivery_receipt']['status']=='replied'
+    malformed=copy.deepcopy(value);malformed['actor']['id']='other'
+    cipher=pilot.gateway.box.encrypt(malformed)
+    with pilot.gateway.db:pilot.gateway.db.execute('UPDATE batches SET result=? WHERE notification_id=?',(cipher,identifier))
+    monkeypatch.setattr(pilot.hub,'post',lambda *args,**kwargs:pytest.fail('No resend from an invalid cached result'))
+    with pytest.raises(cloud.GatewayError,match='Invalid automatic reply receipt'):
+        pilot.gateway.call('post_message',request)
+    stored=pilot.gateway.db.execute('SELECT state,result FROM batches WHERE notification_id=?',(identifier,)).fetchone()
+    assert stored['state']=='replied' and stored['result']==cipher  # Preserve evidence, no automatic reclassification.
+
+
+# Provider-visible bytes at base a42630c. Diagnostics must never change what the provider sees.
+CATALOG_SHA256 = {'tools': '3ce53b9cd705f053ac901e65c2638aca8aea959d6977af5098a7538557306127',
+    'events': '9026325a00c77fcc7e92676e92c34293c4f2f8d7a41cd3bedaab6d18e6cf6d1d',
+    'server/discover': 'defadbc55b2707676b413f4fe54a5104af1c053ecda347504ef185d1c093d213',
+    'tools/list': '6564742584be253c5a0f8e9f5dd7976cc09423d4729f9fe00da36151af2567ed',
+    'events/list': '4bfc14219462667f03a578e73533455d84d4871885536fcfcf0b0dfd9c0b2897'}
+
+
+def stderr_records(capsys):
+    log = capsys.readouterr().err
+    return log, [json.loads(line) for line in log.splitlines()]
+
+
+def test_provider_visible_catalog_is_byte_identical_to_pinned_base(pilot):
+    digest = lambda value: hashlib.sha256(cloud.compact(value)).hexdigest()
+    assert digest(pilot.gateway.tools()) == CATALOG_SHA256['tools']
+    assert digest(pilot.gateway.events()) == CATALOG_SHA256['events']
+    for params in ({}, {'_meta': {'progressToken': SECRET, 'openai/subject': 'canary-private-subject'}}):
+        assert digest(rpc(pilot.gateway, 'server/discover', params)['result']) == CATALOG_SHA256['server/discover']
+        assert digest(rpc(pilot.gateway, 'tools/list', params)) == CATALOG_SHA256['tools/list']
+        assert digest(rpc(pilot.gateway, 'events/list', params)) == CATALOG_SHA256['events/list']
+
+
+@pytest.mark.parametrize('method,logged,has_id', [
+    ('server/discover', 'server/discover', True), ('tools/list', 'tools/list', True),
+    ('events/list', 'events/list', True), ('ping', 'ping', True), ('initialize', 'initialize', True),
+    ('notifications/initialized', 'notifications/initialized', False),
+    ('canary-private-method', 'unknown', True), ('canary-private-method', 'unknown', False)])
+def test_every_jsonrpc_request_logs_ingress_with_meta_key_names_only(pilot, capsys, method, logged, has_id):
+    meta = {'progressToken': SECRET, 'openai/subject': 'canary-private-subject',
+            'io.modelcontextprotocol/related-request': {'id': 'canary-private-nested'},
+            'evt_0123456789abcdef0123456789abcdef': 'canary-private-id-key', URL: 'canary-private-url-key'}
+    request = {'jsonrpc': '2.0', 'method': method, 'params': {'_meta': meta}}
+    if has_id:
+        request['id'] = 'canary-private-request-id'
+    response = pilot.gateway.dispatch(request)
+    log, records = stderr_records(capsys)
+    assert records[0] == {'event': 'gateway_request_ingress', 'timestamp': cloud.iso(pilot.now[0]), 'method': logged,
+        'id_present': has_id, 'meta_present': True, 'meta_keys_withheld': 2,
+        'meta_keys': ['io.modelcontextprotocol/related-request', 'openai/subject', 'progressToken']}
+    assert (response is None) is not has_id
+    assert all(value not in log for value in (SECRET, URL, 'canary-private', 'evt_0123'))
+
+
+def test_ingress_without_meta_non_object_and_tool_call_fields(pilot, capsys):
+    rpc(pilot.gateway, 'tools/list')
+    stamp = cloud.iso(pilot.now[0])
+    assert stderr_records(capsys)[1] == [{'event': 'gateway_request_ingress', 'timestamp': stamp,
+        'method': 'tools/list', 'id_present': True, 'meta_present': False}]
+    for request in (['canary-private-batch'], 'canary-private-string',
+                    {'jsonrpc': '2.0', 'id': 3, 'method': 'ping', 'params': {'_meta': 'canary-private-scalar'}}):
+        pilot.gateway.dispatch(request)
+    log, records = stderr_records(capsys)
+    ingress = [r for r in records if r['event'] == 'gateway_request_ingress']
+    assert [(r['method'], r['id_present'], r['meta_present'], 'meta_keys' in r) for r in ingress] == [
+        ('unknown', False, False, False), ('unknown', False, False, False), ('ping', True, True, False)]
+    assert 'canary-private' not in log
+    rpc(pilot.gateway, 'tools/call', {'name': 'identity', '_meta': {'progressToken': SECRET}})
+    log, records = stderr_records(capsys)
+    assert records[0] == {'event': 'gateway_request_ingress', 'timestamp': stamp, 'method': 'tools/call',
+        'tool': 'identity', 'id_present': True, 'meta_present': True, 'meta_keys': ['progressToken']}
+    assert records[-1]['event'] == 'gateway_tool_completed' and SECRET not in log
+
+
+def test_key_names_are_bounded_and_withhold_id_like_names():
+    letters = 'abcdefghijklmnopqrst'
+    value = {**{'key_' + c: 1 for c in letters}, 'evt_0123': 1, 'https://callback.example.test/a': 1,
+             'with space': 1, 'x' * 65: 1}
+    assert cloud.key_names(value) == (sorted('key_' + c for c in letters)[:16], 8)
+    assert cloud.key_names({}) == ([], 0)
+
+
+def test_malformed_and_oversize_lines_log_length_only_and_oversize_still_ends_serve(pilot, capsys, monkeypatch):
+    invalid = b'{canary-private-invalid ' + SECRET.encode() + b'\n'
+    undecodable = b'\xc3\x28canary-private-bytes\n'
+    oversize = b'{"canary-private-oversize":"' + b'x' * cloud.MAX_LINE + b'"}\n'
+    after = cloud.compact({'jsonrpc': '2.0', 'id': 9, 'method': 'ping'}) + b'\n'
+    output = io.BytesIO()
+    monkeypatch.setattr('sys.stdin', SimpleNamespace(buffer=io.BytesIO(invalid + undecodable + oversize + after)))
+    monkeypatch.setattr('sys.stdout', SimpleNamespace(buffer=output))
+    with pytest.raises(cloud.GatewayError, match='too large'):
+        cloud.serve(pilot.gateway)
+    assert [json.loads(line)['error']['code'] for line in output.getvalue().splitlines()] == [-32700, -32700]
+    log, records = stderr_records(capsys)
+    stamp = cloud.iso(pilot.now[0])
+    assert records == [
+        {'event': 'gateway_request_malformed', 'timestamp': stamp, 'reason': 'invalid_json', 'byte_length': len(invalid)},
+        {'event': 'gateway_request_malformed', 'timestamp': stamp, 'reason': 'invalid_json', 'byte_length': len(undecodable)},
+        {'event': 'gateway_request_malformed', 'timestamp': stamp, 'reason': 'line_too_large',
+         'byte_length': cloud.MAX_LINE + 1, 'byte_limit': cloud.MAX_LINE}]
+    assert all(value not in log for value in (SECRET, 'canary-private'))
+
+
+def test_deeply_nested_line_is_malformed_and_serve_continues(pilot, capsys, monkeypatch):
+    nested = b'[' * (cloud.MAX_LINE - 1) + b'\n'  # Within the size limit, beyond json's recursion depth.
+    after = cloud.compact({'jsonrpc': '2.0', 'id': 9, 'method': 'ping'}) + b'\n'
+    output = io.BytesIO()
+    monkeypatch.setattr('sys.stdin', SimpleNamespace(buffer=io.BytesIO(nested + after)))
+    monkeypatch.setattr('sys.stdout', SimpleNamespace(buffer=output))
+    cloud.serve(pilot.gateway)
+    responses = [json.loads(line) for line in output.getvalue().splitlines()]
+    assert responses[0]['error']['code'] == -32700 and responses[1]['id'] == 9 and 'result' in responses[1]
+    _, records = stderr_records(capsys)
+    assert {'event': 'gateway_request_malformed', 'timestamp': cloud.iso(pilot.now[0]),
+            'reason': 'invalid_json', 'byte_length': len(nested)} in records
+
+
+def test_poll_failure_and_liveness_are_structured_and_rate_limited(pilot, capsys, monkeypatch):
+    pilot.config['poll_interval'] = 0.001
+    ticks, done = [], threading.Event()
+    def tick():
+        ticks.append(1)
+        if len(ticks) == 1:
+            raise RuntimeError('canary-private-exception ' + URL + SECRET)
+        if len(ticks) >= 3:
+            done.set()
+    class Stdin:
+        def readline(self, size):
+            done.wait(10)
+            return b''
+    monkeypatch.setattr(pilot.gateway, 'tick', tick)
+    monkeypatch.setattr('sys.stdin', SimpleNamespace(buffer=Stdin()))
+    monkeypatch.setattr('sys.stdout', SimpleNamespace(buffer=io.BytesIO()))
+    cloud.serve(pilot.gateway)
+    assert done.is_set()
+    log, records = stderr_records(capsys)
+    stamp = cloud.iso(pilot.now[0])
+    assert records == [{'event': 'gateway_poll_failed_closed', 'timestamp': stamp, 'error_type': 'RuntimeError'},
+        {'event': 'gateway_poll_liveness', 'timestamp': stamp, 'polls': 1, 'poll_failures': 1, 'stopped': False,
+         'subscriptions_active': 0, 'queue_reserved': 0, 'queue_active': 0, 'queue_complete': 0}]
+    assert all(value not in log for value in ('canary-private', URL, SECRET))
+
+
+def test_liveness_counts_reserved_active_complete_without_ids(pilot, capsys):
+    pilot.config['subscription_ttl'] = 900
+    logs = []
+    def liveness(polls, **expected):
+        capsys.readouterr()
+        pilot.gateway._liveness(polls, 0)
+        log, records = stderr_records(capsys)
+        logs.append(log)
+        assert records == ([{'event': 'gateway_poll_liveness', 'timestamp': cloud.iso(pilot.now[0]), 'polls': polls,
+            'poll_failures': 0, 'stopped': False, 'subscriptions_active': 1, 'queue_reserved': 0, 'queue_active': 0,
+            'queue_complete': 0, **expected}] if expected else [])
+    liveness(1, subscriptions_active=0)
+    pilot.gateway.subscribe(subscription())
+    message = pilot.hub.add(body='canary-private-body')
+    pilot.gateway.tick()
+    identifier = notification(pilot)
+    liveness(2)  # At most one record per 60 seconds.
+    pilot.now[0] += 60
+    liveness(3, queue_reserved=1)
+    read_batch(pilot, identifier)
+    pilot.now[0] += 60
+    liveness(4, queue_active=1)
+    reply = pilot.gateway.call('post_message', {'notification_id': identifier, 'body': 'canary-private-reply'})
+    pilot.now[0] += 59
+    liveness(5)
+    pilot.now[0] += 1
+    liveness(6, queue_complete=1)
+    binding = active_binding(pilot)
+    pilot.gateway.stop()
+    pilot.now[0] += 60
+    liveness(7, stopped=True, subscriptions_active=0, queue_complete=1)
+    log = ''.join(logs)
+    subscription_id = pilot.gateway.db.execute('SELECT id FROM subscriptions').fetchone()[0]
+    assert all(value not in log for value in (identifier, identifier[4:], subscription_id, binding['binding_id'],
+        message['message_id'], reply['message_id'], URL, SECRET, 'canary-private'))
+
+
+@pytest.mark.parametrize('status,kind', [(202, 'json'), (400, 'json'), (503, 'text'), (202, 'empty'), (0, 'raise')])
+def test_webhook_response_logs_size_and_top_level_key_names_only(pilot, capsys, status, kind):
+    sent = []
+    def sender(url, body, headers, hosts):
+        packet = json.loads(body)
+        if packet.get('type') == 'verification':
+            return 200, cloud.compact({'challenge': packet['challenge']})
+        if kind == 'raise':
+            sent.append((packet['eventId'], headers['webhook-signature'], None))
+            raise RuntimeError('canary-private-exception ' + url)
+        raw = {'json': cloud.compact({'received': True, 'status': 'canary-private-status',
+            'requestId': 'canary-private-request', packet['eventId']: headers['webhook-signature'], url: SECRET,
+            'error': {'message': 'canary-private-nested'}}), 'empty': b'',
+            'text': ('<html>canary-private-html ' + url + '</html>').encode()}[kind]
+        sent.append((packet['eventId'], headers['webhook-signature'], raw))
+        return status, raw
+    pilot.gateway.sender = sender
+    pilot.gateway.subscribe(subscription())
+    pilot.hub.add(body='canary-private-body')
+    capsys.readouterr()
+    pilot.gateway.tick()
+    log, records = stderr_records(capsys)
+    event_id, signature, raw = sent[0]
+    expected = {'event': 'gateway_event_received' if status == 202 else 'gateway_event_failed',
+        'timestamp': cloud.iso(pilot.now[0]), 'attempt': 1, 'http_status': status, 'terminal': status in (202, 400),
+        'notification_fingerprint': hashlib.sha256(event_id.encode()).hexdigest()[:16]}
+    if raw is not None:
+        expected['response_bytes'] = len(raw)
+    if kind == 'json':
+        expected.update(response_keys=['error', 'received', 'requestId', 'status'], response_keys_withheld=2)
+    assert records[-1] == expected
+    assert all(value not in log for value in (event_id, signature, URL, SECRET, 'canary-private'))

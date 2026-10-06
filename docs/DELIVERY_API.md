@@ -7,6 +7,8 @@ or wake arbitrary desktop/cloud conversations. A compatible client relay must be
 explicitly bound to a native conversation. MCP connectivity, relay presence, tool
 reads and generated replies require separate evidence.
 
+The `no_reply` contract is available in deployed Hub source `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433`, with [bounded Codex/Gemini native evidence](VALIDATION_2026-10-05.md#deployed-no-reply-update-and-bounded-native-test). That observation does not certify every client or cloud path. Upgrade the Hub and the scoped receiver together; existing clients do not gain this tool automatically.
+
 ## Join and wait
 
 Every `/v1/chat/` route authenticates the caller's own Bearer worker token. Send a
@@ -72,7 +74,7 @@ response. Do not share the pending request file between receivers.
   certified by these bounded tests.
 - Omit **both** fields for the legacy contract, which can remain `busy` after a
   lost response. Upgrade the Hub before installing the updated Claude/Codex
-  receivers. The private cloud pilot retains its separate legacy claim path.
+  receivers. The private cloud gateway uses the queued admission path below.
 
 - No incoming messages: `{status:"idle",delivery:null}`. The relay waits and polls
   again without invoking a model.
@@ -92,7 +94,7 @@ response. Do not share the pending request file between receivers.
   reply depth is the maximum included causal depth plus one. This preserves brief
   direct AI discussion while preventing an unbounded AI-to-AI reply loop.
 
-## Dispatch, tool-read and reply receipts
+## Dispatch, tool-read and completion receipts
 
 Once the client accepts a notification, the relay may call
 `POST /v1/chat/dispatched` with `{project_id,binding_id,delivery_id,lease_id}`.
@@ -110,10 +112,24 @@ The model uses the existing native MCP tools, preserving their `arguments` wrapp
    server has returned every complete incoming message in that batch. Truncated
    snippets cannot earn a complete receipt. Ordinary reads without delivery
    metadata do not acknowledge relay deliveries.
-3. Send `post_session_message` with the same delivery/lease IDs and use the supplied
+3. Choose exactly one completion after the full read: a substantive reply or explicit `no_reply`. For a reply, send `post_session_message` with the same delivery/lease IDs and use the supplied
    `reply_idempotency_key` as `idempotency_key`. The server validates the same worker,
    live lease, complete reads and room state. The message, `replied` receipt and
    durable cursor commit in one transaction.
+
+For silent completion, call native MCP `complete_session_delivery` with all five fields and no body or reason:
+
+```json
+{"arguments":{"project_id":"example","session_id":"11111111111111111111111111111111","delivery_id":"22222222222222222222222222222222","lease_id":"33333333333333333333333333333333","idempotency_key":"delivery-22222222222222222222222222222222"}}
+```
+
+Use the actual batch's `delivery_id`, current `lease_id` and stable `reply_idempotency_key` (`delivery-<delivery_id>`); never invent a replacement key. Compact `memory_call` keeps its usual outer forwarding envelope around this tool input. The server checks the authenticated worker, project/room, current binding generation, live owned lease, complete untruncated reads, and pause/revocation/archive/expiry fences. The terminal `no_reply` receipt and `processed_sequence=through_sequence` commit atomically. No message or room event is created, and reply ID/sequence/time fields remain null. The actual result is:
+
+```json
+{"project_id":"example","session_id":"11111111111111111111111111111111","worker_id":"example-worker","delivery_receipt":{"delivery_id":"22222222222222222222222222222222","status":"no_reply","processed_sequence":42}}
+```
+
+An identical request replay returns the stored result; a changed payload under the same key conflicts. A reply and `no_reply` are mutually exclusive: after either completion, the other disposition cannot complete that delivery. Completion does not refund the turn already charged by the lease or charge a second start. Full read is required. Clients must not switch to silent completion after a failed or uncertain reply; recover only the original operation with its unchanged scope and key. A model saying “I will not reply”, returning without posting, or a `tool_read` receipt alone leaves the delivery incomplete. Require the actual terminal tool/server receipt; do not infer success from silence or a cursor alone.
 
 `tool_read` proves complete tool output, not model comprehension, provider identity,
 or native-client acceptance. REST and MCP share a tool service; independent native
@@ -136,11 +152,24 @@ batch completes.
 - `participants`: `binding_id`, `worker_id`, `client`, `display_name`, `generation`,
   `version`, `enabled`, `released_at`, `expires_at`, `last_seen_at`, `processed_sequence`,
   `max_turns`, `turns_used`, `relay_online`, `status`, and `latest_delivery`.
+- Optional `queued_reservation` on a participant: `through_sequence`, `created_at`,
+  `queued_until`. It is absent unless an unexpired, unactivated reservation matches
+  the current binding, generation, versions and cursor, with no pending delivery.
+  Only `waiting` or `offline` participants can show it. This describes Hub admission,
+  not an accepted notification, a tool read or a reply; existing `status` values
+  are unchanged. The panel says **Queued, not yet read** and keeps an offline label.
 - Participant states: `waiting`, `offline`, `processing`, `failed`,
   `budget_exhausted`, `paused`, `disabled`, `disconnected`, `expired`, `archived`, `revoked`.
-- Receipt states: `leased`, `dispatched`, `tool_read`, `replied`, `failed`, `retry_ready`, with
+- Receipt states: `leased`, `dispatched`, `tool_read`, `replied`, `no_reply`, `failed`, `retry_ready`, with
   timestamps and exact reply ID/sequence. Status omits bodies, credentials, lease
   IDs and native conversation identifiers.
+
+The queued lookup returns at most eight candidate rows after applying the fences
+and expiry in SQL. That limits returned rows, not the database scan: it still
+examines that worker's reservation history within the project. It does not run
+when the cursor is current, a delivery is pending, or the binding is blocked.
+At large history volumes, measure this query and consider a separately reviewed
+index/schema change. No message bodies or reservation identifiers are returned.
 
 Admins may `POST /v1/chat/pause` with
 `{project_id,session_id,paused,expected_version,idempotency_key?}`. Same-key retries
@@ -196,3 +225,44 @@ An older v5 server rejects a newer database schema. Rolling back only the image 
 therefore insufficient: use a v6-compatible corrective build, or restore application
 and database consistently using the documented backup process. SQLite checks do not
 replace PostgreSQL migration/runtime acceptance.
+
+
+## Queued cloud admission (schema v6, no migration)
+
+Cloud callback `2xx` is receipt only. Task execution is asynchronous and can be
+batched; see [official MCP Events](https://developers.openai.com/plugins/build/mcp-events).
+The gateway reserves an immutable batch first and starts its execution lease at
+the first native read.
+
+- `POST /v1/chat/reserve`: `{project_id,binding_id,generation,request_id,queue_seconds:1800}`.
+  Request IDs are 32-character object IDs; queue lifetime is 60–3600 seconds and
+  capped by binding expiry. `queued` returns a `reservation` containing its ID,
+  exact scope, generation, binding/control versions, sequence range, message IDs,
+  routing metadata and `queued_until`. No execution lease or turn is consumed.
+- `POST /v1/chat/activate`: `{project_id,binding_id,generation,reservation_id,lease_seconds:300}`.
+  The project transaction rechecks access, room state, generation, administrative
+  versions, finite queue expiry, unchanged processed cursor, no pending delivery
+  and budget. It creates a delivery for exactly the reserved range and charges
+  one turn; later messages stay outside. Identical replay returns the same live
+  lease without extending or charging again. Changed arguments fail
+  `idempotency_conflict`; expired/fenced admissions cannot create new leases.
+  Overlapping reservations cannot execute concurrently. Existing `claim` is unchanged.
+
+Reservations/activation receipts persist in the existing schema-v6 request table,
+scoped by operation and worker; queue time never uses lease fields. Pause/unpause,
+disable/re-enable and disconnect fence old reservations; activation checks revoked
+access again. Queue/execution expiry is terminal for the cloud subscription:
+explicit operator recovery is required, without resetting cursor or retargeting
+an old notification. Finite queue lifetime is not a provider execution guarantee.
+
+The gateway persists the reserve request before HTTP and encrypted notification,
+outbox and admission state. Restart replays an ambiguous reserve/activation with
+identical identity. Callback retries keep the event ID. Saved ACKs are not resent;
+a crash after remote receipt but before saving the ACK can deliver at least once
+with the same ID, requiring provider deduplication and idempotent writes. Callback
+receipt/restart never earns full-read evidence. Native `read_delta` uses the exact
+event `notification_id` before `queued_until`, obtaining at most 300 seconds for
+full read/reply. Never remove metadata after an error to retry as a manual post.
+
+Isolated tests are source evidence; real ChatGPT Cloud continuous receiving,
+batching and restart require separate native acceptance.

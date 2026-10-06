@@ -4,6 +4,24 @@
 
 以程式碼 `memory_hub/models.py` 的工具模型與 MCP `tools/list` 為最終欄位依據。本版關閉 OpenAPI 公開路由。REST 與 MCP 共用 Hub 邏輯；REST 不是 MCP transport，不能將 `/v1/tools` 直接填成 MCP URL。
 
+## Compact 本機轉送入口
+
+客戶端顯示 `memory_tools` 與 `memory_call` 時，先取得指定工具的完整 schema。傳給 `memory_tools` 的輸入：
+
+```json
+{"name":"get_worker_inbox"}
+```
+
+再將完整的目標工具輸入放入 `memory_call`。將 `YOUR_PROJECT_ID` 換成自己的授權專案：
+
+```json
+{"name":"get_worker_inbox","arguments":{"arguments":{"project_id":"YOUR_PROJECT_ID"}}}
+```
+
+以上是工具輸入，不是 JSON-RPC 訊息。外層 `arguments` 屬於 compact 轉送入口，內層 `arguments` 屬於查到的 Hub 工具，兩層都要保留。搜尋只回傳簡短清單；指定完整名稱才取得完整 schema。確認身分不需要載入所有工具或對話歷史。
+
+此呼叫確認目前 worker，不認領任務，也不啟動自動回覆。`memory_call` 同樣能轉送寫入：不要把通用入口當唯讀工具預先核准，也不要自動重試結果不明的寫入。
+
 ## REST
 
 `POST /v1/tools/{tool_name}`，Bearer 驗證，JSON body：

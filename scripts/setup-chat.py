@@ -11,6 +11,10 @@ import time
 import uuid
 
 
+class ChatSetupError(ValueError):
+    """Fixed, non-secret code; an unproven Hub state is never reported as disconnected."""
+
+
 def write_checked(path, original, candidate):
     if (path.read_bytes() if path.exists() else None) != original:
         raise ValueError('configuration_changed_preserved')
@@ -24,8 +28,72 @@ def write_checked(path, original, candidate):
         pending.unlink(missing_ok=True)
 
 
+def listener_stopped(watcher, path):
+    """After STOP, hold the listener lock so no watcher join can race the Hub fence."""
+    deadline = time.monotonic() + 40
+    while True:
+        lock = watcher.exclusive(path)
+        if lock.__enter__():
+            return lock
+        lock.__exit__(None, None, None)
+        if time.monotonic() >= deadline:
+            raise ChatSetupError('listener_still_stopping_retry_disconnect')
+        time.sleep(0.2)
+
+
+def release_binding(client, binding, state):
+    """Locate this worker's own binding in the bound room; prove its generation fence.
+
+    The identity comes from a non-mutating Hub check, never local files. A
+    recorded binding_id/generation is only a cross-check and must agree."""
+    import httpx
+    scope = {k: binding[k] for k in ('project_id', 'session_id')}
+    try:
+        identity = client.post('/v1/tools/get_worker_inbox', json={'arguments': {'project_id': scope['project_id']}})
+        identity.raise_for_status()
+        worker = identity.json().get('worker_id')
+    except (httpx.HTTPError, ValueError, AttributeError):
+        worker = None
+    if not isinstance(worker, str) or not worker:
+        raise ChatSetupError('chat_identity_unverified')
+    known = state.get('binding_id') if isinstance(state.get('binding_id'), str) else None
+    generation = state.get('generation') if type(state.get('generation')) is int else None
+
+    def own():
+        response = client.get('/v1/chat/status', params=scope)
+        response.raise_for_status()
+        room = response.json()
+        mine = [p for p in room['participants'] if p.get('worker_id') == worker
+                and all(p.get(k) == v for k, v in scope.items())]
+        if not mine and room.get('has_more') is not False:
+            raise ChatSetupError('disconnect_not_confirmed')
+        if len(mine) > 1 or known is not None and [p.get('binding_id') for p in mine] != [known]:
+            raise ChatSetupError('binding_ownership_mismatch')
+        return mine[0] if mine else None
+
+    def released(participant):
+        return participant.get('released_at') is not None and participant.get('enabled') is False
+
+    current = own()
+    if current is None:
+        return 'absent'  # Never joined: no Hub binding of this worker exists in the room.
+    if released(current):
+        return 'released'
+    if generation is not None and current.get('generation') != generation:
+        raise ChatSetupError('binding_generation_changed')
+    try:
+        client.post('/v1/chat/disconnect', json={'project_id': scope['project_id'],
+            'binding_id': current['binding_id'], 'expected_version': current['version']}).raise_for_status()
+    except httpx.HTTPError:
+        pass  # A lost response can follow a committed fence: read back, never replay stale CAS.
+    after = own()
+    if after is None or not released(after) or after.get('generation') != current['generation'] + 1:
+        raise ChatSetupError('disconnect_not_confirmed')
+    return 'released'
+
+
 def disconnect(project):
-    """Fence the Hub binding, then restore only our own project configuration."""
+    """Fence this worker's own Hub binding with readback, then restore only our project configuration."""
     import httpx
     project = Path(project).resolve(strict=True)
     mcp_path = project / '.mcp.json'
@@ -40,7 +108,8 @@ def disconnect(project):
     if Path(receipt['project']).resolve() != project or Path(receipt['client_directory']).resolve() != directory:
         raise ValueError('installation_project_mismatch')
     binding_path = directory/'chat-binding.json'
-    binding = json.loads(binding_path.read_text(encoding='utf-8'))
+    original_binding = binding_path.read_bytes()
+    binding = json.loads(original_binding.decode('utf-8'))
     if binding.get('disconnected_at'):
         return {'status':'already_disconnected','directory':str(directory)}
     (directory/'STOP').touch()
@@ -48,63 +117,58 @@ def disconnect(project):
     secret = importlib.util.module_from_spec(spec);spec.loader.exec_module(secret)
     spec = importlib.util.spec_from_file_location('stop_chat_bridge', directory/'bridge.py')
     bridge = importlib.util.module_from_spec(spec);spec.loader.exec_module(bridge)
-    connection = bridge.load_connection(directory/'connection.json')
-    state_path = directory/'chat-status.json'
-    state = json.loads(state_path.read_text(encoding='utf-8')) if state_path.exists() else {}
-    if state.get('binding_id'):
-        token = secret.transform((directory/'worker.dpapi').read_bytes(),decrypt=True).decode('ascii')
-        with httpx.Client(base_url=connection['endpoint'].removesuffix('/mcp'),
-                verify=bridge.verified_context(connection),trust_env=False,follow_redirects=False,timeout=10,
-                headers={'Authorization':'Bearer '+token}) as client:
-            r = client.get('/v1/chat/status',params={k:binding[k] for k in ('project_id','session_id')})
-            r.raise_for_status()
-            participant = next(p for p in r.json()['participants'] if p['binding_id']==state['binding_id'])
-            if participant.get('status') != 'disconnected':
-                try:
-                    r = client.post('/v1/chat/disconnect',json={'project_id':binding['project_id'],
-                        'binding_id':state['binding_id'],'expected_version':participant['version']})
-                    r.raise_for_status()
-                except (httpx.TransportError, httpx.HTTPStatusError):
-                    # A lost response can follow a successful fence. Never replay stale CAS.
-                    check = client.get('/v1/chat/status',params={k:binding[k] for k in ('project_id','session_id')})
-                    check.raise_for_status()
-                    confirmed = next(p for p in check.json()['participants'] if p['binding_id']==state['binding_id'])
-                    if confirmed.get('status') != 'disconnected':
-                        raise
     spec = importlib.util.spec_from_file_location('stop_chat_watch', directory/'watch.py')
     watcher = importlib.util.module_from_spec(spec);spec.loader.exec_module(watcher)
-    deadline = time.monotonic() + 40
-    while True:
-        with watcher.exclusive(directory/'chat-listener.lock') as acquired:
-            if acquired:
-                break
-        if time.monotonic() >= deadline:
-            raise ValueError('listener_still_stopping_retry_disconnect')
-        time.sleep(0.2)
-    old_mcp = json.loads(secret.transform((directory/'previous-chat-mcp.dpapi').read_bytes(),decrypt=True).decode('utf-8-sig'))
-    # Do not overwrite another installation that replaced this specific entry.
-    if entry != {'command':old_mcp['mcpServers']['ys_memory']['command'],'args':[str(directory/'chat-bridge.py')]}:
-        raise ValueError('mcp_entry_changed_preserved')
-    mcp['mcpServers']['ys_memory'] = old_mcp['mcpServers']['ys_memory']
-    settings_path = project/'.claude/settings.local.json'
-    original_settings = settings_path.read_bytes()
-    settings = json.loads(original_settings.decode('utf-8-sig'))
-    stops = settings.get('hooks',{}).get('Stop',[])
-    for group in stops:
-        group['hooks'] = [h for h in group.get('hooks',[]) if h.get('args') != [str(directory/'watch.py')]]
-    settings.setdefault('hooks',{})['Stop'] = [g for g in stops if g.get('hooks')]
-    old_settings_path = directory/'previous-claude-settings.dpapi'
-    old_settings = json.loads(secret.transform(old_settings_path.read_bytes(),decrypt=True).decode('utf-8-sig')) if old_settings_path.exists() else {}
-    old_rules = old_settings.get('permissions',{}).get('allow',[])
-    owned = {'mcp__ys_memory__'+n for n in ('chat_status','chat_read','chat_reply')}
-    allow = settings.get('permissions',{}).get('allow',[])
-    if 'permissions' in settings:
-        settings['permissions']['allow'] = [r for r in allow if r not in owned or r in old_rules]
-    write_checked(mcp_path,original_mcp,(json.dumps(mcp,ensure_ascii=True,indent=2)+'\n').encode())
-    write_checked(settings_path,original_settings,(json.dumps(settings,ensure_ascii=True,indent=2)+'\n').encode())
-    binding['disconnected_at'] = time.time()
-    binding_path.write_text(json.dumps(binding,indent=2),encoding='utf-8')
-    return {'status':'disconnected','directory':str(directory),'global_settings_changed':False}
+    lock = listener_stopped(watcher, directory/'chat-listener.lock')
+    try:
+        # Read after the listener exited: its final status write is visible.
+        try:
+            state = json.loads((directory/'chat-status.json').read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            state = {}  # Absent or unreadable; the Hub lookup stays authoritative.
+        try:
+            connection = bridge.load_connection(directory/'connection.json')
+            token = secret.transform((directory/'worker.dpapi').read_bytes(),decrypt=True).decode('ascii')
+            with httpx.Client(base_url=connection['endpoint'].removesuffix('/mcp'),
+                    verify=bridge.verified_context(connection),trust_env=False,follow_redirects=False,timeout=10,
+                    headers={'Authorization':'Bearer '+token}) as client:
+                hub_binding = release_binding(client, binding, state if isinstance(state, dict) else {})
+        except ChatSetupError:
+            raise
+        except Exception as exc:
+            raise ChatSetupError('disconnect_not_confirmed') from exc
+        old_mcp = json.loads(secret.transform((directory/'previous-chat-mcp.dpapi').read_bytes(),decrypt=True).decode('utf-8-sig'))
+        restored_entry = old_mcp['mcpServers']['ys_memory']
+        chat_entry = {'command':restored_entry['command'],'args':[str(directory/'chat-bridge.py')]}
+        # A failed settings/metadata write can leave the exact original entry
+        # already restored. Retry only these two owned states, never an edited entry.
+        if entry != chat_entry and entry != restored_entry:
+            raise ValueError('mcp_entry_changed_preserved')
+        mcp['mcpServers']['ys_memory'] = restored_entry
+        settings_path = project/'.claude/settings.local.json'
+        original_settings = settings_path.read_bytes()
+        settings = json.loads(original_settings.decode('utf-8-sig'))
+        stops = settings.get('hooks',{}).get('Stop',[])
+        for group in stops:
+            group['hooks'] = [h for h in group.get('hooks',[]) if h.get('args') != [str(directory/'watch.py')]]
+        settings.setdefault('hooks',{})['Stop'] = [g for g in stops if g.get('hooks')]
+        old_settings_path = directory/'previous-claude-settings.dpapi'
+        old_settings = json.loads(secret.transform(old_settings_path.read_bytes(),decrypt=True).decode('utf-8-sig')) if old_settings_path.exists() else {}
+        old_rules = old_settings.get('permissions',{}).get('allow',[])
+        owned = {'mcp__ys_memory__'+n for n in ('chat_status','chat_read','chat_reply','chat_no_reply')}
+        allow = settings.get('permissions',{}).get('allow',[])
+        if 'permissions' in settings:
+            settings['permissions']['allow'] = [r for r in allow if r not in owned or r in old_rules]
+        if entry != restored_entry:
+            write_checked(mcp_path,original_mcp,(json.dumps(mcp,ensure_ascii=True,indent=2)+'\n').encode())
+        if settings != json.loads(original_settings.decode('utf-8-sig')):
+            write_checked(settings_path,original_settings,(json.dumps(settings,ensure_ascii=True,indent=2)+'\n').encode())
+        binding['disconnected_at'] = time.time()
+        # Never truncate the binding on a failed final write; it is the retry record.
+        write_checked(binding_path,original_binding,json.dumps(binding,indent=2).encode('utf-8'))
+    finally:
+        lock.__exit__(None, None, None)
+    return {'status':'disconnected','directory':str(directory),'hub_binding':hub_binding,'global_settings_changed':False}
 
 
 def configure(project, project_id, session_id, native_session_id=None, *, display_name='Claude',
@@ -174,7 +238,7 @@ def configure(project, project_id, session_id, native_session_id=None, *, displa
     allows = config.setdefault('permissions', {}).setdefault('allow', [])
     if not isinstance(allows, list):
         raise ValueError('invalid_project_tool_permissions')
-    for tool in ('chat_status','chat_read','chat_reply'):
+    for tool in ('chat_status','chat_read','chat_reply','chat_no_reply'):
         rule = 'mcp__ys_memory__' + tool
         if rule not in allows:
             allows.append(rule)
@@ -203,7 +267,7 @@ def configure(project, project_id, session_id, native_session_id=None, *, displa
         'expires_at': binding['expires_at'], 'max_turns': max_turns,
         'settings_sha256': hashlib.sha256(candidate).hexdigest(),
         'stop_file': str(directory / 'STOP'), 'global_settings_changed': False,
-        'mcp_scope':'Only chat_status/chat_read/chat_reply in the configured room; normal memory tools restored on disconnect.',
+        'mcp_scope':'Only chat_status/chat_read/chat_reply/chat_no_reply in the configured room; normal memory tools restored on disconnect.',
         'activation_prompt': ('I authorize automatic chat only in the configured YS Memory room, '
             'within the displayed time and turn budget. Reply with exactly this single line and no tools: '
             + binding['activation_phrase']) if not native_session_id else None,
@@ -238,7 +302,7 @@ def main():
         print(json.dumps(configure(**values), ensure_ascii=True, indent=2))
         return 0
     except Exception as exc:
-        print('chat_setup_failed: ' + type(exc).__name__, file=sys.stderr)
+        print('chat_setup_failed: ' + (str(exc) if isinstance(exc, ChatSetupError) else type(exc).__name__), file=sys.stderr)
         return 1
 
 

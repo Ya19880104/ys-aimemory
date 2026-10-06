@@ -6,6 +6,12 @@ This guide installs a dedicated **local Codex CLI receiver** for one YS Memory p
 
 For ordinary on-demand MCP access, use [client setup](CLIENT_SETUP.md). For room controls and delivery semantics, see [automatic chat](AUTOMATIC_CHAT.md).
 
+**Version boundary:** the [validation record](VALIDATION_2026-10-05.md) separates the current deployment from earlier bounded native reply/no_reply evidence. The immutable installer includes the four-tool capability; update your Hub and receiver together and preserve existing evidence. You do not need to prompt each incoming message: the receiver reads it and either contributes a reply or records “Fully read; completed without a reply”. The linked fresh public installation and native trial covers only the tested bounded path; it does not certify every host or indefinite operation.
+
+The commands on this page pin source `3e6166789fa938afc58a78565c625fc73888acb9`, which fixes startup with standard-library-only Python before the private environment exists. Local regression and receiver tests passed; the fresh public installation exposed the original import failure and was closed with its Token revoked. [Current validation and deployment boundaries](VALIDATION_2026-10-06.md#codex-public-installer-dependency-fix) are recorded separately. A fresh public installation and native acceptance of this fix remain **not_run** at this source checkpoint. The earlier three-turn trial used a separate guard and does not prove the updated receiver's own per-turn Job cleanup.
+
+An earlier [fresh public installation and bounded native trial](VALIDATION_2026-10-05.md#fresh-public-codex-installation-to-bounded-native-completion) passed: real hidden Token entry and `-Print`, then official `--receipt --run`, three human messages yielding reply/no_reply/reply, and verified stop/disconnect/revocation. It used verified Codex/Python 3.12 paths, English, one hour, three turns, 90 seconds per turn and a separate ≤600-second test guard. This was a dedicated CLI receiver, not an existing Desktop chat. Bilingual model output, default PATH and unattended setup were not passed. The [earlier installation-only result](VALIDATION_2026-10-05.md#public-codex-installation-only-check) remains separate.
+
 ## 1. Prepare the CLI and room
 
 Use Windows with Python 3.12. Git is only needed for the optional checkout method. Install the official Codex CLI using the **Windows** instructions on the [official Codex CLI page](https://learn.chatgpt.com/docs/codex/cli), then open a new PowerShell terminal. Check the installation:
@@ -39,8 +45,8 @@ Download and review this immutable script. The hash check must pass before execu
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/2f2874b30c7e6dc90dea1a88f004c088826c785a/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '8FA7844498102DC311210CE9E1A29DBC8BE283907BEB159F2596D70F49EF2293') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/d688fbfcd132ec8ed9b05937438320ab1c9b94a6/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'EDF5651AAAE0A2CDF319D75B1BBDBF370972E7316F5CFA610D3873BE518141A4') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -52,7 +58,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 
 `-Print` is the default: it performs installation and authorization checks without starting a model. Enter the Token at the hidden prompt, then continue at **Start the dedicated receiver** below using the receipt's exact `start_command`. Explicit `-Run` instead installs and immediately starts the bounded receiver. Do not combine both switches. `-PythonPath` can select an existing Python 3.12; `-TurnTimeout` defaults to 90 seconds. No local project-directory argument is needed: the receiver creates a private empty working directory for its conversational turns.
 
-The bootstrap verifies four source files from revision `3b6e3aace065c67f336192c993b74757268b8b83`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
+The bootstrap verifies four source files from revision `3e6166789fa938afc58a78565c625fc73888acb9`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
 
 ### Alternative: install from a checkout
 
@@ -61,7 +67,7 @@ Clone into a **new** directory and use the checkout containing `scripts/setup-co
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach 3b6e3aace065c67f336192c993b74757268b8b83
+git checkout --detach 3e6166789fa938afc58a78565c625fc73888acb9
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
@@ -100,7 +106,9 @@ native_acceptance: not_run
 
 Copy the complete **`start_command`** from that receipt into PowerShell. It uses the installed private Python/script and `--receipt '<actual path>\codex-install.json' --run`. Keep that terminal/process running. This is the explicit step that enables bounded model execution. Adding `--run` to a fresh installation command also installs and immediately starts; use the two-step flow for the first setup.
 
-The receiver binds only its configured room. On a fresh join it starts at the room's current message position; send a **new** test message after it is online. It checks for delivery without calling a model while idle. An eligible delivery starts native `codex exec` with only `get_worker_inbox`, `read_session`, and `post_session_message`; the receiver verifies identity, reads that delivery, and permits one conversational reply. It cannot perform project development tasks through this scoped toolset. Native non-interactive execution and saved CLI authentication are documented in [official non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode).
+The receiver binds only its configured room. On a fresh join it starts at the room's current message position; send a **new** test message after it is online. It checks for delivery without calling a model while idle. It starts native `codex exec` with four tools: `get_worker_inbox`, `read_session`, `post_session_message`, and `complete_session_delivery`. It verifies the authenticated worker and all full delivery pages, then requires exactly one actual completion: a substantive reply or `no_reply`. It cannot perform project development tasks through this scoped toolset. Native non-interactive execution and saved CLI authentication are documented in [official non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode).
+
+For silent completion, `complete_session_delivery` uses the same project/room, delivery ID, live lease and `delivery-<delivery_id>` key described in the [delivery API](DELIVERY_API.md#dispatch-tool-read-and-completion-receipts). It creates no message/event and returns `delivery_receipt.status=no_reply`. The native proof must retain `completion_status` and the distinct `post_receipt` or `no_reply_receipt`; a model's silence, `tool_read`, error or unknown post outcome is not a successful completion. Identity/full-read/same-worker/generation/expiry/pause fences remain required, and the admitted turn is not refunded. Do not switch disposition after a completed post or use no_reply as an error fallback.
 
 This workflow does not select a model for you or change a saved permission mode. The dedicated child run uses its own read-only sandbox and scoped MCP configuration. Model replies consume your Codex allowance; an idle network poll is not a model turn.
 
@@ -109,8 +117,10 @@ This workflow does not select a model for you or change a saved permission mode.
 1. Open the same Hub conversation as an administrator and confirm the dedicated worker appears online.
 2. Send a new message such as: **“Codex connection test: reply once with your worker identity and this message's topic.”** Do not prompt Codex separately to poll.
 3. Check the reply in the Hub: correct room, expected worker, new message ID/sequence, and no duplicate reply.
-4. Inspect the receiver's `state_directory` from the installation receipt. `receiver-status.json` records receiver state; `receipt-<delivery-id>.json` records native tool-call/read/post evidence and available token usage for that delivery.
+4. Inspect the receiver's `state_directory` from the installation receipt. `receiver-status.json` records receiver state; `receipt-<delivery-id>.json` records native identity/full-read and the actual reply or no_reply completion, plus available token usage. Test intentional silent completion separately and confirm no new room message/event. Failed, timed-out and silent-completed turns still count against the Hub's `--max-turns`; summing posted replies alone understates consumption.
 5. Pause the room's automatic delivery, send a test message, and confirm no new model reply is dispatched while paused. Resume only within the existing budget and verify the expected delivery behavior.
+
+Failed native turns keep the first `native-failure-<delivery-id>.json`: fixed error/phase, observed tool evidence and reported usage only. Unknown usage is `not_reported`, not zero. This incomplete local evidence does not establish the server disposition or authorize retry, including when a reply was observed. A fenced restart writes one `receiver-restart-failure.json` and preserves the preceding `receiver-status.json`; reconcile the server and confirm the old child exited before any explicit recovery.
 
 Browser refresh or `rest_identity_and_room_passed` does not prove automatic native replies. Record each test as **passed / failed / skipped / not_run**, with the checkout commit, receiver version, room, and delivery/message identifiers. The installation receipt remains an installation result, even after later runtime receipts exist. Do not publish private receipts or credentials in issues.
 
@@ -144,16 +154,65 @@ The time budget starts at the **first receiver start**, not installation. Its ex
 | `owned_codex_install_modified` or `owned_codex_receipt_invalid` | Preserve the directory for review; do not bypass the ownership/hash checks. |
 | Installed but no reply | Start the printed command; check CLI login, room pause, fresh messages, receiver status, budget, and actual runtime receipts. |
 | `receiver_was_stopped_keep_evidence_and_provision_new_bounded_run` | Preserve the old STOP/evidence and explicitly create a new bounded installation when wanted. |
+| `native_job_create_failed`, `native_job_limits_failed`, `native_job_assignment_failed` | Windows could not establish the process group. Preserve the failure record and use the official receipt command; do not bypass containment. |
+| `native_supervisor_python_mismatch` | Start with the Python executable in the official receipt; do not substitute another launcher or executable. |
+| `native_tree_exit_unconfirmed` | Keep the unresolved marker and journal; run the read-only recovery report before any new attempt. |
+| Receiver ends with state `disabled` after a failed turn | A failed native turn makes the receiver disable its own Hub binding, so starting the same receipt again ends with `disabled`. Run the [read-only recovery report](#read-only-recovery-report), keep the state directory, and ask the administrator. Re-enabling a binding is an explicit Hub control described in the [delivery API](DELIVERY_API.md); a restart does not do it. |
 
 This guide describes the installer/receiver contract. It does not certify a particular machine's native run, Desktop injection, or ChatGPT cloud delivery. Those require their own recorded acceptance tests.
 
 ## Upgrade and lost-response recovery
 
+Updated Windows receivers contain each native turn in its own Windows Job Object. An isolated Python supervisor waits for job assignment before starting Codex. Successful receipts record `native_containment=windows_job` and `native_tree_exit_verified=true` only after the job has no active processes, the supervisor exits and the owner handle closes. The Codex root exiting alone is insufficient.
+
+A hard receiver crash terminates its owned job through Windows, but whether the Hub committed a reply can remain unknown. Preserve `native-active.json`, STOP and the delivery journal; use the [read-only recovery report](#read-only-recovery-report). Process exit does not prove reply commitment or authorize a duplicate attempt.
+
 Upgrade the Hub first, then stop the old receiver and use this page's current pinned installer. Existing installations do not update themselves. Do not overwrite a running receiver or delete its state. Use Claude's disconnect/renew flow; for updated Codex installations, use the disconnect command and confirm release before creating a new dedicated installation with an explicit budget. Older installations without ownership evidence require administrator review.
 
 Updated receivers persist the claim request before HTTP and retry transient failures with bounded backoff within their expiry and stop controls. The same request recovers the original notification only while its lease is valid, dispatch has not started, and no full-message read has been recorded, without another delivery attempt or turn charge. Restarting after dispatch does not immediately launch the same model turn again; a genuinely expired lease may be redelivered at normal budget cost. This is not an exactly-once model guarantee or full native crash-lifecycle acceptance.
 
+Receivers containing the unresolved-native guard stop before Hub join when a prior native turn is unresolved. Preserve `native-active.json` and the delivery journal. Confirm the old child has exited and reconcile server delivery/binding state before an authorized retry; never delete the marker simply to bypass the fence. Offline crash tests use fake CLI children; Windows terminates the updated job, but the crashed delivery outcome still needs reconciliation. Real-provider in-flight recovery remains pending. See [2026-10-04 evidence](VALIDATION_2026-10-04.md). The [read-only recovery report](#read-only-recovery-report) shows what the Hub recorded for the reconciliation step.
+
 Expiry alone permits ordinary manual posts again; room pause, disabled bindings, archiving and revoked permissions still apply. An expired automatic reply must never strip its delivery fields and resend as a manual post. See the [delivery API](DELIVERY_API.md).
+
+## Read-only recovery report
+
+After `native_exit_unconfirmed_preserve_binding`, a failed turn or any restart you are unsure about, compare the receiver's local journal with what the Hub recorded before deciding anything. `scripts/inspect-codex-chat-recovery.py` prints that comparison. **It is a diagnostic, not a recovery.**
+
+It is not part of an installed client. Run it from a repository checkout with the receipt's private Python, and record the checkout commit:
+
+```powershell
+& 'PYTHON_PATH_FROM_THE_RECEIPT' -B 'C:\src\ys-aimemory\scripts\inspect-codex-chat-recovery.py' --receipt 'CLIENT_DIRECTORY\codex-install.json'
+```
+
+What it does and does not do:
+
+- Validates the receipt with the same check `inspect_command` uses, then opens the known journal files in `state_directory` for reading only. It changes no receiver or product state: it writes no journal file, marker, receipt or lock, takes no receiver lock and never removes `native-active.json`. Keep `-B` in the command. The script imports the installer, the receiver and the client's `bridge.py`, and without `-B` Python writes bytecode caches beside them, including one inside the client directory.
+- Sends one request, `GET /v1/chat/status` for the receipt's project and room, with this worker's own protected Token over the pinned CA. Its transport refuses every other method or path. There is no join, claim, post, disconnect, lease or expiry change, model start or process inspection.
+- Validates the journal files it relies on: `receiver-config.json`, `receiver-binding.json`, `receiver-claim.json`, `receiver-delivery.json`, `receiver-status.json` and the journaled delivery's own `receipt-<delivery-id>.json`. If one of these is linked, malformed, oversized or names another scope, the report is `invalid-local-state` or `scope-mismatch` and the Hub is not contacted.
+- Treats `native-active.json` and `STOP` differently, on purpose, because only their presence is used. A linked marker is not followed, and a malformed or oversized one is not trusted for its content, but it still counts as present: the report keeps native exit unconfirmed and still asks the Hub. A linked `STOP` is shown as `linked`. Other files in the directory, including other receipts, are not opened.
+- Prints fixed state names and sentences only. The Token, lease and request IDs, reply keys, native session ID, paths and message bodies never appear. 32-character identifiers are shortened unless you add `--full-ids` for private reconciliation.
+
+Options: `--offline` (local journal only; no Token read, no Hub request), `--json`, `--language zh-TW`, `--full-ids`, `--timeout 1..30`. Exit code `0` means a report was produced, whatever its state. Exit code `1` means the receipt, arguments or journal location could not be validated; stderr then carries one fixed code.
+
+| State | Meaning | Rests on |
+| --- | --- | --- |
+| `server-replied` | The Hub recorded a reply for the journaled delivery. Detail `local-completion-missing`: the receiver saved no `receipt-<delivery-id>.json`, so only the local record is missing; do not resend. `local-completion-recorded`: both records name the same message. `local-completion-mismatch`: they disagree. | The Hub's latest delivery has the same ID, status `replied`, and a reply message ID and sequence. |
+| `server-no-reply` | The Hub recorded explicit completion without a message. `local-completion-missing`, `local-completion-recorded` or `local-completion-mismatch` distinguishes the local receipt; do not resend a completed delivery. This reports neither native exit nor retry permission. Earlier inspectors require an upgrade to recognize it. | The same journaled delivery has status `no_reply`, a complete-read record, null reply fields and a server cursor at least its `through_sequence`; matching local proof has `completion_status=no_reply`, no `post_receipt`, and the exact `no_reply_receipt` scope/status/cursor. |
+| `server-read` | The Hub returned the complete messages but recorded neither a reply nor a terminal no_reply completion. This is not a completed turn. | The same delivery ID with status `tool_read`. |
+| `unresolved` | Neither a complete read nor a reply can be tied to the journaled delivery: it is only leased or dispatched, it failed, or the Hub's latest delivery is a different one. | The detail and the missing-evidence list. |
+| `stale-generation` | The Hub binding has another generation, so this journal no longer owns it. The journaled delivery's outcome stays unavailable. | The generation in `receiver-binding.json` against the Hub. |
+| `disconnected` | The Hub binding is released. | Hub status and generation. |
+| `unavailable` | No Hub evidence was read: offline, timeout, HTTP status, credential or TLS failure, or the binding was not listed. Only local facts are shown. | A fixed reason code. |
+| `no-delivery` | The journal holds no dispatched delivery. | The local journal. |
+| `scope-mismatch`, `invalid-local-state` | The journal or Hub binding belongs to another project, room or worker, or one of the validated journal files cannot be trusted. Stop and ask the administrator. | The local journal or the Hub binding. |
+
+Limits to keep in mind:
+
+- The status route lists only the latest delivery of the binding's current generation. An older delivery, or one from an earlier generation, is reported as missing evidence. **A Hub cursor that has passed a delivery is never treated as a reply.**
+- `native-active.json` holds no process identity, and the report uses only its presence. A missing, live or dead PID would not show that the original child exited, so the report never states that a retry is safe and never claims native exit.
+- A report taken while the receiver is running is a snapshot; the files can change underneath it.
+- The logic is covered by fixture tests. It has not been accepted against a real interrupted native turn; record that as `not_run` until it is.
 
 ## Explicit disconnect and manual posting
 

@@ -4,20 +4,30 @@
 
 ## 歷史驗證與目前狀態
 
+2026-10-05，新的 Local Code 對話在 bda 完成原生身分呼叫；第一次展平參數失敗，修正後才成功。[最新驗證紀錄](VALIDATION_2026-10-05.zh-TW.md) 將此結果與安裝 wrapper 失敗、待驗的自動對話分開記錄。請使用下方完整 compact 輸入，不要展平參數。
+
 2026-10-03 較早的手動測試回報原生身分、共享對話讀取與寫回成功，環境為 Windows 11／Python 3.12.13／Claude Desktop Code，Sonnet 5.5／Medium。原指南沒有記錄該次確切來源／runtime commit；這是歷史證據，不是目前安裝器或自動接收程式的驗收。
 
-目前 Claude 自動模式驗收因模型供應商登入過期而維持 **not_run**。adapter 已設定或 Connected 不證明模型登入有效；帳號擁有人需先恢復正常登入，再重做原生驗收，不借用其他 worker 憑證或放寬工具／TLS 控制。詳見[目前限定驗證](VALIDATION_2026-10-03.zh-TW.md)與[自動對話](AUTOMATIC_CHAT.zh-TW.md)。本庫提供命令列安裝器，不是網頁一鍵或免前置準備的安裝包。
+2026-10-03 的 Claude 自動模式驗收因模型供應商登入過期而記錄為 **not_run**。adapter 已設定或 Connected 不證明模型登入有效；帳號擁有人需先恢復正常登入，再重做原生驗收，不借用其他 worker 憑證或放寬工具／TLS 控制。詳見[歷史限定驗證](VALIDATION_2026-10-03.zh-TW.md)與[2026-10-04 驗證](VALIDATION_2026-10-04.zh-TW.md)與[自動對話](AUTOMATIC_CHAT.zh-TW.md)。本庫提供命令列安裝器，不是網頁一鍵或免前置準備的安裝包。
 
 ## 先準備四樣東西
 
 1. 這台電腦已登入 Claude Desktop，在 **Code → Local** 選擇工作專案。記下這個資料夾；安裝時選同一個，否則新對話讀不到設定。不需要另登入 CLI。
 2. Windows 已安裝 **Python 3.12**，並已下載本 GitHub 專案。安裝只需要 Python 標準函式庫，會自行建立獨立環境及安裝 adapter 依賴，不必先部署 Hub。
-3. 從自己的 Hub「MCP 接入」下載 **`ys-memory-stdio-1.1.1.zip`**，解壓到新資料夾。必須有 `bridge.py`、`connection.json`、`ys-ai-memory-ca.crt`、`requirements.lock`、`README.txt` 五個檔案。先由可信通道核對公開 CA 的 **DER SHA-256** 指紋，並透過已驗證 HTTPS 下載；不能略過憑證警告。
+3. 使用下方 URL 安裝器時由安裝器下載安裝包；若選擇手動 bundle 安裝，從自己的 Hub「MCP 接入」下載 **`ys-memory-stdio-1.1.1.zip`**，解壓到新資料夾。必須有 `bridge.py`、`connection.json`、`ys-ai-memory-ca.crt`、`requirements.lock`、`README.txt` 五個檔案。先由可信通道核對公開 CA 的 **DER SHA-256** 指紋，並透過已驗證 HTTPS 下載；不能略過憑證警告。
 4. 在 Hub 為這台 Claude 產生自己的 worker Token，授權需要的專案。網頁密碼、Claude 登入、worker Token 是三種不同用途；不要拿另一位 AI 的 Token 共用。
 
 ## 執行一個安裝命令
 
-在 PowerShell 執行，將三個範例值換成自己的資料：
+優先使用 checkout 中的 URL 安裝器，將 origin、公開 CA 指紋與工作專案換成自己的資料：
+
+```powershell
+& 'C:\src\ys-aimemory\scripts\connect-claude.ps1' -Url 'https://memory.example.internal:8443' -ExpectedCa 'YOUR_64_HEX_DER_SHA256' -Project 'C:\work\my-project'
+```
+
+此腳本從固定 revision 下載兩個公開來源檔並核對 SHA-256；升級時先審查其 pins。可用 `-PythonPath` 指定既有 Python 3.12，不修改 execution policy、系統 CA、全域設定、模型登入或工具核准。
+
+若已透過驗證 HTTPS 下載並解壓 bundle，也可使用以下替代命令：
 
 ```powershell
 py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-memory-client" --project "C:\work\my-project" --expected-ca "管理員提供的64位DER_SHA256指紋"
@@ -36,9 +46,12 @@ py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-
 ```text
 請使用原生 YS Memory MCP 確認連線。
 我的 project_id 是：填入自己的專案 ID。
-先搜尋 memory_tools / memory_call，取得 get_worker_inbox 的 schema，
-再依 schema 呼叫，保留 arguments 層級，回報實際 worker_id。
-不要認領任務。找不到原生工具時回報 NOT_RUN，不用其他程式代替。
+先載入 memory_tools / memory_call，用 {"name":"get_worker_inbox"} 取得 schema。
+依該 schema 呼叫。compact memory_call 的輸入為：
+{"name":"get_worker_inbox","arguments":{"arguments":{"project_id":"PROJECT_ID"}}}
+將上面的 PROJECT_ID 換成我的專案 ID，回報實際 worker_id。
+不要認領任務。工具已列出但未載入時，先用客戶端工具搜尋載入 schema。
+核對設定與載入後仍找不到原生工具才回報 NOT_RUN，不用其他程式代替。
 ```
 
 工具結果的 worker_id 必須等於自己在 Hub 建立的身分。接著到 Hub「共享對話」建立或選擇對話，按「複製加入指引」貼到 Claude，再說「只讀取最新訊息，回覆一句並真正寫回共享對話」。**網頁出現 Claude 身分、訊息 ID 和序號，才是完整讀寫驗收。** 不需再贴 Token，也不用先建立任務或交接。
@@ -52,7 +65,7 @@ py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-
 | `ys_memory already exists` | 本專案已有設定；先確認是不是已可用。換裝前備份並只處理這一個項目，不刪整份設定。 |
 | `Invalid public bundle asset` | 重新解壓五個檔案，不要拿少了 README 的測試目錄。 |
 | `FileNotFoundError` | 核對 bundle 和 project 都是這台電腦的實際資料夾。 |
-| `CalledProcessError` | Python 環境、依賴安裝或 adapter 驗證失敗；核對 Python 3.12、套件下載網路及公開 CA。收據尚未完成前不要假定已連線。 |
+| `installer_stage=...` | 依下方階段診斷核對；收據尚未完成前不要假定已連線。舊版固定 bootstrap 可能仍只顯示 `CalledProcessError`。 |
 | 工具找不到 | 確認新的 Local 工作選了同一個資料夾，核對 MCP 啟動路徑與核准狀態。 |
 | `credential_launcher_stopped` | 確認使用原安裝的 Windows 帳號與電腦；DPAPI 密文不能當成可攜 Token 檔。 |
 | `AUTH_REJECTED` | 核對 Claude worker 的 Token 和專案授權；撤銷或換 Token 後需重新配置。 |
@@ -60,8 +73,14 @@ py -3.12 "C:\src\ys-aimemory\scripts\setup-claude.py" --bundle "C:\Downloads\ys-
 
 換電腦、CA 輪替或 Token 更換時，在新環境重新安裝並更新這個專案的 `ys_memory` 設定；本版不自動輪替。停止載入時，只移除該專案 `.mcp.json` 的 `ys_memory` 項目並重新開啟工作；要使舊身分失效，另到 Hub 撤銷 Token。
 
+## 安裝失敗診斷
+
+本 repository 安裝器的子程序失敗會顯示 `installer_stage=venv|dependencies|adapter_verification`、`exit_code`（或 `not_started`），以及固定 `reason`：`tls`、`network`、`no_distribution`、`access_denied` 或 `unknown`。分類只表示符合的錯誤文字，不是已確認根因；不輸出擷取的子程序內容、套件 URL 或命令參數。失敗會停止，不自動重試；這些階段都在寫入 worker 密文與提交 `.mcp.json` 前。
+
+`venv` 核對 Python 3.12；`dependencies` 核對套件供應、網路及檔案權限；`adapter_verification` 核對可信 CA 與 adapter。`unknown` 需在本機調查，不分享可能含秘密的原始紀錄。較早的固定 bootstrap 可能下載只回報 `CalledProcessError` 的舊安裝器；目前 bootstrap 已固定至審查過的診斷來源，但不會更新既有安裝，也不證明先前失敗原因。
+
 ## Token 成本與此次範圍
 
-compact 啟動只提供兩個入口，明確要求用記憶時才取得指定 schema；讀歷史使用 `after_sequence`、`limit`、`max_bytes` 控制。本次 Claude 用 7 個工具步驟完成搜尋、三個 schema 與三次操作，沒有持續輪詢。這不能推算模型帳單節省比例；整個對話仍包含 Claude 自身工具與其他專案上下文。
+compact 啟動只提供兩個入口，明確要求用記憶時才取得指定 schema；讀歷史使用 `after_sequence`、`limit`、`max_bytes` 控制。上述歷史手動實測的 Claude 用 7 個工具步驟完成搜尋、三個 schema 與三次操作，沒有持續輪詢。這不能推算模型帳單節省比例；整個對話仍包含 Claude 自身工具與其他專案上下文。
 
-已跑的是**本機原生接入及單輪讀寫**，沒有把 SDK 檢查當作原生模型結果。自動喚醒、跨電腦 DPAPI、Gemini/Grok 原生端與網頁一鍵入口不在這次通過範圍。Claude Desktop 的專案設定方式以[官方共用設定說明](https://code.claude.com/docs/en/desktop#shared-configuration)為依據。
+上述歷史手動實測跑的是**本機原生接入及單輪讀寫**，沒有把 SDK 檢查當作原生模型結果。自動喚醒、跨電腦 DPAPI、Gemini/Grok 原生端與網頁一鍵入口不在這次通過範圍。Claude Desktop 的專案設定方式以[官方共用設定說明](https://code.claude.com/docs/en/desktop#shared-configuration)為依據。

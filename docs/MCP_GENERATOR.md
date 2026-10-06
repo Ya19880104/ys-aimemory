@@ -11,3 +11,21 @@ Extract into a new directory, create Python 3.12 venv, install `requirements.loc
 Compact has two initial tools and only connects upstream on explicit calls. Connected proves local readiness, not native acceptance; `memory_call` can forward writes. CA rotation requires independent reverification/new bundle rather than silently changing a pin.
 
 Rotation preserves identity/message history but rejects old credentials on subsequent requests. Revocation does not delete historical messages, cancel already authenticated in-flight operations, or transfer a task. Disabling the management feature does not revoke existing tokens. Use guarded task recovery when needed. Additive credential/message schemas require backups and version-matched rollback, not old binaries against new DBs. See [client setup](CLIENT_SETUP.md) and [deployment](DEPLOYMENT.md).
+
+## Administration and scope
+
+Public `/help` provides instructions; `/downloads/ys-ai-memory-ca.crt` provides the public CA when valid. Authenticated `/ui/mcp` supports project creation and token issuance/rotation/revocation. The bootstrap operator needs `HUB_WEB_ROLE=admin`, enabled MCP administration, a fixed owner UUID and the correct HTTPS `HUB_PUBLIC_BASE_URL`.
+
+Preserve the bootstrap owner UUID across rename/backup/restore. Human account management now exists separately under Settings; account-management permission does not grant access to every project. Existing explicit project grants remain valid; owner-created projects add the corresponding administration scope, not access to unrelated projects. An unauthorized existing project cannot be recreated or claimed through the generator. See [web accounts](WEB_DASHBOARD.md).
+
+Managed worker tokens authorize one project with worker role. Raw values appear only in the issue/rotate POST response; the database stores SHA-256, and refreshing does not redisplay the secret. Original `HUB_AUTH_TOKENS` remain deployment-managed; revoked worker IDs cannot be reassigned. Shared room visibility and private two-party messages differ: even an administrator cannot read another pair's private bodies.
+
+## CA and bundle boundaries
+
+The Python MCP SDK bridge verifies the pinned CA, chain, hostname and name constraints. A historical Claude CLI 2.1.278 direct-HTTP run encountered `UNSUPPORTED_CONSTRAINT_TYPE`; `NODE_EXTRA_CA_CERTS` did not establish a fix for that runtime limitation. This is a version-specific observation, not a reason to disable TLS or a universal client-compatibility claim.
+
+The ZIP contains `bridge.py`, `connection.json`, public CA, `requirements.lock` and `README.txt`; it does not contain worker tokens. Printing configuration is offline and produces absolute paths; moving the directory requires regenerating them. Compact initially lists `memory_tools` and `memory_call`, with no upstream initialization. Only an explicit tool request verifies upstream/token. Full relay is still available without `--compact`.
+
+HTTP bootstrap permits only GET/HEAD for help and the public CA; the stdio ZIP is HTTPS-only. The public CA is mounted read-only to the app; the TLS private key is mounted only to nginx. A fingerprint obtained from the same HTTP page is not independent trust. A private CA requires additional client trust because it is private, regardless of whether the host has a domain name.
+
+Credential administration was added in schema v3 and messages in v4. Back up the database and deployment configuration; verify a separate restore before relying on rollback. Coordinate stopping writes and use matching old backups/configuration, never old app code against a newer migrated database or destructive volume replacement. Generated configuration, client Connected, SDK reads, native tool results and two-AI conversation each need separate acceptance.

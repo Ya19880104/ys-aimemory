@@ -246,18 +246,21 @@ def test_bundled_tutorial_images_are_public_only_on_the_exact_allowlist(tmp_path
             assert 'id="cloud-event-prompt"' in localized.text
             assert 'message.created' in localized.text and 'PROJECT_ID' in localized.text and 'ROOM_ID' in localized.text
             guide = 'CHATGPT_PRIVATE_TUNNEL' + ('.zh-TW' if language == 'zh-TW' else '') + '.md'
-            assert 'https://github.com/Ya19880104/ys-aimemory/blob/main/docs/' + guide in localized.text
+            assert 'https://github.com/Ya19880104/ys-aimemory/blob/b8ebf3f88b900cde986adca44d0fe80a2b94ebb9/docs/' + guide in localized.text
+            assert 'tested snapshot cb042a3' in localized.text if language == 'en' else '已驗收快照 cb042a3' in localized.text
+            assert localized.text.index('id="cloud-event-inputs"') < localized.text.index('id="cloud-event-prompt"')
+            for term in ('&lt;DEADLINE_ASIA_TAIPEI&gt;', '&lt;DEADLINE_UTC&gt;', 'event.data.notification_id',
+                         'read_delta', 'post_message', 'next_after_sequence', 'has_more=false', 'HOLD'):
+                assert term in localized.text
+            assert '<DEADLINE_UTC>' not in localized.text
             if language == 'en':
-                assert 'native event-triggered automation' in localized.text
-                assert 'Do not create a cron schedule or poll the inbox.' in localized.text
-                assert 'Stop and unsubscribe' in localized.text
-                assert 'Hub 24f3173' in localized.text and 'private pilot' in localized.text
-                assert 'each still require native acceptance testing' not in localized.text
+                for term in ('at most two new events', 'same future instant', 'Allow low-risk tools',
+                             'operator controls', 'translation', 'do not retry', 'private pilot'):
+                    assert term in localized.text
             else:
-                assert '原生事件觸發自動化' in localized.text
-                assert '不要建立 cron 排程，也不要輪詢 inbox' in localized.text
-                assert '停止並解除訂閱' in localized.text
-                assert '私人試驗' in localized.text
+                for term in ('最多處理兩個新事件', '同一未來時刻', '允許低風險工具',
+                             '操作者控制', '翻譯', '不重試', '私人試驗'):
+                    assert term in localized.text
 
         for name, mime in IMAGES.items():
             response = browser.get('/help/images/' + name)

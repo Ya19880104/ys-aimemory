@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import io
+from types import SimpleNamespace
 import httpx
 from pathlib import Path
 
@@ -19,6 +20,26 @@ CONFIG = {'project_id': 'test-project', 'session_id': 'a'*32, 'worker_id': 'code
           'ttl_seconds': 60, 'expires_at': 160, 'turn_timeout': 60}
 DELIVERY = {'delivery_id': 'b'*32, 'lease_id': 'c'*32, 'after_sequence': 4, 'through_sequence': 6,
             'message_ids': ['d'*32, 'e'*32], 'reply_idempotency_key': 'delivery-' + 'b'*32}
+
+
+@pytest.fixture
+def mock_native_launch(monkeypatch):
+    """Protocol-only fixture. Real Job Object behavior is tested in crash tests."""
+    class Job:
+        def finish(self, proc):
+            proc.wait(timeout=10)
+        def close(self):
+            pass
+    def launch(args, working, python):
+        try:
+            return runner.subprocess.Popen(args, cwd=working, env=runner.environment(),
+                stdin=runner.subprocess.DEVNULL, stdout=runner.subprocess.PIPE,
+                stderr=runner.subprocess.DEVNULL, text=True, encoding='utf8', errors='replace',
+                shell=False), Job()
+        except OSError as error:
+            error.native_exit_verified = True
+            raise
+    monkeypatch.setattr(runner, 'launch_native', launch)
 
 
 def fault_client(claim, dispatch=None):
@@ -209,8 +230,10 @@ def arguments(name, **changes):
             key: DELIVERY[key] for key in ('delivery_id', 'lease_id')}
         if name == 'read_session':
             result.update(after_sequence=4, limit=20, max_bytes=16384, full_text=True)
-        else:
+        elif name == 'post_session_message':
             result.update(body='這是原生對話回覆。', idempotency_key=DELIVERY['reply_idempotency_key'])
+        else:
+            result.update(idempotency_key=DELIVERY['reply_idempotency_key'])
     return {'arguments': result | changes}
 
 
@@ -232,6 +255,57 @@ def reply():
     return {key: CONFIG[key] for key in ('project_id', 'session_id')} | {'message_id': 'f'*32,
         'sequence': 7, 'actor': {'id': CONFIG['worker_id'], 'kind': 'worker'},
         'delivery_receipt': {'delivery_id': DELIVERY['delivery_id'], 'status': 'replied', 'processed_sequence': 6}}
+
+
+def no_reply():
+    return {key: CONFIG[key] for key in ('project_id', 'session_id', 'worker_id')} | {
+        'delivery_receipt': {'delivery_id': DELIVERY['delivery_id'], 'status': 'no_reply', 'processed_sequence': 6}}
+
+
+def fully_read_proof():
+    proof = runner.NativeProof(CONFIG, DELIVERY)
+    proof.event(event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'))
+    proof.event(event('read_session', reading(5, 'd'*32), 'read-1'))
+    proof.event(event('read_session', reading(6, 'e'*32, True), 'read-2', after_sequence=5))
+    return proof
+
+
+def test_native_silent_completion_requires_actual_receipt_and_stays_distinct_from_post():
+    proof = fully_read_proof()
+    with pytest.raises(runner.ReceiverError, match='incomplete'):proof.finish(0)
+    proof.event(event('complete_session_delivery', no_reply(), 'no-reply'))
+    result = proof.finish(0)
+    assert result['completion_status'] == 'no_reply' and result['post_receipt'] is None
+    assert result['no_reply_receipt']['delivery_receipt']['status'] == 'no_reply'
+    assert result['native_tool_calls'] == 4
+    with pytest.raises(runner.ReceiverError, match='extra_native_call'):
+        proof.event(event('post_session_message', reply(), 'post'))
+    posted = completed_proof()
+    with pytest.raises(runner.ReceiverError, match='extra_native_call'):
+        posted.event(event('complete_session_delivery', no_reply(), 'no-reply'))
+
+
+@pytest.mark.parametrize('change', ['worker', 'room', 'delivery', 'cursor', 'message', 'status'])
+def test_native_no_reply_rejects_forged_or_cross_scope_result(change):
+    value = no_reply()
+    if change == 'worker':value['worker_id'] = 'other'
+    elif change == 'room':value['session_id'] = 'other'
+    elif change == 'delivery':value['delivery_receipt']['delivery_id'] = '0'*32
+    elif change == 'cursor':value['delivery_receipt']['processed_sequence'] = True
+    elif change == 'message':value['message_id'] = '0'*32
+    else:value['delivery_receipt']['status'] = 'replied'
+    proof = fully_read_proof()
+    with pytest.raises(runner.ReceiverError, match='no_reply_receipt_mismatch'):
+        proof.event(event('complete_session_delivery', value, 'no-reply'))
+
+
+def test_native_no_reply_cannot_skip_read_or_change_write_scope():
+    proof = runner.NativeProof(CONFIG, DELIVERY)
+    proof.event(event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'))
+    with pytest.raises(runner.ReceiverError, match='not_read'):
+        proof.event(event('complete_session_delivery', no_reply(), 'no-reply'))
+    for changes in ({'body':'ack'}, {'idempotency_key':'different'}, {'lease_id':'0'*32}):
+        assert not runner.valid_scope('complete_session_delivery', arguments('complete_session_delivery', **changes), CONFIG, DELIVERY)
 
 
 def completed_proof():
@@ -411,7 +485,7 @@ def test_stop_file_does_not_even_join(tmp_path):
     assert client.calls == []
 
 
-def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_receipt(monkeypatch, tmp_path):
+def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_receipt(monkeypatch, tmp_path, mock_native_launch):
     native_events = [event('get_worker_inbox', {'worker_id': CONFIG['worker_id']}, 'identity'),
         event('read_session', reading(5, 'd'*32), 'read-1'),
         event('read_session', reading(6, 'e'*32, True), 'read-2', after_sequence=5),
@@ -434,6 +508,7 @@ def test_native_process_heartbeats_during_turn_and_persists_only_scope_and_recei
         return {'status': 'processing'}
     result = runner.native_turn(CONFIG, DELIVERY, tmp_path, heartbeat, lambda: False, now=now)
     assert result['status'] == 'passed' and heartbeats
+    assert 'native_tree_exit_verified' not in result  # Mock protocol stream is not kernel proof.
     assert result['token_usage'] == {'source':'codex_cli.turn.completed.usage',
         'input_tokens':101,'cached_input_tokens':0,'output_tokens':13}
     assert sorted(p.name for p in tmp_path.iterdir()) == ['native-empty', 'native-scope.json']
@@ -705,10 +780,73 @@ def test_windows_failed_tree_stop_does_not_claim_confirmed_exit(monkeypatch):
         def wait(self, timeout): pytest.fail('Tree termination was not proved')
     class Result: returncode = 1
     monkeypatch.setattr(runner.subprocess, 'run', lambda *a, **k: Result())
-    monkeypatch.setattr(runner.os, 'name', 'nt')
+    monkeypatch.setattr(runner, 'os', SimpleNamespace(**(vars(runner.os) | {'name': 'nt'})))
     monkeypatch.setattr(runner.subprocess, 'CREATE_NO_WINDOW', 0, raising=False)
     with pytest.raises(runner.ReceiverError, match='native_tree_exit_unconfirmed'):
         runner.terminate(Process())
+
+
+@pytest.mark.parametrize('phase', ['assign', 'GO', 'cleanup'])
+def test_windows_launch_failure_never_releases_unassigned_native_or_clears_unknown_exit(monkeypatch, tmp_path, phase):
+    """Pure boundary fixture, separate from real kernel regression tests."""
+    events = []
+    class Pipe:
+        def write(self, value): events.append(('write', value))
+        def flush(self):
+            raise BrokenPipeError('fixture GO outcome unknown')
+        def close(self): events.append('pipe_closed')
+    class Process:
+        stdin, stdout = Pipe(), io.StringIO()
+        def terminate(self): events.append('supervisor_terminated')
+        def wait(self, timeout): events.append('supervisor_waited')
+    class Job:
+        def assign(self, proc):
+            events.append('assigned')
+            if phase == 'assign': raise runner.ReceiverError('native_job_assignment_failed')
+        def finish(self, proc):
+            events.append('job_cleanup')
+            if phase == 'cleanup': raise runner.ReceiverError('native_tree_exit_unconfirmed')
+        def close(self): events.append('job_closed')
+    monkeypatch.setattr(runner, 'os', SimpleNamespace(**(vars(runner.os) | {'name': 'nt'})))
+    monkeypatch.setattr(runner, 'WindowsNativeJob', Job)
+    monkeypatch.setattr(runner, 'supervisor_python', lambda python: 'fixture-python.exe')
+    monkeypatch.setattr(runner.subprocess, 'Popen', lambda *a, **k: Process())
+    with pytest.raises(Exception) as error:
+        runner.launch_native(['fixture.exe'], tmp_path, __import__('sys').executable)
+    assert 'job_closed' in events
+    if phase == 'assign':
+        assert ('write', 'G') not in events and 'job_cleanup' not in events
+        assert 'supervisor_terminated' in events and 'supervisor_waited' in events
+    else:
+        assert ('write', 'G') in events and 'job_cleanup' in events
+        assert 'supervisor_terminated' not in events
+    assert getattr(error.value, 'native_exit_verified', False) is (phase != 'cleanup')
+
+
+def test_unconfirmed_job_exit_retains_active_marker_and_failure_receipt(monkeypatch, tmp_path):
+    class Process:
+        stdout = io.StringIO('')
+        def wait(self, timeout): return 0
+    class Job:
+        closed = False
+        def finish(self, proc): raise runner.ReceiverError('native_tree_exit_unconfirmed')
+        def close(self): self.closed = True
+    job = Job()
+    monkeypatch.setattr(runner, 'launch_native', lambda *a: (Process(), job))
+    with pytest.raises(runner.ReceiverError, match='native_tree_exit_unconfirmed'):
+        runner.native_turn(CONFIG, DELIVERY, tmp_path, lambda: {'status': 'processing'}, lambda: False)
+    assert job.closed and (tmp_path / 'native-active.json').exists()
+    failure = json.loads((tmp_path / ('native-failure-' + DELIVERY['delivery_id'] + '.json')).read_text())
+    assert failure['status'] == 'incomplete' and failure['retry_authorized'] is False
+    assert not list(tmp_path.glob('receipt-*.json'))
+
+
+@pytest.mark.parametrize('gate', [b'', b'X'])
+def test_supervisor_eof_or_invalid_gate_never_spawns_native(monkeypatch, gate):
+    monkeypatch.setattr(runner, 'os', SimpleNamespace(**(vars(runner.os) | {'name': 'nt'})))
+    monkeypatch.setattr(runner.sys, 'stdin', io.TextIOWrapper(io.BytesIO(gate)))
+    monkeypatch.setattr(runner.subprocess, 'Popen', lambda *a, **k: pytest.fail('No exact GO received'))
+    assert runner.native_supervisor(['fixture.exe']) == 1
 
 
 def test_stopped_exclusive_does_not_retry_oserror_inside_body(tmp_path, monkeypatch):
@@ -723,3 +861,76 @@ def test_stopped_exclusive_does_not_retry_oserror_inside_body(tmp_path, monkeypa
         with runner.stopped_exclusive(tmp_path):
             raise PermissionError('status write denied')
     assert entries == [tmp_path]
+
+
+@pytest.mark.parametrize('error', [FileNotFoundError('synthetic missing'), PermissionError('synthetic denied')])
+def test_failed_native_start_removes_only_unlaunched_marker(monkeypatch, tmp_path, error, mock_native_launch):
+    def failed(*args, **kwargs):
+        raise error
+    monkeypatch.setattr(runner.subprocess, 'Popen', failed)
+    with pytest.raises(type(error)):
+        runner.native_turn(CONFIG, DELIVERY, tmp_path, lambda: {'status':'processing'}, lambda: False)
+    assert not (tmp_path / 'native-active.json').exists()
+    assert (tmp_path / 'native-scope.json').exists()
+
+
+
+def test_native_start_preserves_preexisting_unknown_marker(monkeypatch,tmp_path):
+    raw=b'{"state":"starting","synthetic":"prior"}'
+    (tmp_path/'native-active.json').write_bytes(raw)
+    calls=[]
+    monkeypatch.setattr(runner.subprocess,'Popen',lambda *a,**k:calls.append(True))
+    with pytest.raises(runner.ReceiverError,match='native_exit_unconfirmed'):
+        runner.native_turn(CONFIG,DELIVERY,tmp_path,lambda:{'status':'processing'},lambda:False)
+    assert (tmp_path/'native-active.json').read_bytes()==raw and calls==[]
+
+
+@pytest.mark.parametrize('usage', [None, {'input_tokens':123,'cached_input_tokens':0,'output_tokens':4}])
+def test_failed_native_turn_preserves_only_observed_usage(monkeypatch,tmp_path,usage, mock_native_launch):
+    stream=[{'type':'turn.completed','usage':usage},{'type':'error','message':'canary-private-provider-error'}]
+    class Process:
+        stdout=io.StringIO('\n'.join(json.dumps(x) for x in stream)+'\n')
+        def poll(self):return 0
+        def wait(self,timeout):return 0
+    monkeypatch.setattr(runner.subprocess,'Popen',lambda *a,**k:Process())
+    with pytest.raises(runner.ReceiverError,match='native_turn_failed'):
+        runner.native_turn(CONFIG,DELIVERY,tmp_path,lambda:{'status':'processing'},lambda:False)
+    raw=(tmp_path/('native-failure-'+DELIVERY['delivery_id']+'.json')).read_text()
+    record=json.loads(raw)
+    assert record['token_usage']==runner.NativeProof.reported_usage(usage)
+    assert record['phase']=='execution' and record['error_code']=='native_turn_failed'
+    assert record['server_disposition']=='not_reconciled' and record['retry_authorized'] is False
+    assert 'canary-private-provider-error' not in raw
+    assert not (tmp_path/('receipt-'+DELIVERY['delivery_id']+'.json')).exists()
+
+
+def test_incomplete_local_proof_preserves_observed_reply_without_retry(tmp_path):
+    proof=runner.NativeProof(CONFIG,DELIVERY)
+    proof.post={'synthetic':'canary-private-post'}
+    runner.record_native_failure(tmp_path,DELIVERY,proof,'execution',RuntimeError('canary-private-token'))
+    raw=(tmp_path/('native-failure-'+DELIVERY['delivery_id']+'.json')).read_text()
+    record=json.loads(raw)
+    assert record['native_reply_receipt_observed'] is True
+    assert record['status']=='incomplete' and record['server_disposition']=='not_reconciled'
+    assert record['token_usage']['input_tokens']=='not_reported'
+    assert 'canary-private' not in raw and record['error_code']=='native_exception'
+
+
+def test_repeated_fenced_restart_keeps_prior_status_without_nesting(tmp_path):
+    status=tmp_path/'receiver-status.json';raw=b'{"binding_id":"synthetic-old","native_turns":1}'
+    status.write_bytes(raw)
+    result={'state':'failed','error_code':'native_exit_unconfirmed_preserve_binding','at':123}
+    for _ in range(3):runner.record_receiver_failure(tmp_path,result)
+    assert status.read_bytes()==raw
+    assert json.loads((tmp_path/'receiver-restart-failure.json').read_text())==result
+    assert sorted(p.name for p in tmp_path.iterdir())==['receiver-restart-failure.json','receiver-status.json']
+
+
+def test_native_failure_preserves_first_phase(tmp_path):
+    proof = runner.NativeProof(CONFIG, DELIVERY)
+    delivery = {'delivery_id': 'fixture-delivery'}
+    runner.record_native_failure(tmp_path, delivery, proof, 'execution', runner.ReceiverError('native_turn_failed'))
+    path = tmp_path / 'native-failure-fixture-delivery.json'
+    first = path.read_bytes()
+    runner.record_native_failure(tmp_path, delivery, proof, 'cleanup', RuntimeError('private-canary'))
+    assert path.read_bytes() == first

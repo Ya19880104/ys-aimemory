@@ -7,7 +7,7 @@
 ## 一輪最小驗收
 
 1. 先正常登入自己的 Codex／Claude，啟用本次選用的專案 MCP 配置。Connected 只表示連線／本機入口就緒。
-2. 取得 `get_worker_inbox` 的 schema 並實際呼叫，確認回傳自己的 `worker_id`。完整 relay 的參數為 `{"arguments":{"project_id":"my-project"}}`；compact 先用 `memory_tools`，再用 `memory_call` 的雙層 envelope。
+2. 取得 `get_worker_inbox` 的 schema 並實際呼叫，確認回傳自己的 `worker_id`。完整 relay 的參數為 `{"arguments":{"project_id":"my-project"}}`；compact 先用 `memory_tools`，再依 [compact API 範例](API_EXAMPLES.zh-TW.md#compact-本機轉送入口) 傳入完整 `memory_call` 輸入，保留兩層 `arguments`。
 3. 選一個有權存取的共享 Session。對 `read_session` 傳入該 project、session 與游標，先用 `limit=5`、`max_bytes=4096`。若回覆 `response_budget_too_small`，保留原游標，增加 `max_bytes` 後重讀（上限 65536）；收到成功頁面後才保存 `next_after_sequence`，只在需要且 `has_more` 時續頁。
 4. 使用者要求回覆時，讓模型生成短訊息並真正呼叫 `post_session_message`。新訊息使用新 idempotency key；回覆既有訊息時設定 `reply_to_message_id`。
 5. 在工具回傳核對 `actor`、project、session、message ID 與 sequence，再由另一端增量讀取。管理員可從共享 Chat 查看並介入。
@@ -16,7 +16,7 @@
 
 ## Codex：工具存在卻未執行
 
-Codex CLI 0.149.0 在工具需要核准、但本次程序的 approval policy 是 `never` 時，會拒絕並回覆：
+歷史實測的 Codex CLI 0.149.0 在工具需要核准、但本次程序的 approval policy 是 `never` 時，會拒絕並回覆：
 
 ```text
 MCP tool call requires approval, but approval policy is never
@@ -30,7 +30,7 @@ MCP tool call requires approval, but approval policy is never
 mcp_servers.ys_memory.tools.get_worker_inbox.approval_mode="approve"
 ```
 
-使用 Codex 的 `-c` 傳入此欄位，搭配本次 `enabled_tools` 範圍；不要把它寫成所有工具的預設核准。此欄位是設定片段，不是完整啟動命令；server 名稱與工具名稱必須符合本次配置。設定支援見 [官方 MCP 文件](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)；0.149.0 的判斷見 [MCP approval 原始碼](https://github.com/openai/codex/blob/rust-v0.149.0/codex-rs/core/src/mcp_tool_call.rs)。
+使用 Codex 的 `-c` 傳入此欄位，搭配本次 `enabled_tools` 範圍；不要把它寫成所有工具的預設核准；先核對實際安裝版本支援的欄位。此欄位是設定片段，不是完整啟動命令；server 名稱與工具名稱必須符合本次配置。設定支援見 [官方 MCP 文件](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)；0.149.0 的判斷見 [MCP approval 原始碼](https://github.com/openai/codex/blob/rust-v0.149.0/codex-rs/core/src/mcp_tool_call.rs)。
 
 完整 relay 可以依 `get_worker_inbox`、`read_session`、`post_session_message` 等原名稱限制工具。compact 只有 `memory_tools`／`memory_call`；不能靠原工具名稱的 client allowlist 限制其內層 name。**不要把通用 `memory_call` 當唯讀工具預先核准**。需逐工具核准時使用完整 relay；兩種模式都保留 Hub 身分與專案 ACL。
 
@@ -61,3 +61,8 @@ Desktop 本機 Code 工作會讀取 `.mcp.json`，並可能同時讀取使用者
 | 管理員增量讀取／發言成功 | 共享 Chat 的管理員路徑 |
 
 錯誤保留 failed；環境尚未具備保留 not_run／HOLD。不要把私訊和管理員可見的共享 Session 混在一起，也不要讓對話驗收自動認領任務或改動部署。
+
+
+## 自動接話與復原另行驗收
+
+手動原生讀寫成功不等於閒置自動接話或崩潰復原成功。自動驗收要從真正閒置且已綁定的對話開始，新增人類訊息後不再貼另一個提示，分別核對派送、工具讀取、回覆收據，以及人類介入、到期、預算、暫停和重新啟動去重。歷史收據不替代目前版本；CLI receiver 成功也不認證任意 Desktop 對話可被喚醒。公開結果只使用合成資料並分列 passed／failed／skipped／not_run。

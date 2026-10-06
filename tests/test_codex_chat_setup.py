@@ -18,6 +18,46 @@ spec.loader.exec_module(setup)
 PIN, ROOM, ORIGIN = '1' * 64, 'a' * 32, 'https://hub.example.test'
 
 
+@pytest.mark.skipif(os.name != 'nt' or sys.version_info[:2] != (3, 12),
+                    reason='Windows Python 3.12 public installer contract')
+def test_public_install_imports_runner_before_dependencies_with_stdlib_only(tmp_path):
+    # The public bootstrap starts with base Python, before the private venv has
+    # been created. Existing installation fixtures replace this runner import.
+    proof = r'''
+import importlib.util
+from pathlib import Path
+import sys
+
+assert importlib.util.find_spec('httpx') is None
+root = Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location('stdlib_codex_setup', root / 'scripts/setup-codex-chat.py')
+setup = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(setup)
+
+class RunnerLoaded(Exception):
+    pass
+
+def stop_before_native_or_installation(*args):
+    raise RunnerLoaded()
+
+setup.codex_executable = stop_before_native_or_installation
+try:
+    setup.install('https://hub.example.test', '1' * 64, 'project-a', 'a' * 32, 'codex-own')
+except RunnerLoaded:
+    pass
+else:
+    raise AssertionError('installer did not reach post-import preflight')
+runner = sys.modules['codex_verified_receiver_setup']
+assert callable(runner.private_directory)
+assert 'httpx' not in sys.modules
+print('public_runner_import_stdlib_only_passed')
+'''
+    result = subprocess.run([sys._base_executable, '-I', '-S', '-B', '-c', proof, str(ROOT)],
+                            cwd=tmp_path, capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == 'public_runner_import_stdlib_only_passed'
+
+
 @pytest.fixture
 def installation(tmp_path, monkeypatch):
     client_parent = tmp_path / 'private clients'

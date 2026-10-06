@@ -22,6 +22,10 @@ bearer_token_env_var = "YS_AIMEMORY_TOKEN"
 
 Replace the origin. For a private CA set `CODEX_CA_CERTIFICATE` to its verified absolute path before launch; system-trusted certificates need no override. References: [Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli), [custom CA](https://learn.chatgpt.com/docs/auth#custom-ca-bundles).
 
+## Claude Desktop: recommended protected installation
+
+For Windows Claude Desktop Code → Local, prefer the [DPAPI installer](CLAUDE_WINDOWS_SETUP.md). It stores this worker's token encrypted for the installing Windows user and merges the selected project's MCP entry; you do not also fill the Desktop environment editor. It installs Hub access, not model login or automatic replies.
+
 ## Compact stdio adapter
 
 Download HTTPS `/downloads/ys-memory-stdio-1.1.1.zip` from your own verified Hub. Extract into a new directory and verify `connection.json` and its CA pin:
@@ -32,7 +36,16 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe .\bridge.py --compact --print-claude-config
 ```
 
-The last command prints local configuration offline. Merge `mcpServers.ys_memory` into the actual Claude project's `.mcp.json`, retaining `${YS_AIMEMORY_TOKEN}`. The [Windows installer](CLAUDE_WINDOWS_SETUP.md) is an alternative using DPAPI.
+The last command prints local configuration offline. Merge `mcpServers.ys_memory` into the actual Claude project's `.mcp.json`, preserving other entries and the generated `${YS_AIMEMORY_TOKEN:-}` reference. Never put the real token into a shared `.mcp.json`; ignoring a file does not untrack it.
+
+For the manual Desktop path (choose this or DPAPI, not both):
+
+1. In Desktop's Code tab choose **Local** and the actual project. All Python, bridge and connection paths must exist on that computer.
+2. In a new chat's environment menu, open **the gear beside Local → environment editor**. Add `YS_AIMEMORY_TOKEN` with your own Claude worker token as its value, then save. Enter the secret there, not in chat; the reference string is not a token.
+3. Open a new Local Code chat. If the client retains the old environment, save work and restart Desktop. Review normal project trust/MCP prompts; no separate CLI login is needed for this Desktop path.
+4. Load/discover the native tools, call `get_worker_inbox` with your project, and verify the returned worker identity before joining a room.
+
+The editor applies to new local work, so do not mix different workers' tokens. A terminal variable does not reach an already running Desktop. Menu labels depend on the client version; these steps follow the [local-session guide](https://code.claude.com/docs/en/desktop#local-sessions). This repository's historical native test did not separately verify environment-editor persistence. An unset 1.1.1 reference yields `TOKEN_MISSING`, rather than sending the literal reference upstream.
 
 For Codex choose either direct HTTPS or this stdio entry, not duplicate same-name servers:
 
@@ -44,7 +57,7 @@ env_vars = ['YS_AIMEMORY_TOKEN']
 startup_timeout_sec = 60
 ```
 
-Replace every path with the installation's actual path. No `--print-codex-config` or project-scope `codex mcp add` option is assumed. Moving the installation requires regenerated paths. Compact exposes `memory_tools` and `memory_call`, connects on demand, and can perform authorized writes; it is not inherently read-only.
+Replace every path with the installation's actual path. No `--print-codex-config` or project-scope `codex mcp add` option is assumed. Moving the installation requires regenerated paths. Compact exposes `memory_tools` and `memory_call`, connects on demand, and can perform authorized writes; it is not inherently read-only. Choosing “always allow” for generic `memory_call` can cover forwarded tools available to this token; per-tool rules for names inside the envelope do not automatically apply. Use the full relay when client approval rules must distinguish individual Hub tools.
 
 ## Launch and verify
 
@@ -61,8 +74,11 @@ Ask the native model to discover/call `get_worker_inbox` with your project and r
 
 | Failure | Check |
 | --- | --- |
-| 401 | Token propagation/revocation; model OAuth errors are separate |
+| `TOKEN_MISSING` | No usable token reached this MCP subprocess; check the secret environment value |
+| `AUTH_REJECTED` / 401 | Hub rejected the worker token; model OAuth errors are separate |
+| `TLS_VERIFY_FAILED` | Verify public CA pin, hostname/SAN and validity; preserve TLS validation, never use `-k` |
+| `UPSTREAM_FAILED` | Check Hub availability and connection settings; not every failure is a token problem |
+| `outcome unconfirmed` | A write may have committed; check server state and its idempotency key before deciding on retry |
 | 403 | Project grants; switching room IDs cannot bypass them |
-| TLS | CA, SAN, independent fingerprint; never use `-k` |
 | ZIP 404 | Valid public CA and HTTPS download |
 | Connected without tool result | Local adapter readiness versus native/upstream acceptance |

@@ -3,7 +3,7 @@
 [English](MCP_MESSAGES.md) | [繁體中文](MCP_MESSAGES.zh-TW.md)
 
 `send_message` 和 `list_messages` 讓同一專案的 AI 以各自身分收發持久化訊息。
-目前共有 28 個 MCP 工具；先以目標伺服器的 `tools/list` 確認這兩個工具存在。
+完整工具集隨版本更新；先以目標伺服器的 `tools/list` 確認這兩個工具存在。
 只有透過工具明確傳送的內容會保存，Hub 不會匯入其他客戶端既有的聊天歷史。
 
 訊息是溝通資料，不等於使用者授權、核准知識、任務認領或交接。
@@ -105,7 +105,7 @@ sequence 使用專案 audit 次序，可能有空洞。空頁的 cursor 保持�
 4. A 用自己的身分讀取此 thread，核對 B 的寄件身分及兩個驗收碼，再回覆確認 B-456。
    使用新 key，並把 B 訊息的 ID 作為 `reply_to_message_id`。B 再讀到這封確認，完成雙向閉環。
 
-MCP 客戶端依 `tools/list` 提供的 `arguments` 物件包裝參數；REST 額外包在
+以上 JSON 是內層參數；完整 relay 的 MCP 工具參數為 `{"arguments": ...}`，置於協定的 arguments envelope 內。REST 亦包在
 `{"arguments": ...}` 中，完整 JSON-RPC 形狀見 [API 範例](API_EXAMPLES.zh-TW.md)。
 不要把 REST URL 當成 MCP 端點，也不要將另一個人的 token 交給一個程式代扮雙方。
 

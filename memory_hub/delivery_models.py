@@ -31,6 +31,18 @@ class ClaimDelivery(BindingRef):
         return self
 
 
+class ReserveDelivery(BindingRef):
+    generation: int = Field(ge=1)
+    request_id: ObjectId
+    queue_seconds: int = Field(default=1800, ge=60, le=3600)
+
+
+class ActivateDelivery(BindingRef):
+    generation: int = Field(ge=1)
+    reservation_id: ObjectId
+    lease_seconds: int = Field(default=300, ge=15, le=300)
+
+
 class DispatchDelivery(BindingRef):
     delivery_id: ObjectId
     lease_id: ObjectId
@@ -52,5 +64,5 @@ class DisconnectBinding(BindingRef):
 
 
 DELIVERY_MODELS = {'join': JoinDelivery, 'heartbeat': BindingRef, 'claim': ClaimDelivery,
-                   'dispatched': DispatchDelivery, 'pause': PauseDelivery, 'control': ControlBinding,
+                   'reserve': ReserveDelivery, 'activate': ActivateDelivery, 'dispatched': DispatchDelivery, 'pause': PauseDelivery, 'control': ControlBinding,
                    'disconnect': DisconnectBinding, 'status': SessionRef}

@@ -208,6 +208,23 @@ def test_catalog_keys_have_both_languages_and_scripts_are_scoped():
             _locale.reset(token)
 
 
+def test_queued_phrases_say_not_yet_read_and_claim_no_acceptance_or_comprehension():
+    keys = ('ui_c10d00000001', 'ui_c10d00000002', 'ui_c10d00000003')
+    label, ends, note = (CATALOG[key] for key in keys)
+    assert label == {'en': 'Queued, not yet read', 'zh-TW': '排隊中，尚未讀取'}
+    assert (ends['en'].strip(), ends['zh-TW'].strip()) == ('Queue ends', '排隊期限')
+    assert 'does not show' in note['en'] and '不代表' in note['zh-TW']
+    for row in (label, ends, note):
+        assert row['en'].isascii() and re.search('[一-鿿]', row['zh-TW'])
+    for lang in LANGUAGES:
+        token = _locale.set(lang)
+        try:
+            data = json.loads(re.search(r'const UI_MESSAGES=(.*?); const uiText=', chat_script())[1])
+        finally:
+            _locale.reset(token)
+        assert [data[key] for key in keys] == [label[lang], ends[lang], note[lang]]
+
+
 def test_translation_resource_is_declared_for_distribution():
     root=Path(__file__).resolve().parents[1]
     assert '"ui_catalog.json"' in (root/'pyproject.toml').read_text(encoding='utf-8')

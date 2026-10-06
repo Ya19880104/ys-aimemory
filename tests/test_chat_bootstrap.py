@@ -23,20 +23,24 @@ ORIGIN = 'https://hub.example.test'
 
 def test_bootstrap_pins_exact_required_files_and_preserves_layout(tmp_path):
     revision = re.search(r"\$SourceRevision = '([0-9a-f]{40})'", SOURCE).group(1)
-    assert revision == '3b6e3aace065c67f336192c993b74757268b8b83'
+    assert revision == '1cb0e39d72fcd160b32b1fba220a03f44dbfa56a'
     entries = re.findall(r"Source = '([^']+)'; Sha256 = '([0-9a-f]{64})'", SOURCE)
     assert len(entries) == 5
     assert {name for name, _ in entries} == {
         'scripts/setup-chat.py', 'scripts/setup-claude.py',
         'memory_hub/client_watch.py', 'memory_hub/client_chat_bridge.py',
         'memory_hub/client_secret.py'}
-    for name, expected in entries:
+    pins, actual = dict(entries), {}
+    for name in pins:
         body = (ROOT / name).read_bytes().replace(b'\r\n', b'\n')
-        assert hashlib.sha256(body).hexdigest() == expected
+        actual[name] = hashlib.sha256(body).hexdigest()
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(body)
-    chat = bootstrap.load('isolated_bootstrap_layout', tmp_path / 'scripts/setup-chat.py')
+    # Check every pin before failing so a re-pin sees each stale file, not only the first.
+    stale = [f'{name} {digest}' for name, digest in actual.items() if digest != pins[name]]
+    assert not stale, '\n'.join(stale)
+    chat =bootstrap.load('isolated_bootstrap_layout', tmp_path / 'scripts/setup-chat.py')
     # Existing configure() resolves both copied helpers relative to __file__.
     source_root = Path(chat.__file__).resolve().parents[1]
     assert (source_root / 'memory_hub/client_watch.py').is_file()

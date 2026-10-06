@@ -4,6 +4,12 @@
 
 本文件記錄 Claude F1–F5 findings 的修正及此檢查點已有證據，不代表所有生命週期或原生客戶端情境均已完成。
 
+## 最新狀態
+
+- Codex：已記錄的原生接收／讀取／回覆及明確斷線驗收通過。
+- Gemini：手動啟用單回合自動原生讀取／回覆通過，pilot 已斷線並停止；原生 Stop hook 啟用、持續多輪及重啟恢復仍 NOT RUN。
+- 新 cloud continuation：NOT PASSED，task／訂閱及私人 runtime 已停止；歷史單事件 PASS 分開保留。
+
 ## 來源與安裝器身分
 
 - 生命週期來源檢查點：`3b6e3aa`。
@@ -53,3 +59,49 @@ F5b 原指 remote admin/API disconnect 留下本機 hook；正常本機 Claude d
 保留三個私人驗收 helper 錯誤：使用僅存在列印輸出的 receipt 欄位、設定檔未從 state 目錄尋找，以及誤以為發文回條包含全文。修正後沒有重送已成功的發文；讀回房間確認原生回覆與標明腳本的手動發文各只有一次。
 
 未聲稱完整程序樹取消證明。Issue **#12 保持 open**，涵蓋較廣的生命週期／crash／STOP、恢復及負載驗收。2026-10-04 Gemini Antigravity compact stdio 的提示觸發原生身分、完整讀取及同房回覆為歷史 PASS；自動閒置喚醒仍 **NOT RUN**。本輪未重測 Claude 斷線／喚醒及雲端生命週期。既有客戶端不會自動更新；網址安裝仍需輸入憑證及明確啟用接收器。
+
+## 後續檢查點 — 手動與自動驗收界線
+
+後續 continuation 在新 cloud 對話的身分驗證通過；三項事件 delivery 收到 callback acknowledgment，但此檢查點尚未完成原生完整讀取／回覆。先前 cloud 單事件 PASS 保留為歷史。[官方 MCP Events 指引](https://developers.openai.com/plugins/build/mcp-events)區分 webhook acknowledgment 與非同步 task 處理，並允許 batching；不宣稱立即回覆或固定延遲。
+
+Gemini Antigravity 先前提示觸發的原生身分／讀取／回覆 PASS 保留為該次證據。當時自動收訊仍待原生權限／Stop hook 證據，已由下述單回合結果更新；一次通知候選不是持續服務或公開安裝器。工具可見、核准、hook 執行、完整讀取及同房回覆分開驗收。設定後使用[日常短版指南](START_CHATTING.zh-TW.md)；本檢查點未修改 schema、lease 或 recovery contract，也不宣布本輪最終結果。
+
+### 後續診斷檢查點（非原生驗收）
+
+私人 Windows 命令 probe 重現原 `cmd /c` 引號失敗（exit 1）；修正外層引號後 exit 0。協調者約臺北時間 12:37 僅更新自有 global／workspace hook 命令，並保留 cleanup 回條。此時仍未觀察到真正原生 Stop hook 執行，probe 不證明自動 Hub 喚醒。
+
+新的短版 cloud task 約 12:33 啟用，模型 GPT 6.1 Sol／Light；12:36:33 留下新合成管理者訊息。此檢查點的原生讀取／回覆結果仍 pending。前述 delivery 次數是歷史觀察，不是此 task 的最終結果。
+
+## Cloud continuation 結果 — NOT PASSED
+
+新的乾淨 cloud 對話身分驗證通過，但訂閱仍卡在未讀的舊 batch。該 batch 派送三次，完整讀取與回覆仍無，processed cursor 未前進，因此新管理者 marker 未建立新的自動原生讀取／回覆。Task metadata 顯示某次執行比 first lease expiry 晚約六秒，這只是相關，不證明根因或該次執行處理哪個事件。
+
+之後明確手動 negative control 刻意以不存在的 notification ID 呼叫 `read_delta`；UI 回傳 `-32602`，安全診斷記錄 `notification_unknown`。這是手動測試，不是自動 task 用錯 ID 的證據。只觀察到此診斷呼叫；沒有成功讀取／回覆 log，也不證明 provider 完全未執行。
+
+本輪 continuation 為 **NOT PASSED**，不是 cloud 生命週期驗收完成。協調者約臺北時間 12:45 開始停止 task；此檢查點的 unsubscribe 確認及私人 runtime 停止仍 **PENDING**。歷史單事件 PASS 保留。
+
+當時 Gemini 仍待使用者原生工具核准；私人 Windows observer 引號修正通過離線命令 probe，但當時真正原生 Stop hook 執行仍 **NOT RUN**。該檢查點不支持 Gemini 自動 Hub 驗收；後續手動單回合 PASS 亦不代表持續或公開接收器。本文件更新未改 schema、lease 或 recovery semantics。
+
+### 臺北時間 12:46 cleanup 已確認
+
+原生 task UI 顯示繼續控制，確認處於 paused；訂閱三次 delivery 後已確認 unsubscribed。綁定 disabled 且 disconnected，generation／version 8，processed cursor 仍未前進。私人 runtime 停止回條確認 `stopped=true`、`process_running=false`。此更新覆蓋前述 cleanup PENDING，但本輪 **NOT PASSED** 結果不變。該 cleanup 檢查點的 Gemini 仍待授權且 sidecar 未啟用；下述啟動問題更新覆蓋當時等待核准狀態。
+
+### 歷史 Gemini 啟動問題 — 12:49–13:16（已由下文更新）
+
+使用者確認 12:49 核准後原生 `chat_status` 已完成，回傳 `chat_operation_unavailable`。來源分析發現 pilot adapter 缺少 `chat-binding.json`，在任何 HTTP 請求前即發生 file-not-found。這是未綁定啟動失敗，不是憑證或 CA 驗證遭拒的證據。13:16 已準備僅身分用途的 inactive config（`expires_at=0`），但原生重試草稿尚未送出，當時恢復仍未確認，已由下述原生狀態 PASS 更新。當時真正 Stop hook 尚未觀察到，自動收訊未驗收通過；見後續手動單回合結果。聚焦來源測試（13 bridge checks、24 targeted checks）不能取代待執行的原生重試。
+
+### Gemini 手動啟用的單回合自動回覆 — PASS
+
+臺北時間 13:18，原生 `chat_status` 回傳指定身分／專案／房間與 `active:false`，身分／狀態 **PASS**。13:31 管理者明確啟用私人有界 one-shot 接收器；這是手動 admission，不是 native Stop observer 啟用。
+
+13:32:04 人類在 Hub 網站留言，官方 Antigravity sidecar `agentapi send-message` 喚醒已綁定原生對話，之後沒有追加 GUI follow-up prompt。使用者核准 conversation-scoped `chat_read`／`chat_reply` 後，13:32:51.9307487 完成原生完整讀取，13:33:00.7933464 回覆。Hub 確認單次 delivery replied、attempt 1、processed human sequence 7、reply sequence 8、turns 1/1 並達 `budget_exhausted`；回覆含合成 marker 與 `RECEIVED`。
+
+這證明**手動啟用的單回合自動原生讀取／回覆**，包含首次工具核准。Native Stop observer 啟用仍 **NOT RUN**；持續多輪、重啟恢復及公開安裝器仍 **NOT RUN**。Pilot cleanup 已確認，見下方。Bridge 來源修正使缺 binding 回報 `chat_not_active`，13 項聚焦測試為來源證據，與原生結果分開。本輪新 cloud continuation 失敗仍與歷史 cloud PASS 分開。
+
+#### One-shot pilot cleanup 已確認
+
+自有 binding 已斷線（generation 1→2），保留 STOP 與永久 attempt fence，無剩餘自有 Python receiver／MCP 程序。自有 MCP／hook 檔案精確恢復，另行使用者設定變更保留。本次 pilot 已停止，無持續 listener。獨立原生／Hub 回條核對僅支持單回合 PASS，不支持免核准、多輪或 Stop hook 啟用。
+
+### 狀態修正後同步安裝器版本
+
+`2734b65` 的 CI 發現 chat bootstrap 仍固定舊版來源：bridge 已修正，但安裝器尚未跟進。新的固定安裝器版本為 `5f9400802ecdfe98f350a25a1f6848e1cf5ba1d0`，下載來源 `b168876f00f85ccb37e97bb11c3678d8cb9e6ae4`；SHA-256 為 `BCD5D9FA1A4B7CC20579985252261AE47028B22D0FD400D095DFA2DD34F8A53E`。目前教學與 UI 指令已更新此 pin。上方較早的安裝器／原生驗收仍只對原版本有效，不代表新版安裝器已重新完成原生驗收。修正後第一輪 Windows bootstrap／bridge 檢查為 47 項通過。

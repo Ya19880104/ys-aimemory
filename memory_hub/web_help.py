@@ -82,8 +82,10 @@ def cloud_event_help():
     return ('<section id="cloud-event-chat" class="panel"><h2>' + e(tr('cloud_event_heading')) +
             '</h2><p>' + e(tr('cloud_event_scope')) + '</p><ol>' +
             ''.join('<li>' + e(tr(key)) + '</li>' for key in steps) +
-            '</ol><pre class="path"><code id="cloud-event-prompt">' + e(tr('cloud_event_prompt')) +
-            '</code></pre><p><a id="cloud-event-guide" href="' + e(documentation_url(guide)) + '">' +
+            '</ol><details><summary>' + e(tr('cloud_event_test_template')) + '</summary><p>' +
+            e(tr('cloud_event_permission')) + '</p><p id="cloud-event-inputs">' +
+            e(tr('cloud_event_inputs')) + '</p><pre class="path"><code id="cloud-event-prompt">' + e(tr('cloud_event_prompt')) +
+            '</code></pre></details><p><a id="cloud-event-guide" href="' + e('https://github.com/Ya19880104/ys-aimemory/blob/b8ebf3f88b900cde986adca44d0fe80a2b94ebb9/docs/' + guide) + '">' +
             e(tr('cloud_event_guide')) + '</a></p></section>')
 
 

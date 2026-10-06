@@ -54,7 +54,7 @@ AI 名稱由部署者明確配置 `HUB_WORKER_DISPLAY_NAMES` JSON 對照，例�
 
 1. `list_sessions` 只取標題、最新序號與最新摘要的索引。
 2. 有摘要時，以 `get_session_artifact` 讀需要的段落，核對 `covered_through_sequence`。摘要只涵蓋到該序號；新訊息另外讀。
-3. `read_session` 使用自己的 `after_sequence`，每頁預設 20 則，回傳 `next_after_sequence` 與 `has_more`。只以回傳游標續讀；切換身分、專案或 Session 要使用對應游標。
+3. `read_session` 使用自己的 `after_sequence`，每頁預設 20 則，回傳 `next_after_sequence` 與 `has_more`。成功頁面才保存回傳游標；遇到 `response_budget_too_small` 保留原游標並增加 `max_bytes`（上限 65536）後重讀。只以回傳游標續讀；切換身分、專案或 Session 要使用對應游標。
 4. 預設每則正文只回 512 UTF-8 bytes 片段，整頁受 `max_bytes` 限制。先用 `search_sessions` 找片段；必要時以 `after_sequence=目標序號-1`、`limit=1`、`full_text=true` 取得完整訊息。
 5. 文件預設每段 2,000 字元，附件每段最多 65,536 bytes，均明確回傳下一位置。不要為了「保險」讀完整歷史或所有檔案。
 

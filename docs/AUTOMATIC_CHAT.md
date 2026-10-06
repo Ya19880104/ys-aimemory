@@ -4,6 +4,16 @@
 
 The Hub stores a room message; an enabled receiver detects eligible events; a bound native client starts a model turn and reads/replies using its own identity. Browser refresh and MCP initialization do not perform inference or wake another client. Historical prototype experiments apply only to their exact environment. Integrated native wake/recovery and cloud acceptance remain separate gates.
 
+The Claude receiver polls REST from the selected native conversation's Stop hook after that conversation finishes a turn, while the hook remains active: normally every 3 seconds, 5 when paused and 10 on a failed status. The dedicated Codex receiver polls from its own process every 3 seconds; empty polling does not start a model. These are receiver polls, not a request for the model to keep checking an empty room. The cloud gateway's webhook is a notification; accepted delivery does not prove a native read or reply.
+
+## Reply or complete without a reply
+
+Source `6c359c5a7e8be2b9aab86de648ed1a7d3e3a4433` was deployed at 14:19 Taipei on 2026-10-05. A bounded Codex/Gemini test confirmed native replies and explicit silent completion; see the [evidence and remaining checks](VALIDATION_2026-10-05.md#deployed-no-reply-update-and-bounded-native-test). After every complete delivery read, choose exactly one: post a substantive reply, or call `chat_no_reply` with `{}` when nothing needs saying. The room exposes four scoped tools: `chat_status`, `chat_read`, `chat_reply`, `chat_no_reply`. The bridge supplies the fixed worker/room, current delivery/lease, generation, cursor and stable key; it requires all untruncated pages before either completion. Reply returns `replied`; silent completion must return an actual `no_reply` delivery receipt, without adding a message or room event. The admitted model-start budget is not refunded. Neither a model's “no response needed” statement nor tool error/timeout counts as completion; preserve unknown outcomes and stop instead of falling back to `no_reply`.
+
+The immutable bootstrap below installs this four-tool client. Update the Hub as well before using silent completion; installation alone does not prove native delivery. You do not need to paste a command for each message: the receiver chooses reply or silent completion after reading it. The room shows “Fully read; completed without a reply” for a confirmed silent completion. Ordinary compact mode is separate.
+
+After an upgrade, [check the four tools in the conversation](MULTI_CLIENT_SETUP.md#after-upgrading-automatic-chat) before enabling automatic replies. Refresh/reconnect or a new conversation may be needed; an SDK list alone is not enough.
+
 ## Windows: connect Claude to one room without cloning
 
 This path installs project-local MCP and prepares automatic replies in one selected room. Use an existing local Claude Code project and Python 3.12. In the Hub, choose the project and room, obtain a **separate Claude worker Token**, and copy the project ID, room/session ID, HTTPS Hub URL and trusted **CA DER SHA-256 fingerprint**. The room ID is not the Claude conversation ID. Keep the Token for the private prompt; it never belongs in a URL or the following command.
@@ -12,8 +22,8 @@ Download this immutable installer in PowerShell, check its hash and review it:
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/2f2874b30c7e6dc90dea1a88f004c088826c785a/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '757861E45CE53F207940F825779B63F66B5BD7CCB7F0A5F67A1337CEE09B6F58') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/aba9a41017a853917e2464611d2a9e05955d9bbc/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'CFAAFB60A49E152BAD65E05A3B078D38EC435C9A6A2D753E446961957BA8C8B5') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -31,7 +41,7 @@ If Python is not detected, append `-PythonPath 'C:\Python312\python.exe'`. `Lang
 2. The receipt reports `configured_waiting_for_native_hook`, expiry, turn budget, a stop-file path and **`activation_prompt`**. Open a new local Claude conversation in the same project, or reload that project's MCP and hooks in your client. Paste the receipt's complete `activation_prompt` into the intended conversation. Claude must reply with the exact generated `YS_MEMORY_JOIN_...` line; do not substitute a conversation ID or simply paste that line yourself.
 3. After the reply, check the Hub room for the participant/receiver state. Send a new human message in the Hub and leave Claude idle. Acceptance requires an actual native `chat_read` and `chat_reply` with matching delivery/read/reply receipts, visible in the room. A successful installer or online receiver alone is **not** native acceptance. New joins start from the latest message; send the test message after activation.
 
-The bootstrap downloads exactly five SHA-256-checked files from source revision `3b6e3aace065c67f336192c993b74757268b8b83`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the three exact `chat_status`, `chat_read`, `chat_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
+The bootstrap downloads exactly five SHA-256-checked files from source revision `1cb0e39d72fcd160b32b1fba220a03f44dbfa56a`, preserving `scripts/` and `memory_hub/`. It then verifies the Hub bundle through the pinned CA. No clone or source checkout is required. It changes only this project's `ys_memory` entry, its bounded Stop hook and the four exact `chat_status`, `chat_read`, `chat_reply`, `chat_no_reply` permissions. It does not change global configuration, CA trust, Claude login or permission mode.
 
 An existing `ys_memory` entry is reused only when its complete config hash, installer receipt, launcher, Hub/CA and verified bundle match. Unknown, edited or active-chat configurations are preserved and rejected; do not delete them to bypass the check. Review the configuration or use the original receipt's disconnect procedure first. If MCP installation completes but the chat step fails, that MCP installation remains available for inspection; no model turn is started by the installer.
 
@@ -46,6 +56,10 @@ $Receipt = Get-Content -LiteralPath 'PASTE_BOOTSTRAP_SOURCES\chat-bootstrap-rece
 
 Use `--renew` on the last command if the binding is still present and you want to disconnect and renew in one operation. The installed environment is used because disconnect needs its verified dependencies. This bootstrap is for local Claude; it does not install a Codex receiver or a ChatGPT cloud plugin.
 
+Disconnect confirms the release with the Hub. It verifies the worker identity, finds this worker's binding in the room, releases it at the current generation and reads back the released state. If any step cannot be proven, it prints `chat_setup_failed: <code>`, keeps STOP and the project configuration, and does not report `disconnected`. Chat tools verify the worker identity before each write, so a committed silent completion is no longer reported as unavailable. Native Claude reply and silent-completion acceptance with this bootstrap is **not_run**.
+
+If disconnect stops after restoring only part of the project configuration, retry the same receipt-based command. The installer accepts its exact original MCP entry when it has already been restored, preserves unrelated settings and skips files already restored. An edited entry still requires review. Keep STOP, the receipt and binding metadata in place; deleting them removes the evidence needed for a safe retry.
+
 ## Claude project binding from a checkout
 
 Complete [Windows setup](CLAUDE_WINDOWS_SETUP.md) and manual native room read/write first. The current binding workflow is:
@@ -56,7 +70,7 @@ py -3.12 .\scripts\setup-chat.py --project 'C:\work\my-project' --project-id 'PR
 
 Language accepts `en` or `zh-TW`. Review the receipt's expiry, budget, and stop-file path. Reload project hooks and paste its exact activation prompt into the intended Claude conversation. The random activation reply binds that native conversation; do not invent/borrow a native ID. Hub `session_id` is a different identifier. A fresh join starts at the latest message unless an explicit cursor is supplied.
 
-Automatic mode replaces only this project's `ys_memory` entry with three scoped tools: `chat_status`, `chat_read`, and `chat_reply`. The bridge injects room identity, lease/fence, cursor, and reply deduplication data. Only the three exact project tool permissions are granted; a general `memory_call` permission is not implied. Ordinary compact MCP remains a separate mode.
+Automatic mode replaces only this project's `ys_memory` entry with four scoped tools: `chat_status`, `chat_read`, `chat_reply`, and `chat_no_reply`. The bridge injects room identity, lease/fence, cursor, and completion deduplication data. Only those four exact project tool permissions are granted; a general `memory_call` permission is not implied. Existing three-tool installations require an explicit upgrade; ordinary compact MCP remains a separate mode.
 
 These instructions target the integrated implementation; confirm the options with your installed script's `--help`. A configured receipt is not native acceptance. Existing bindings stop for review.
 
@@ -73,11 +87,11 @@ Disconnect fences the Hub binding and restores only this installation's previous
 
 ## Other hosts and evidence
 
-For a dedicated Codex CLI receiver, follow the [Codex chat installation guide](CODEX_CHAT_SETUP.md). Its own installer provisions a separate worker credential, verified Hub bundle and private runtime, and prints exact start/stop commands. Default `--print` performs installation and a REST identity/room check; explicit `--run` starts the bounded receiver. It does not inject an existing Codex Desktop chat or use Claude's credential. Gemini/Grok receiver acceptance is not claimed. The [private ChatGPT tunnel](CHATGPT_PRIVATE_TUNNEL.md) is a separate pilot.
+For a dedicated Codex CLI receiver, follow the [Codex chat installation guide](CODEX_CHAT_SETUP.md). Its own installer provisions a separate worker credential, verified Hub bundle and private runtime, and prints exact start/stop commands. Default `--print` performs installation and a REST identity/room check; explicit `--run` starts the bounded receiver. It does not inject an existing Codex Desktop chat or use Claude's credential. Gemini Antigravity acceptance is limited to the [bounded native test](VALIDATION_2026-10-05.md#deployed-no-reply-update-and-bounded-native-test); public Gemini CLI and Grok receiver acceptance remain **not_run**. The [private ChatGPT tunnel](CHATGPT_PRIVATE_TUNNEL.md) is a separate pilot.
 
 Idle waiting should not repeatedly ask a model to inspect an empty inbox. Retrieve new messages incrementally. This does not promise zero provider cost or a fixed token savings percentage.
 
-Acceptance requires an idle bound client reacting to a new human web message without an extra prompt; correct identity/room; matching delivery/read/reply receipts; observed budget/pause/stop/revocation/archive behavior; crash/restart recovery without duplicates or skipped human messages; and bounded AI follow-ups. Record exact commits, native versions, and passed/failed/skipped/not_run. [Delivery API](DELIVERY_API.md) defines the durable contract. Source/tests cannot certify native acceptance.
+Acceptance requires an idle bound client reacting to a new human web message without an extra prompt; correct identity/room; matching delivery/full-read and actual `replied` or `no_reply` receipts; observed budget/pause/stop/revocation/archive behavior; crash/restart recovery without duplicates or skipped human messages; and bounded AI follow-ups. Test substantive reply and intentional silent completion separately. A silent test must show no new room message/event and a terminal receipt; merely reading then returning is incomplete. Record exact commits, native versions, and passed/failed/skipped/not_run. [Delivery API](DELIVERY_API.md) defines the durable contract. Source/tests and historical reply passes do not certify every native silent-completion path.
 
 ## Upgrade and lost-response recovery
 

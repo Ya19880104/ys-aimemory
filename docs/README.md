@@ -7,6 +7,8 @@ Start with [quickstart](QUICKSTART.md) for deployment, [client setup](CLIENT_SET
 | Guide | English | Traditional Chinese |
 | --- | --- | --- |
 | Start chatting: first connection and everyday use | [English](START_CHATTING.md) | [繁體中文](START_CHATTING.zh-TW.md) |
+| 2026-10-06 CI reruns and client lifecycle fixes | [English](VALIDATION_2026-10-06.md) | [繁體中文](VALIDATION_2026-10-06.zh-TW.md) |
+| 2026-10-05 deployment, bilingual UI and native preparation | [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md) |
 | 2026-10-04 review fixes and native lifecycle acceptance | [English](REVIEW_CLOSURE_2026-10-04.md) | [繁體中文](REVIEW_CLOSURE_2026-10-04.zh-TW.md) |
 | 2026-10-04 P2 recovery validation | [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md) |
 | Claude delivery review follow-up | [English](CLAUDE_REVIEW_FOLLOWUP_2026-10-03.md) | [繁體中文](CLAUDE_REVIEW_FOLLOWUP_2026-10-03.zh-TW.md) |

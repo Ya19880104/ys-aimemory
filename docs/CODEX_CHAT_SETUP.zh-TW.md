@@ -6,6 +6,12 @@
 
 一般按需使用 MCP 請看[客戶端接入](CLIENT_SETUP.zh-TW.md)；聊天室控制與投遞規則請看[自動對話](AUTOMATIC_CHAT.zh-TW.md)。
 
+**版本界線：** [驗證紀錄](VALIDATION_2026-10-05.zh-TW.md)將目前部署與先前有界native reply／no_reply證據分開。固定版本安裝器包含四工具能力；請一起更新自己的Hub與接收器，保留原證據。你不用為每則新訊息另貼提示：接收器讀取後會回覆，或記錄「完整已讀；已完成而不發送回覆」。連結中的全新公開安裝與原生試驗只證明該有界路徑，不證明所有host或無限運作。
+
+本頁指令固定來源 `3e6166789fa938afc58a78565c625fc73888acb9`，修正尚未建立專用環境時，使用只有標準函式庫的 Python 啟動失敗的問題。本機回歸與接收器測試已通過；全新公開安裝曾重現原始載入失敗，該試驗已關閉並撤銷 Token。[目前驗證與部署界線](VALIDATION_2026-10-06.zh-TW.md#codex-公開安裝器相依套件修正)分開記錄。此來源檢查點的修正版全新公開安裝及原生驗收仍為 **not_run**。先前三回合試驗使用另外的 guard，不能證明新版接收器自身每回合 Job 清理已通過。
+
+先前的[全新公開安裝與有界原生試驗](VALIDATION_2026-10-05.zh-TW.md#全新公開codex安裝到有界原生完成)已passed：真正隱藏Token輸入及 `-Print`，接著官方 `--receipt --run`，三則人類訊息得到reply／no_reply／reply，並核對停止、斷線及撤銷。實測使用已核對的Codex／Python3.12路徑、英文、一小時、三回合、每回合90秒，以及另外至多600秒的試驗guard。這是專用CLI接收器，不是既有Desktop對話；雙語模型輸出、預設PATH及無人值守設定沒有通過。[先前僅安裝結果](VALIDATION_2026-10-05.zh-TW.md#公開codex僅安裝關卡)仍分開保留。
+
 ## 1. 準備 CLI 與聊天室
 
 使用 Windows 與 Python 3.12，只有選擇 checkout 替代方式才需要 Git。先按照 [Codex CLI 官方教學](https://learn.chatgpt.com/docs/codex/cli)的 **Windows** 步驟安裝正式 CLI，再開啟新的 PowerShell 終端機。檢查安裝：
@@ -39,8 +45,8 @@ py -3.12 --version
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/2f2874b30c7e6dc90dea1a88f004c088826c785a/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '8FA7844498102DC311210CE9E1A29DBC8BE283907BEB159F2596D70F49EF2293') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/d688fbfcd132ec8ed9b05937438320ab1c9b94a6/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'EDF5651AAAE0A2CDF319D75B1BBDBF370972E7316F5CFA610D3873BE518141A4') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -52,7 +58,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 
 預設 `-Print` 會安裝並核對授權，不啟動模型。於隱藏提示輸入 Token 後，依下方「啟動專用接收器」複製收據的完整 `start_command`。明確使用 `-Run` 則會安裝後立即啟動有限額接收器，兩個開關不可同時使用。`-PythonPath` 可指定既有 Python 3.12；`-TurnTimeout` 預設 90 秒。不需要填本機專案資料夾：接收器會建立私有空白工作目錄進行對話回合。
 
-啟動腳本核對來源版本 `3b6e3aace065c67f336192c993b74757268b8b83` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
+啟動腳本核對來源版本 `3e6166789fa938afc58a78565c625fc73888acb9` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
 
 ### 替代方式：從 checkout 安裝
 
@@ -61,7 +67,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach 3b6e3aace065c67f336192c993b74757268b8b83
+git checkout --detach 3e6166789fa938afc58a78565c625fc73888acb9
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
@@ -100,7 +106,9 @@ native_acceptance: not_run
 
 將回條中完整的 **`start_command`** 複製到 PowerShell 執行。它使用安裝目錄內的 Python 與腳本，帶入 `--receipt '<實際路徑>\codex-install.json' --run`。讓這個終端機／程序持續執行；這一步才會明確啟用有限度的模型執行。首次安裝指令若改用 `--run`，也能安裝後立即啟動；第一次操作建議採用兩步流程。
 
-接收器只綁定指定聊天室。新綁定會從聊天室當下的訊息位置開始，請在線上後再發送**新**測試訊息。閒置時只檢查投遞，不呼叫模型。符合條件的投遞會啟動原生 `codex exec`，只提供 `get_worker_inbox`、`read_session`、`post_session_message` 三個 MCP 工具，核對身分、讀取該批訊息並允許一則對話回覆。這組工具不提供專案開發工作能力。原生非互動執行與已儲存 CLI 登入的使用方式，見[官方非互動模式教學](https://learn.chatgpt.com/docs/non-interactive-mode)。
+接收器只綁定指定聊天室。新綁定會從聊天室當下的訊息位置開始，請在線上後再發送**新**測試訊息。閒置時只檢查投遞，不呼叫模型。接收器啟動原生 `codex exec`，提供 `get_worker_inbox`、`read_session`、`post_session_message`、`complete_session_delivery` 四個 MCP 工具；驗證已認證的 worker 及該批所有全文分頁後，要求實際完成方式二擇一：有實質內容的回覆或 `no_reply`。這組工具不提供專案開發工作能力。原生非互動執行與已儲存 CLI 登入的使用方式，見[官方非互動模式教學](https://learn.chatgpt.com/docs/non-interactive-mode)。
+
+Silent completion 的 `complete_session_delivery` 使用同 project／room、delivery ID、有效 lease 與 `delivery-<delivery_id>` key，詳見[交付 API](DELIVERY_API.zh-TW.md#明確無回覆完成)。它不新增訊息／事件，回傳 `delivery_receipt.status=no_reply`。Native proof 須保存 `completion_status` 與分開的 `post_receipt` 或 `no_reply_receipt`；模型沉默、`tool_read`、錯誤或未知 post 結果都不是成功完成。身分／全文已讀／同 worker／generation／expiry／pause guards 仍適用，已扣 turn 不退還。完成 post 後不能改 disposition，也不能把 no_reply 當作錯誤 fallback。
 
 此流程不會替你指定模型或修改已儲存的權限模式。專屬子程序使用自己的唯讀 sandbox 與限定範圍的 MCP 設定。模型回覆會使用 Codex 額度；閒置的網路檢查不是模型回合。
 
@@ -109,8 +117,10 @@ native_acceptance: not_run
 1. 以管理員開啟同一個 Hub 對話，確認專屬 worker 已上線。
 2. 發送新訊息，例如：**「Codex 連線測試：請只回覆一次，說明你的 worker 身分與這則訊息的主題。」** 不要另外要求 Codex 主動查詢。
 3. 在 Hub 確認回覆出現在正確聊天室、作者為預期 worker、有新的訊息 ID／sequence，且沒有重複回覆。
-4. 依安裝回條的 `state_directory` 檢查紀錄：`receiver-status.json` 是接收器狀態；`receipt-<delivery-id>.json` 是該次原生工具呼叫、讀取、發文的證據，以及可取得的 Token 用量。
+4. 依安裝回條的 `state_directory` 檢查紀錄：`receiver-status.json` 是接收器狀態；`receipt-<delivery-id>.json` 是 native 身分／全文已讀及實際 reply 或 no_reply 完成的證據，以及可取得的 Token 用量。刻意無回覆完成須另行測試，確認沒有新房間訊息／事件。失敗、逾時及 silent-completed 回合仍計入 Hub 的 `--max-turns`，只加總發文回覆會低估用量。
 5. 暫停聊天室自動投遞後發送測試訊息，確認暫停期間不會派送新的模型回覆。在原有預算內恢復後，再核對預期的投遞行為。
+
+失敗的原生回合保留第一份 `native-failure-<delivery-id>.json`：只記固定錯誤／階段、已觀察的工具證據與已回報用量；未知用量為 `not_reported`，不是零。此本機未完成證據不能判定伺服器處置或授權重試，即使已觀察到回覆也一樣。被 fence 擋下的重啟另寫一份 `receiver-restart-failure.json`，保留上一份 `receiver-status.json`；明確恢復前須先核對伺服器並確認舊子程序已退出。
 
 瀏覽器自動刷新或 `rest_identity_and_room_passed` 都不能證明原生自動回覆已成功。各項測試請分別記錄為 **passed / failed / skipped / not_run**，附上 checkout commit、接收器版本、聊天室與投遞／訊息 ID。即使後續已有執行回條，安裝回條仍只代表安裝結果。不要將私有回條或憑證公開到 issues。
 
@@ -144,16 +154,65 @@ native_acceptance: not_run
 | `owned_codex_install_modified` 或 `owned_codex_receipt_invalid` | 保留安裝目錄供查核，不要繞過歸屬或雜湊檢查。 |
 | 安裝完成但沒有回覆 | 執行回條中的啟動指令，檢查 CLI 登入、聊天室暫停、新訊息、接收器狀態、預算與實際執行回條。 |
 | `receiver_was_stopped_keep_evidence_and_provision_new_bounded_run` | 保留原 STOP 與證據，需要時明確建立新的有限度安裝。 |
+| `native_job_create_failed`、`native_job_limits_failed`、`native_job_assignment_failed` | Windows無法建立或綁定程序群組；保留失敗紀錄，使用官方收據命令，不要略過群組管理。 |
+| `native_supervisor_python_mismatch` | 使用官方收據指定的Python啟動，不要換成其他launcher或執行檔。 |
+| `native_tree_exit_unconfirmed` | 保留未確認退出的標記及投遞紀錄，先執行唯讀恢復報告；不要刪除標記重跑。 |
+| 回合失敗後，接收器以 `disabled` 狀態結束 | 原生回合失敗時，接收器會停用自己的 Hub 綁定，因此再次執行同一份回條會以 `disabled` 結束。請執行[唯讀恢復報告](#唯讀恢復報告)、保留狀態目錄，並交由管理員判斷。重新啟用綁定是[交付 API](DELIVERY_API.zh-TW.md) 所述的明確 Hub 控制，重啟不會做這件事。 |
 
 本教學描述安裝器與接收器的行為，不表示某台電腦已通過原生執行、Desktop 訊息注入或 ChatGPT 雲端投遞驗收；這些項目需要各自的實測紀錄。
 
 ## 升級與回應遺失恢復
 
+更新後的Windows接收器將每輪原生執行放入專屬程序群組（Windows Job Object）。隔離的Python啟動程序等群組綁定後才啟動Codex；結束時需確認群組沒有作用中的程序、啟動程序退出並關閉控制代碼，成功收據才記錄 `native_containment=windows_job` 與 `native_tree_exit_verified=true`。僅Codex主程序退出還不夠。
+
+接收器突然當機會由Windows終止它擁有的群組，但Hub是否已寫入回覆仍可能未知。保留 `native-active.json`、STOP及投遞紀錄，先用[唯讀恢復報告](#唯讀恢復報告)核對；程序退出不等於回覆已寫入，也不授權重送。
+
 先升級 Hub，再停止舊接收器並使用本頁目前的固定版本安裝器。既有安裝不會自行更新；不要覆蓋仍在運作的接收器或刪除它的狀態檔。Claude 使用解除／續期流程，新版 Codex 使用中斷指令並確認釋放，再建立新的專用安裝並明確設定預算；缺少所有權證據的舊安裝須由管理員核對。
 
 新版接收器先儲存領取請求，遇到暫時網路錯誤會在期限與停止控制內退避重試。相同請求只在尚未派送、沒有完整訊息讀取紀錄且租約有效時取回原通知，不重複扣交付嘗試或回合。已派送後重啟不會逕自再啟動同一輪模型；租約真正到期後重新交付仍有預算成本。這不保證模型恰好執行一次，也不代表已測完原生程序的所有中斷情境。
 
+包含 unresolved-native guard 的接收器，在舊 native turn 尚未釐清時會於 Hub join 前停止。保留 `native-active.json` 與交付 journal；確認舊 child 已退出，核對 server delivery／binding 狀態後才進行經授權的重試，不得單純刪除 marker 繞過阻擋。Offline crash測試使用fake CLI子程序；新版Windows群組雖會退出，當機留下的投遞結果仍需核對，真實provider in-flight recovery仍pending。詳見[2026-10-04 證據](VALIDATION_2026-10-04.zh-TW.md)。核對時可用[唯讀恢復報告](#唯讀恢復報告)查看 Hub 的紀錄。
+
 綁定單純到期後可以一般手動發文；房間暫停、停用綁定、封存或撤銷權限仍然有效。過期自動回覆不得拔掉交付欄位改成手動重發。詳見[交付 API](DELIVERY_API.zh-TW.md)。
+
+## 唯讀恢復報告
+
+出現 `native_exit_unconfirmed_preserve_binding`、回合失敗，或任何不確定能否重啟的情況時，先比對接收器的本機 journal 與 Hub 的紀錄，再做決定。`scripts/inspect-codex-chat-recovery.py` 會印出這份比對。**它只是診斷，不是恢復。**
+
+它不在已安裝的用戶端內。請從 repository checkout 以回條中的專用 Python 執行，並記下 checkout commit：
+
+```powershell
+& '回條中的_PYTHON_路徑' -B 'C:\src\ys-aimemory\scripts\inspect-codex-chat-recovery.py' --receipt '用戶端目錄\codex-install.json'
+```
+
+它做什麼、不做什麼：
+
+- 以 `inspect_command` 所用的同一項檢查驗證回條，再以唯讀方式開啟 `state_directory` 內已知的 journal 檔。它不改變接收器或產品的狀態：不寫入 journal 檔、標記、執行回條或鎖檔，不取得接收器鎖，也絕不移除 `native-active.json`。指令中的 `-B` 請保留。工具會匯入安裝器、接收器與用戶端的 `bridge.py`；少了 `-B`，Python 會在這些檔案旁寫入 bytecode 快取，其中一份位於用戶端目錄內。
+- 只送出一個請求：以此 worker 自己受保護的 Token、經固定的 CA，對回條的專案與聊天室呼叫 `GET /v1/chat/status`。傳輸層會拒絕其他方法或路徑。不 join、claim、發文、disconnect，不更動租約或期限，不啟動模型，也不檢查程序。
+- 會驗證它所依據的 journal 檔：`receiver-config.json`、`receiver-binding.json`、`receiver-claim.json`、`receiver-delivery.json`、`receiver-status.json`，以及該筆交付自己的 `receipt-<delivery-id>.json`。其中任何一個是連結、格式錯誤、過大或屬於其他範圍時，報告為 `invalid-local-state` 或 `scope-mismatch`，且不再連線 Hub。
+- `native-active.json` 與 `STOP` 的處理刻意不同，因為只使用它們是否存在。標記若是連結就不會跟隨，格式錯誤或過大時不採信其內容，但仍視為存在：報告維持 native 退出未確認，並照常向 Hub 查詢。`STOP` 若是連結，會顯示為 `linked`。目錄內的其他檔案（包含其他執行回條）不會開啟。
+- 只輸出固定的狀態名稱與句子。Token、lease 與 request ID、回覆金鑰、native session ID、路徑與訊息內文都不會出現。32 字元的識別碼預設會縮短；需要私下核對時才加 `--full-ids`。
+
+選項：`--offline`（只看本機 journal，不讀 Token、不連 Hub）、`--json`、`--language zh-TW`、`--full-ids`、`--timeout 1..30`。結束代碼 `0` 表示已產生報告，不論狀態為何；`1` 表示回條、參數或 journal 位置無法通過驗證，stderr 只會有一個固定代碼。
+
+| 狀態 | 意義 | 依據 |
+| --- | --- | --- |
+| `server-replied` | Hub 已記錄此交付的回覆。細項 `local-completion-missing`：接收器沒有存下 `receipt-<delivery-id>.json`，缺的只是本機紀錄，不要重送。`local-completion-recorded`：兩份紀錄指向同一則訊息。`local-completion-mismatch`：兩份紀錄不一致。 | Hub 最新交付的 ID 相同、狀態為 `replied`，且有回覆訊息 ID 與 sequence。 |
+| `server-no-reply` | Hub 記錄了不新增訊息的明確完成；`local-completion-missing`、`local-completion-recorded`、`local-completion-mismatch` 區分本機收據情況。已完成 delivery 不重送，這也不證明 native exit 或授予 retry。舊 inspector 需升級才識別此狀態。 | 同一 journaled delivery 為 `no_reply`、有完整已讀紀錄、reply 欄位為 null 且 server cursor 至少達其 `through_sequence`；對應本機證據為 `completion_status=no_reply`、沒有 `post_receipt`，且 `no_reply_receipt` scope／status／cursor 精確符合。 |
+| `server-read` | Hub 已透過工具回傳完整訊息，但既無回覆也無終端 no_reply 完成。這不是完成的回合。 | 相同的交付 ID，狀態為 `tool_read`。 |
+| `unresolved` | 找不到可對應此交付的完整讀取或回覆：僅 leased 或 dispatched、已失敗，或 Hub 的最新交付是另一筆。 | 細項與「仍缺少的證據」清單。 |
+| `stale-generation` | Hub 的 binding 已是另一個 generation，此 journal 不再擁有它；該交付的結果維持無法取得。 | `receiver-binding.json` 的 generation 與 Hub 比對。 |
+| `disconnected` | Hub 的 binding 已釋放。 | Hub 狀態與 generation。 |
+| `unavailable` | 未取得 Hub 證據：離線、逾時、HTTP 狀態、憑證或 TLS 失敗，或清單中沒有此 binding。只顯示本機事實。 | 固定的原因代碼。 |
+| `no-delivery` | journal 內沒有已派送的交付。 | 本機 journal。 |
+| `scope-mismatch`、`invalid-local-state` | journal 或 Hub binding 屬於其他專案、聊天室或 worker，或受驗證的 journal 檔之一不可信。請停止並交由管理員處理。 | 本機 journal 或 Hub binding。 |
+
+必須記得的限制：
+
+- 狀態路由只列出 binding 目前 generation 的最新交付。較舊的交付或前一個 generation 的交付，會列為缺少的證據。**Hub 游標越過某筆交付，絕不視為已回覆。**
+- `native-active.json` 不含程序身分，報告只使用它是否存在。PID 不存在、存活或已結束，都不能證明原本的 child 已退出；因此報告不會說可以安全重試，也不會宣稱 native 已退出。
+- 接收器執行中所產生的報告只是當下快照，檔案可能隨後改變。
+- 判斷邏輯由 fixture 測試涵蓋，尚未以真實中斷的 native turn 驗收；驗收前請記為 `not_run`。
 
 ## 明確中斷與恢復手動發文
 
