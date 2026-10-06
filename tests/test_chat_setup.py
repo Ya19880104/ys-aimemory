@@ -290,3 +290,141 @@ def test_cli_reports_only_fixed_disconnect_code(installation, monkeypatch, capsy
     assert setup.main() == 1
     captured = capsys.readouterr()
     assert captured.out == '' and captured.err == 'chat_setup_failed: disconnect_not_confirmed\n'
+
+
+@pytest.mark.parametrize('failure', ['settings_restore', 'binding_metadata'])
+def test_disconnect_retry_finishes_partial_restoration_without_refencing_or_losing_user_edits(
+        hub_bound_installation, monkeypatch, failure):
+    project, client, original_mcp, original_settings = hub_bound_installation
+    mcp_path, settings_path = project / '.mcp.json', project / '.claude/settings.local.json'
+    binding_path = client / 'chat-binding.json'
+    fenced = False
+
+    def handler(request, number):
+        nonlocal fenced
+        if request.method == 'POST':
+            assert not fenced  # A retry must read back the existing fence, never repeat it.
+            fenced = True
+            return httpx.Response(200, json=hub_participants(True, 2, 8))
+        return httpx.Response(200, json=hub_participants(fenced, 2 if fenced else 1, 8 if fenced else 7))
+
+    requests = mock_disconnect_hub(monkeypatch, hub(handler))
+    checked, write_text = setup.write_checked, Path.write_text
+    injected = False
+
+    def fault(path):
+        nonlocal injected
+        if injected:
+            return
+        if failure == 'settings_restore' and path == settings_path:
+            injected = True
+            # A concurrent edit after .mcp.json restoration must be preserved.
+            current = json.loads(path.read_text())
+            current['user_during_restore'] = 'preserve exactly'
+            write_text(path, json.dumps(current))
+        elif failure == 'binding_metadata' and path == binding_path:
+            injected = True
+            raise OSError('synthetic metadata write failure')
+
+    def failing_checked(path, before, candidate):
+        fault(path)
+        return checked(path, before, candidate)
+
+    def failing_write_text(path, *args, **kwargs):
+        fault(path)
+        return write_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(setup, 'write_checked', failing_checked)
+    monkeypatch.setattr(Path, 'write_text', failing_write_text)
+    with pytest.raises(ValueError if failure == 'settings_restore' else OSError):
+        setup.disconnect(project)
+    assert injected and fenced and (client / 'STOP').exists()
+    assert json.loads(mcp_path.read_text())['mcpServers']['ys_memory'] == original_mcp['mcpServers']['ys_memory']
+    assert 'disconnected_at' not in json.loads(binding_path.read_text())
+
+    # More unrelated user changes between attempts must also survive the retry.
+    mcp = json.loads(mcp_path.read_text())
+    mcp['mcpServers']['later'] = {'command': 'user-added-after-failure'}
+    mcp_path.write_text(json.dumps(mcp, indent=4) + '\n')
+    mcp_after_user_edit = mcp_path.read_bytes()
+    settings = json.loads(settings_path.read_text())
+    settings['permissions']['allow'].append('user-after-failure-rule')
+    settings['hooks']['Stop'].append({'hooks': [{'type': 'command', 'command': 'user-after-failure-hook'}]})
+    settings_path.write_text(json.dumps(settings))
+    expected_settings = original_settings | {
+        'permissions': {'allow': original_settings['permissions']['allow'] + ['user-after-failure-rule']},
+        'hooks': {'Stop': original_settings['hooks']['Stop'] + [settings['hooks']['Stop'][-1]]}}
+    if failure == 'settings_restore':
+        expected_settings['user_during_restore'] = 'preserve exactly'
+
+    result = setup.disconnect(project)
+    assert result['status'] == 'disconnected' and result['hub_binding'] == 'released'
+    assert mcp_path.read_bytes() == mcp_after_user_edit  # Already restored: keep even formatting.
+    assert json.loads(settings_path.read_text()) == expected_settings
+    assert json.loads(binding_path.read_text())['disconnected_at'] > 0
+    assert (client / 'STOP').exists()
+    assert operations(requests) == [IDENTITY, STATUS, FENCE, STATUS, IDENTITY, STATUS]
+
+
+@pytest.mark.parametrize('change', ['command', 'args', 'env', 'type'])
+def test_partial_disconnect_retry_preserves_an_edited_restored_mcp_entry(
+        hub_bound_installation, monkeypatch, change):
+    project, client, _, _ = hub_bound_installation
+    settings_path = project / '.claude/settings.local.json'
+    requests = mock_disconnect_hub(monkeypatch, hub(
+        lambda request, number: httpx.Response(200, json=hub_participants(True, 2, 8))))
+    checked = setup.write_checked
+
+    def fail_settings(path, before, candidate):
+        if path == settings_path:
+            raise OSError('synthetic settings write failure')
+        return checked(path, before, candidate)
+
+    monkeypatch.setattr(setup, 'write_checked', fail_settings)
+    with pytest.raises(OSError):
+        setup.disconnect(project)
+    monkeypatch.setattr(setup, 'write_checked', checked)
+    mcp_path = project / '.mcp.json'
+    mcp = json.loads(mcp_path.read_text())
+    entry = mcp['mcpServers']['ys_memory']
+    if change == 'command':
+        entry['command'] = 'different-user-command'
+    elif change == 'args':
+        entry['args'].append('--user-option')
+    elif change == 'env':
+        entry['env'] = {'USER_ADDED': 'preserve'}
+    else:
+        entry['type'] = 'stdio'
+    mcp_path.write_text(json.dumps(mcp, indent=4) + '\n')
+    before = preserved(project, client)
+    with pytest.raises(ValueError, match='^mcp_entry_changed_preserved$'):
+        setup.disconnect(project)
+    assert preserved(project, client) == before and (client / 'STOP').exists()
+    assert operations(requests) == [IDENTITY, STATUS, IDENTITY, STATUS]
+
+
+def test_partial_disconnect_metadata_replace_failure_keeps_atomic_retry_record(
+        hub_bound_installation, monkeypatch):
+    project, client, _, _ = hub_bound_installation
+    binding_path = client / 'chat-binding.json'
+    original_binding = binding_path.read_bytes()
+    requests = mock_disconnect_hub(monkeypatch, hub(
+        lambda request, number: httpx.Response(200, json=hub_participants(True, 2, 8))))
+    replace = setup.os.replace
+
+    def failed_replace(source, target):
+        if target == binding_path:
+            raise OSError('synthetic final rename failure')
+        return replace(source, target)
+
+    monkeypatch.setattr(setup.os, 'replace', failed_replace)
+    with pytest.raises(OSError):
+        setup.disconnect(project)
+    assert binding_path.read_bytes() == original_binding and (client / 'STOP').exists()
+    assert not list(client.glob('.chat-*.tmp'))
+    restored_settings = (project / '.claude/settings.local.json').read_bytes()
+    monkeypatch.setattr(setup.os, 'replace', replace)
+    assert setup.disconnect(project)['status'] == 'disconnected'
+    assert (project / '.claude/settings.local.json').read_bytes() == restored_settings
+    assert json.loads(binding_path.read_text())['disconnected_at'] > 0
+    assert operations(requests) == [IDENTITY, STATUS, IDENTITY, STATUS]

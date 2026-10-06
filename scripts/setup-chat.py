@@ -108,7 +108,8 @@ def disconnect(project):
     if Path(receipt['project']).resolve() != project or Path(receipt['client_directory']).resolve() != directory:
         raise ValueError('installation_project_mismatch')
     binding_path = directory/'chat-binding.json'
-    binding = json.loads(binding_path.read_text(encoding='utf-8'))
+    original_binding = binding_path.read_bytes()
+    binding = json.loads(original_binding.decode('utf-8'))
     if binding.get('disconnected_at'):
         return {'status':'already_disconnected','directory':str(directory)}
     (directory/'STOP').touch()
@@ -137,10 +138,13 @@ def disconnect(project):
         except Exception as exc:
             raise ChatSetupError('disconnect_not_confirmed') from exc
         old_mcp = json.loads(secret.transform((directory/'previous-chat-mcp.dpapi').read_bytes(),decrypt=True).decode('utf-8-sig'))
-        # Do not overwrite another installation that replaced this specific entry.
-        if entry != {'command':old_mcp['mcpServers']['ys_memory']['command'],'args':[str(directory/'chat-bridge.py')]}:
+        restored_entry = old_mcp['mcpServers']['ys_memory']
+        chat_entry = {'command':restored_entry['command'],'args':[str(directory/'chat-bridge.py')]}
+        # A failed settings/metadata write can leave the exact original entry
+        # already restored. Retry only these two owned states, never an edited entry.
+        if entry != chat_entry and entry != restored_entry:
             raise ValueError('mcp_entry_changed_preserved')
-        mcp['mcpServers']['ys_memory'] = old_mcp['mcpServers']['ys_memory']
+        mcp['mcpServers']['ys_memory'] = restored_entry
         settings_path = project/'.claude/settings.local.json'
         original_settings = settings_path.read_bytes()
         settings = json.loads(original_settings.decode('utf-8-sig'))
@@ -155,10 +159,13 @@ def disconnect(project):
         allow = settings.get('permissions',{}).get('allow',[])
         if 'permissions' in settings:
             settings['permissions']['allow'] = [r for r in allow if r not in owned or r in old_rules]
-        write_checked(mcp_path,original_mcp,(json.dumps(mcp,ensure_ascii=True,indent=2)+'\n').encode())
-        write_checked(settings_path,original_settings,(json.dumps(settings,ensure_ascii=True,indent=2)+'\n').encode())
+        if entry != restored_entry:
+            write_checked(mcp_path,original_mcp,(json.dumps(mcp,ensure_ascii=True,indent=2)+'\n').encode())
+        if settings != json.loads(original_settings.decode('utf-8-sig')):
+            write_checked(settings_path,original_settings,(json.dumps(settings,ensure_ascii=True,indent=2)+'\n').encode())
         binding['disconnected_at'] = time.time()
-        binding_path.write_text(json.dumps(binding,indent=2),encoding='utf-8')
+        # Never truncate the binding on a failed final write; it is the retry record.
+        write_checked(binding_path,original_binding,json.dumps(binding,indent=2).encode('utf-8'))
     finally:
         lock.__exit__(None, None, None)
     return {'status':'disconnected','directory':str(directory),'hub_binding':hub_binding,'global_settings_changed':False}
