@@ -31,3 +31,25 @@ Integrated source revision: `1cb0e39d72fcd160b32b1fba220a03f44dbfa56a`. Claude b
 - The specifically rejected Claude adoption operation remains unattempted. Closed/revoked trials, STOP files and journals remain preserved.
 
 Credentials, machine-specific setup, private receipts and process evidence remain outside the public repository.
+
+
+## Deployment and CI of `38a49cf`
+
+Candidate `38a49cff112dfbe000926041ce680a912ee2fb92` completed both CI runs on their first attempt:
+
+| Workflow | Windows | Linux / SQLite | Linux / PostgreSQL |
+| --- | --- | --- | --- |
+| [Push, run 37415389253](https://github.com/Ya19880104/ys-aimemory/actions/runs/37415389253) | 448 passed, 2 warnings | 1098 passed, 52 skipped, 3 warnings | 1394 passed, 50 skipped, 3 warnings |
+| [PR, run 37415393313](https://github.com/Ya19880104/ys-aimemory/actions/runs/37415393313) | 448 passed, 2 warnings | 1098 passed, 52 skipped, 3 warnings | 1394 passed, 50 skipped, 3 warnings |
+
+The integrated local Windows run passed **1148 tests, 2 skipped, 3 warnings**. A fresh deployment packet passed **1352 tests, 92 skipped, 3 warnings** against a disposable database, then **478 promotion checks**. Deployment finished at **2026-10-06 05:00:33 UTC**. Independent readback confirmed the exact candidate/image, healthy application and PostgreSQL, verified TLS health, paired tutorial URLs pinned to this revision, a readable pre-upgrade backup and retention of the previous image. These results apply to `38a49cf`; they do not validate later source revisions.
+
+## Codex public installer dependency fix
+
+A new bounded public installation on `38a49cf` **failed before the hidden Token prompt**. No Token was entered, client receipt produced, receiver started or room binding created. The installer process tree exited and all owned handles closed. The dedicated issued Token was revoked and a separate verified-TLS request returned HTTP 401. The trial is closed; its failure and diagnostic records are preserved. Installed-Token verification and native MCP lifecycle were **not_run**.
+
+A credential-free reproduction under real base Python 3.12 with `-I -S` failed with `ModuleNotFoundError: httpx`: setup imported the receiver before installing its private environment. Source `3e6166789fa938afc58a78565c625fc73888acb9` defers HTTP imports to runtime receiver/disconnect functions. The initial failing regression remains recorded; the focused local suite passed **217 tests, 1 warning**, including the actual public setup import path with no third-party packages. Existing runtime transport-error and disconnect tests passed.
+
+Codex bootstrap `d688fbfcd132ec8ed9b05937438320ab1c9b94a6`, raw Git SHA-256 `edf5651aaae0a2cdf319d75b1bbdbf370972e7316f5cfa610d3873be518141a4`, pins this source. The paired guide and room command use the same chain. This fix's new CI, deployment, public installation and native acceptance are **not_run** at this source checkpoint; the prior deployment and helper tests cannot substitute for them.
+
+Closed Cloud log diagnostics use independently recorded callback/guard windows and preserve unparsed lines. They do not establish native execution or completion, and do not change earlier failed results. Fresh Cloud automatic receive, Gemini native lifecycle and three-client conversation/task handoff remain **not_run**. The required official host/event controls are unavailable in the current session; this does not establish account-wide unavailability.

@@ -8,7 +8,7 @@
 
 **版本界線：** [驗證紀錄](VALIDATION_2026-10-05.zh-TW.md)將目前部署與先前有界native reply／no_reply證據分開。固定版本安裝器包含四工具能力；請一起更新自己的Hub與接收器，保留原證據。你不用為每則新訊息另貼提示：接收器讀取後會回覆，或記錄「完整已讀；已完成而不發送回覆」。連結中的全新公開安裝與原生試驗只證明該有界路徑，不證明所有host或無限運作。
 
-本頁目前指令固定新版Windows Job Object接收器來源 `627d3cac3f8c5ffa55021fde9491a20e463a9492`。此更新已通過本機測試，並[隨Hub `a42630c` 部署](VALIDATION_2026-10-05.zh-TW.md#測試fixture修正ci與-a42630c-部署)；[新版清理的真實供應商原生驗收](VALIDATION_2026-10-05.zh-TW.md#windows原生程序清理來源已測部署待驗)仍為 **not_run**。先前公開三回合試驗由另外的guard確認退出，不能視為新版每回合Job清理已通過原生驗收。
+本頁指令固定來源 `3e6166789fa938afc58a78565c625fc73888acb9`，修正尚未建立專用環境時，使用只有標準函式庫的 Python 啟動失敗的問題。本機回歸與接收器測試已通過；全新公開安裝曾重現原始載入失敗，該試驗已關閉並撤銷 Token。[目前驗證與部署界線](VALIDATION_2026-10-06.zh-TW.md#codex-公開安裝器相依套件修正)分開記錄。此來源檢查點的修正版全新公開安裝及原生驗收仍為 **not_run**。先前三回合試驗使用另外的 guard，不能證明新版接收器自身每回合 Job 清理已通過。
 
 先前的[全新公開安裝與有界原生試驗](VALIDATION_2026-10-05.zh-TW.md#全新公開codex安裝到有界原生完成)已passed：真正隱藏Token輸入及 `-Print`，接著官方 `--receipt --run`，三則人類訊息得到reply／no_reply／reply，並核對停止、斷線及撤銷。實測使用已核對的Codex／Python3.12路徑、英文、一小時、三回合、每回合90秒，以及另外至多600秒的試驗guard。這是專用CLI接收器，不是既有Desktop對話；雙語模型輸出、預設PATH及無人值守設定沒有通過。[先前僅安裝結果](VALIDATION_2026-10-05.zh-TW.md#公開codex僅安裝關卡)仍分開保留。
 
@@ -45,8 +45,8 @@ py -3.12 --version
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/a9d7f87d452336b890071e0332a4dd8077bfc58b/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'D842FFD109B601B3626A5C97034F0F3B3473E5F07128AD31891914C4F218EAF3') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/d688fbfcd132ec8ed9b05937438320ab1c9b94a6/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'EDF5651AAAE0A2CDF319D75B1BBDBF370972E7316F5CFA610D3873BE518141A4') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -58,7 +58,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 
 預設 `-Print` 會安裝並核對授權，不啟動模型。於隱藏提示輸入 Token 後，依下方「啟動專用接收器」複製收據的完整 `start_command`。明確使用 `-Run` 則會安裝後立即啟動有限額接收器，兩個開關不可同時使用。`-PythonPath` 可指定既有 Python 3.12；`-TurnTimeout` 預設 90 秒。不需要填本機專案資料夾：接收器會建立私有空白工作目錄進行對話回合。
 
-啟動腳本核對來源版本 `627d3cac3f8c5ffa55021fde9491a20e463a9492` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
+啟動腳本核對來源版本 `3e6166789fa938afc58a78565c625fc73888acb9` 的四個檔案，保留 `scripts/` 與 `memory_hub/` 目錄。共用的 `setup-claude.py` 只提供已驗證的安裝包／CA 函式；本流程不呼叫 Claude 安裝功能，也不寫入 `.mcp.json`。請閱讀下方安裝細節與限制；若已使用網址安裝，可跳過 checkout 指令。
 
 ### 替代方式：從 checkout 安裝
 
@@ -67,7 +67,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach 627d3cac3f8c5ffa55021fde9491a20e463a9492
+git checkout --detach 3e6166789fa938afc58a78565c625fc73888acb9
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```

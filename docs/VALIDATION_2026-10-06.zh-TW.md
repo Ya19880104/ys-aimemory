@@ -31,3 +31,25 @@ Gemini 的 Windows CLI 程序現在以單一操作建立為暫停狀態並加入
 - 被特定拒絕的 Claude adoption 操作未嘗試。已關閉／撤銷的舊測試、STOP 與 journal 均保留。
 
 憑證、機器設定、私有收據及程序證據均保存在公開 repository 之外。
+
+
+## `38a49cf` 的部署與 CI
+
+候選 `38a49cff112dfbe000926041ce680a912ee2fb92` 的兩次 CI 執行均於第一次 attempt 通過：
+
+| Workflow | Windows | Linux／SQLite | Linux／PostgreSQL |
+| --- | --- | --- | --- |
+| [Push，37415389253](https://github.com/Ya19880104/ys-aimemory/actions/runs/37415389253) | 448 passed、2 warnings | 1098 passed、52 skipped、3 warnings | 1394 passed、50 skipped、3 warnings |
+| [PR，37415393313](https://github.com/Ya19880104/ys-aimemory/actions/runs/37415393313) | 448 passed、2 warnings | 1098 passed、52 skipped、3 warnings | 1394 passed、50 skipped、3 warnings |
+
+整合本機 Windows 執行為 **1148 passed、2 skipped、3 warnings**。全新部署封包以拋棄式資料庫通過 **1352 passed、92 skipped、3 warnings**，接著通過 **478 項 promotion 檢查**。部署於 **2026-10-06 05:00:33 UTC** 完成。獨立回讀確認候選與映像完全一致、應用程式及 PostgreSQL 健康、TLS 健康檢查通過、成對教學網址固定此版本、升級前備份可讀且前一版映像保留。上述結果適用於 `38a49cf`，不能驗證後續來源版本。
+
+## Codex 公開安裝器相依套件修正
+
+在 `38a49cf` 上建立的全新有界公開安裝，**於隱藏 Token 提示出現前 failed**。未輸入 Token、未產生客戶端收據、未啟動接收器，也未建立聊天室綁定。安裝器程序樹已退出，所有所屬 handle 已關閉。專用已核發 Token 已撤銷，另外以驗證 TLS 的請求確認 HTTP 401。試驗已關閉，失敗與診斷紀錄保留；已安裝 Token 驗證與原生 MCP 生命週期為 **not_run**。
+
+不帶憑證的重現在真正的 base Python 3.12 使用 `-I -S`，得到 `ModuleNotFoundError: httpx`：setup 在安裝專用環境前就載入接收器。來源 `3e6166789fa938afc58a78565c625fc73888acb9` 將 HTTP 載入移至執行時的接收器／斷線函式。初次失敗回歸保留；限定本機測試為 **217 passed、1 warning**，包含不含第三方套件的實際公開 setup 載入路徑。原有 transport-error 與斷線測試均通過。
+
+Codex bootstrap `d688fbfcd132ec8ed9b05937438320ab1c9b94a6` 的 raw Git SHA-256 為 `edf5651aaae0a2cdf319d75b1bbdbf370972e7316f5cfa610d3873be518141a4`，固定上述來源；成對教學與聊天室指令使用相同版本鏈。此來源檢查點的修正版新 CI、部署、公開安裝及原生驗收仍為 **not_run**，前次部署或 helper 測試不能替代。
+
+已關閉 Cloud 日誌的診斷使用獨立記錄的 callback／guard 時間窗，保留無法解析的行，不代表原生執行或完成，也不改寫先前 failed。全新 Cloud 自動收訊、Gemini 原生生命週期與三客戶端對話／任務交接仍為 **not_run**。目前工作階段未提供必要的官方 host／事件控制工具；這不代表整個帳號都無法使用。

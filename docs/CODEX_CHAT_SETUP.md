@@ -8,7 +8,7 @@ For ordinary on-demand MCP access, use [client setup](CLIENT_SETUP.md). For room
 
 **Version boundary:** the [validation record](VALIDATION_2026-10-05.md) separates the current deployment from earlier bounded native reply/no_reply evidence. The immutable installer includes the four-tool capability; update your Hub and receiver together and preserve existing evidence. You do not need to prompt each incoming message: the receiver reads it and either contributes a reply or records “Fully read; completed without a reply”. The linked fresh public installation and native trial covers only the tested bounded path; it does not certify every host or indefinite operation.
 
-The commands on this page now pin the updated Windows Job Object receiver source `627d3cac3f8c5ffa55021fde9491a20e463a9492`. This update passed local tests and is [deployed with Hub `a42630c`](VALIDATION_2026-10-05.md#test-fixture-fix-ci-and-deployment-of-a42630c); [real-provider native acceptance of the new cleanup](VALIDATION_2026-10-05.md#windows-native-process-cleanup-source-tested-deployment-pending) remains **not_run**. The earlier public three-turn trial used a separate guard for closure; it does not pass the updated receiver's own per-turn Job cleanup.
+The commands on this page pin source `3e6166789fa938afc58a78565c625fc73888acb9`, which fixes startup with standard-library-only Python before the private environment exists. Local regression and receiver tests passed; the fresh public installation exposed the original import failure and was closed with its Token revoked. [Current validation and deployment boundaries](VALIDATION_2026-10-06.md#codex-public-installer-dependency-fix) are recorded separately. A fresh public installation and native acceptance of this fix remain **not_run** at this source checkpoint. The earlier three-turn trial used a separate guard and does not prove the updated receiver's own per-turn Job cleanup.
 
 An earlier [fresh public installation and bounded native trial](VALIDATION_2026-10-05.md#fresh-public-codex-installation-to-bounded-native-completion) passed: real hidden Token entry and `-Print`, then official `--receipt --run`, three human messages yielding reply/no_reply/reply, and verified stop/disconnect/revocation. It used verified Codex/Python 3.12 paths, English, one hour, three turns, 90 seconds per turn and a separate ≤600-second test guard. This was a dedicated CLI receiver, not an existing Desktop chat. Bilingual model output, default PATH and unattended setup were not passed. The [earlier installation-only result](VALIDATION_2026-10-05.md#public-codex-installation-only-check) remains separate.
 
@@ -45,8 +45,8 @@ Download and review this immutable script. The hash check must pass before execu
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-codex-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/a9d7f87d452336b890071e0332a4dd8077bfc58b/scripts/connect-codex-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'D842FFD109B601B3626A5C97034F0F3B3473E5F07128AD31891914C4F218EAF3') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/d688fbfcd132ec8ed9b05937438320ab1c9b94a6/scripts/connect-codex-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'EDF5651AAAE0A2CDF319D75B1BBDBF370972E7316F5CFA610D3873BE518141A4') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -58,7 +58,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 
 `-Print` is the default: it performs installation and authorization checks without starting a model. Enter the Token at the hidden prompt, then continue at **Start the dedicated receiver** below using the receipt's exact `start_command`. Explicit `-Run` instead installs and immediately starts the bounded receiver. Do not combine both switches. `-PythonPath` can select an existing Python 3.12; `-TurnTimeout` defaults to 90 seconds. No local project-directory argument is needed: the receiver creates a private empty working directory for its conversational turns.
 
-The bootstrap verifies four source files from revision `627d3cac3f8c5ffa55021fde9491a20e463a9492`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
+The bootstrap verifies four source files from revision `3e6166789fa938afc58a78565c625fc73888acb9`, preserving their `scripts/` and `memory_hub/` layout. The shared `setup-claude.py` file supplies only verified bundle/CA primitives; this workflow does not call its Claude installer or write `.mcp.json`. Read the installation details and limits below, or skip the checkout commands if you used the URL installer.
 
 ### Alternative: install from a checkout
 
@@ -67,7 +67,7 @@ Clone into a **new** directory and use the checkout containing `scripts/setup-co
 ```powershell
 git clone https://github.com/Ya19880104/ys-aimemory.git 'C:\src\ys-aimemory'
 Set-Location -LiteralPath 'C:\src\ys-aimemory'
-git checkout --detach 627d3cac3f8c5ffa55021fde9491a20e463a9492
+git checkout --detach 3e6166789fa938afc58a78565c625fc73888acb9
 git rev-parse HEAD
 Test-Path -LiteralPath '.\scripts\setup-codex-chat.py'
 ```
