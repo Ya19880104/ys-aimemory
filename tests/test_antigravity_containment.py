@@ -200,35 +200,50 @@ def script(tmp_path, body):
     return [sys._base_executable, '-I', '-S', str(path), str(tmp_path / 'started')]
 
 
-def test_cli_cannot_execute_before_job_assignment(tmp_path, monkeypatch):
+def test_cli_is_already_in_job_before_spawn_returns_and_before_resume(tmp_path, monkeypatch):
+    from ctypes import wintypes
     args = script(tmp_path, "import sys; from pathlib import Path; Path(sys.argv[1]).touch(); "
                             "print('ok'); raise SystemExit(3)")
-    seen, assign = [], receiver.WindowsJob.assign
-    def delayed(job, proc):
-        time.sleep(1)  # An ungated CLI would already have written its marker.
+    seen, spawn = [], receiver.WindowsJob.spawn
+    def delayed(job, *args):
+        proc = spawn(job, *args)
+        inside = wintypes.BOOL()
+        job.api.IsProcessInJob.argtypes = [wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL)]
+        assert job.api.IsProcessInJob(int(proc._handle), job.handle, ctypes.byref(inside))
+        assert inside.value
+        time.sleep(1)  # The assigned CLI is still suspended.
         seen.append((tmp_path / 'started').exists())
-        assign(job, proc)
-    monkeypatch.setattr(receiver.WindowsJob, 'assign', delayed)
+        return proc
+    monkeypatch.setattr(receiver.WindowsJob, 'spawn', delayed)
     result = receiver.contained_run(args, timeout=LIMIT)
     assert seen == [False] and (tmp_path / 'started').exists()
     assert (result.returncode, result.stdout.strip(), result.stderr) == (3, b'ok', None)
     assert (result.containment, result.tree_exit_verified) == ('windows_job', True)
 
 
-@pytest.mark.parametrize('step,code', [('assign', 'native_job_assignment_failed'),
+@pytest.mark.parametrize('step,code', [('create', 'native_job_create_process_failed'),
+                                       ('attributes', 'native_job_attributes_failed'),
                                        ('resume', 'native_resume_failed')])
-def test_failed_assignment_or_resume_never_runs_cli(tmp_path, monkeypatch, step, code):
+def test_failed_atomic_creation_or_resume_never_runs_cli(tmp_path, monkeypatch, step, code):
     args = script(tmp_path, "import sys; from pathlib import Path; Path(sys.argv[1]).touch()")
-    started = []
-    def refused(job, proc):
+    started, spawn = [], receiver.WindowsJob.spawn
+    def gated(job, *args):
+        if step in {'create', 'attributes'}:
+            api_name = 'CreateProcessW' if step == 'create' else 'UpdateProcThreadAttribute'
+            monkeypatch.setattr(job.api, api_name, lambda *args: 0)
+        proc = spawn(job, *args)
         started.append(proc)
+        return proc
+    def refused(job, proc):
         raise receiver.NativeContainmentError(code)
-    monkeypatch.setattr(receiver.WindowsJob, step, refused)
+    monkeypatch.setattr(receiver.WindowsJob, 'spawn', gated)
+    if step == 'resume':
+        monkeypatch.setattr(receiver.WindowsJob, 'resume', refused)
     with pytest.raises(OSError, match='^' + code + '$') as caught:
         receiver.contained_run(args, timeout=LIMIT)
     assert caught.value.tree_exit_verified is True
-    # The exact suspended process is gone, so it can never have run.
-    assert started[0].poll() is not None and not (tmp_path / 'started').exists()
+    assert not (tmp_path / 'started').exists()
+    assert not started or started[0].poll() is not None
 
 
 def test_pipe_writer_held_outside_job_is_bounded_and_unconfirmed(tmp_path, monkeypatch):
@@ -246,10 +261,11 @@ def test_pipe_writer_held_outside_job_is_bounded_and_unconfirmed(tmp_path, monke
     api.DuplicateHandle.argtypes = [wintypes.HANDLE, wintypes.HANDLE, wintypes.HANDLE,
         ctypes.POINTER(wintypes.HANDLE), wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
     api.CloseHandle.argtypes = [wintypes.HANDLE]
-    held, errors, roots, assign = wintypes.HANDLE(), [], [], receiver.WindowsJob.assign
-    def capture(job, proc):
+    held, errors, roots, spawn = wintypes.HANDLE(), [], [], receiver.WindowsJob.spawn
+    def capture(job, *args):
+        proc = spawn(job, *args)
         roots.append(proc)
-        assign(job, proc)
+        return proc
     def duplicate():
         try:
             limit = time.monotonic() + LIMIT
@@ -266,7 +282,7 @@ def test_pipe_writer_held_outside_job_is_bounded_and_unconfirmed(tmp_path, monke
             errors.append(error)
         finally:
             (tmp_path / 'held').touch()
-    monkeypatch.setattr(receiver.WindowsJob, 'assign', capture)
+    monkeypatch.setattr(receiver.WindowsJob, 'spawn', capture)
     monkeypatch.setattr(receiver, 'EXIT_CONFIRM_SECONDS', .5)
     observer = threading.Thread(target=duplicate, daemon=True)
     observer.start()
@@ -335,7 +351,7 @@ def test_output_beyond_limit_is_discarded_not_parsed(tmp_path):
 def test_stdout_read_error_discards_partial_output(tmp_path, monkeypatch):
     """A broken pipe read is incomplete output, never a complete result to parse."""
     args = script(tmp_path, "import sys; sys.stdout.write('partial-output')")
-    popen = receiver.subprocess.Popen
+    popen = receiver._AtomicJobPopen
     class BrokenStdout:
         def __init__(self, stream):
             self.stream = stream
@@ -347,6 +363,96 @@ def test_stdout_read_error_discards_partial_output(tmp_path, monkeypatch):
         proc = popen(*a, **k)
         proc.stdout = BrokenStdout(proc.stdout)
         return proc
-    monkeypatch.setattr(receiver.subprocess, 'Popen', broken)
+    monkeypatch.setattr(receiver, '_AtomicJobPopen', broken)
     result = within_bound(lambda: receiver.contained_run(args, timeout=LIMIT))
     assert (result.returncode, result.stdout, result.tree_exit_verified) == (0, None, True)
+
+
+def test_receiver_crash_at_launch_boundary_kills_suspended_cli(tmp_path):
+    """Kill the exact receiver after creation, before it can resume its CLI."""
+    import subprocess
+    from pathlib import Path
+    receiver_path = Path(receiver.__file__).resolve().parent.parent
+    packages = next(path for path in sys.path if Path(path).name == 'site-packages')
+    worker_path = tmp_path / 'crash_worker.py'
+    child_path = tmp_path / 'suspended_cli.py'
+    child_path.write_text("from pathlib import Path; import sys,time; Path(sys.argv[1]).touch(); time.sleep(60)")
+    worker_path.write_text(r'''import ctypes, json, sys, time
+from ctypes import wintypes
+from pathlib import Path
+sys.path[:0] = sys.argv[1:3]
+from memory_hub import client_antigravity_receiver as receiver
+root = Path(sys.argv[3])
+api = ctypes.WinDLL('kernel32')
+api.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
+
+def hold(proc):
+    times = [wintypes.FILETIME() for _ in range(4)]
+    if not api.GetProcessTimes(int(proc._handle), *times):
+        raise RuntimeError('fixture_process_time_failed')
+    record = {'pid': proc.pid, 'created': times[0].dwHighDateTime << 32 | times[0].dwLowDateTime}
+    root.joinpath('created.tmp').write_text(json.dumps(record))
+    root.joinpath('created.tmp').replace(root / 'created.json')
+    time.sleep(60)
+
+# Baseline stops before the separate assignment; fixed implementation stops
+# when its atomic spawn has returned, still before resume.
+if hasattr(receiver.WindowsJob, 'spawn'):
+    spawn = receiver.WindowsJob.spawn
+    def gated(job, *args, **kwargs):
+        proc = spawn(job, *args, **kwargs)
+        hold(proc)
+        return proc
+    receiver.WindowsJob.spawn = gated
+else:
+    def gated(job, proc):
+        hold(proc)
+    receiver.WindowsJob.assign = gated
+receiver.contained_run([sys.executable, '-I', '-S', str(root / 'suspended_cli.py'),
+                        str(root / 'started')], timeout=10)
+''', encoding='utf-8')
+    worker = subprocess.Popen([sys._base_executable, '-I', '-S', str(worker_path),
+        str(receiver_path), packages, str(tmp_path)], stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    owned = None
+    try:
+        deadline = time.monotonic() + 30
+        record = tmp_path / 'created.json'
+        while not record.exists():
+            assert worker.poll() is None, 'fixture receiver exited before its creation gate'
+            assert time.monotonic() < deadline, 'fixture receiver creation gate timed out'
+            time.sleep(.02)
+        owned = Owned(json.loads(record.read_text()))
+        assert not owned.exited() and not (tmp_path / 'started').exists()
+        worker.kill()  # Exact retained receiver process handle, never a PID/name sweep.
+        worker.wait(timeout=5)
+        child_exited = owned.exited(5000)
+    finally:
+        if worker.poll() is None:
+            worker.kill()
+            worker.wait(timeout=5)
+        if owned is not None:
+            owned.close()  # Reap only the exact fake CLI if the baseline leaked it.
+    assert child_exited, 'receiver crash leaked a suspended CLI outside its owned job'
+    assert not (tmp_path / 'started').exists()
+
+
+def test_launch_failure_after_atomic_creation_still_accounts_for_owned_job(tmp_path, monkeypatch):
+    args = script(tmp_path, "from pathlib import Path; import sys; Path(sys.argv[1]).touch()")
+    roots, popen = [], receiver._AtomicJobPopen
+    def failed(*args, **kwargs):
+        proc = popen(*args, **kwargs)
+        roots.append(proc)
+        raise OSError('fixture_after_creation')
+    monkeypatch.setattr(receiver, '_AtomicJobPopen', failed)
+    try:
+        with pytest.raises(OSError, match='^fixture_after_creation$') as caught:
+            within_bound(lambda: receiver.contained_run(args, timeout=LIMIT))
+        assert caught.value.tree_exit_verified is True
+        assert roots[0].poll() is not None and not (tmp_path / 'started').exists()
+    finally:
+        for proc in roots:
+            if proc.poll() is None:
+                proc.kill()
+            proc.wait(timeout=5)
+            proc.stdout.close()

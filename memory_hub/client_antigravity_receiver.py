@@ -44,7 +44,7 @@ class WindowsJob:
     def __init__(self):
         import ctypes
         from ctypes import wintypes
-        self.ctypes, self.handle = ctypes, None
+        self.ctypes, self.handle, self.process = ctypes, None, None
         api = self.api = ctypes.WinDLL('kernel32', use_last_error=True)
         class BasicLimits(ctypes.Structure):
             _fields_ = [('user_time', ctypes.c_int64), ('job_time', ctypes.c_int64),
@@ -71,7 +71,6 @@ class WindowsJob:
         api.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
         api.QueryInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p,
                                                   wintypes.DWORD, ctypes.c_void_p]
-        api.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
         api.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
         api.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
         api.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
@@ -90,10 +89,10 @@ class WindowsJob:
             self.close()
             raise NativeContainmentError('native_job_limits_failed')
 
-    def assign(self, proc):
-        # Still suspended: the CLI has not executed a single instruction yet.
-        if not self.api.AssignProcessToJobObject(self.handle, int(proc._handle)):
-            raise NativeContainmentError('native_job_assignment_failed')
+    def spawn(self, args, creationflags):
+        # Windows 10+ assigns the job inside CreateProcessW, even if our owner
+        # dies before that call returns. Never fall back to create-then-assign.
+        return _AtomicJobPopen(self, args, creationflags)
 
     def resume(self, proc):
         """Resume the only initial thread; our open process handle pins this PID."""
@@ -142,15 +141,101 @@ class WindowsJob:
         return not handle or bool(self.api.CloseHandle(handle))
 
 
-def _settle(job, proc, assigned, reader):
+class _AtomicJobPopen(subprocess.Popen):
+    """Narrow Windows Popen: inherited pipe/wait handling, atomic job creation.
+
+    CPython's Windows STARTUPINFO wrapper supports HANDLE_LIST only. This
+    creation hook supplies both HANDLE_LIST and JOB_LIST via STARTUPINFOEXW;
+    all other process options are the fixed contained_run subset.
+    """
+    def __init__(self, job, args, creationflags):
+        self.job = job
+        super().__init__(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, shell=False, close_fds=True,
+            creationflags=creationflags | CREATE_SUSPENDED)
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds, pass_fds,
+                       cwd, env, startupinfo, creationflags, shell,
+                       p2cread, p2cwrite, c2pread, c2pwrite, errread, errwrite, *unused):
+        import ctypes
+        from ctypes import wintypes
+        # Refuse expansion of this private, fixed-option hook.
+        if (executable is not None or preexec_fn is not None or not close_fds or pass_fds
+                or cwd is not None or env is not None or startupinfo is not None or shell):
+            raise ValueError('native_atomic_launch_options')
+        class Startup(ctypes.Structure):  # STARTUPINFOW
+            _fields_ = [('cb', wintypes.DWORD), ('reserved', wintypes.LPWSTR),
+                ('desktop', wintypes.LPWSTR), ('title', wintypes.LPWSTR)] + [
+                (name, wintypes.DWORD) for name in ('x', 'y', 'width', 'height',
+                'chars_x', 'chars_y', 'fill', 'flags')] + [
+                ('show', wintypes.WORD), ('reserved_size', wintypes.WORD),
+                ('reserved_bytes', ctypes.c_void_p), ('stdin', wintypes.HANDLE),
+                ('stdout', wintypes.HANDLE), ('stderr', wintypes.HANDLE)]
+        class ExtendedStartup(ctypes.Structure):
+            _fields_ = [('startup', Startup), ('attributes', ctypes.c_void_p)]
+        class ProcessInfo(ctypes.Structure):
+            _fields_ = [('process', wintypes.HANDLE), ('thread', wintypes.HANDLE),
+                        ('pid', wintypes.DWORD), ('tid', wintypes.DWORD)]
+        api = self.job.api
+        api.InitializeProcThreadAttributeList.argtypes = [ctypes.c_void_p,
+            wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(ctypes.c_size_t)]
+        api.UpdateProcThreadAttribute.argtypes = [ctypes.c_void_p, wintypes.DWORD,
+            ctypes.c_size_t, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_void_p]
+        api.DeleteProcThreadAttributeList.argtypes = [ctypes.c_void_p]
+        api.DeleteProcThreadAttributeList.restype = None
+        api.CreateProcessW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR,
+            ctypes.c_void_p, ctypes.c_void_p, wintypes.BOOL, wintypes.DWORD,
+            ctypes.c_void_p, wintypes.LPCWSTR, ctypes.POINTER(ExtendedStartup),
+            ctypes.POINTER(ProcessInfo)]
+        size = ctypes.c_size_t()
+        initialized = False
+        try:
+            api.InitializeProcThreadAttributeList(None, 2, 0, ctypes.byref(size))
+            if not size.value:
+                raise NativeContainmentError('native_job_attributes_failed')
+            attributes = ctypes.create_string_buffer(size.value)
+            if not api.InitializeProcThreadAttributeList(attributes, 2, 0, ctypes.byref(size)):
+                raise NativeContainmentError('native_job_attributes_failed')
+            initialized = True
+            handles = (wintypes.HANDLE * 3)(int(p2cread), int(c2pwrite), int(errwrite))
+            jobs = (wintypes.HANDLE * 1)(self.job.handle)
+            for attribute, values in ((0x20002, handles), (0x2000D, jobs)):
+                if not api.UpdateProcThreadAttribute(attributes, 0, attribute, values,
+                                                     ctypes.sizeof(values), None, None):
+                    raise NativeContainmentError('native_job_attributes_failed')
+            startup, info = ExtendedStartup(), ProcessInfo()
+            startup.startup.cb = ctypes.sizeof(startup)
+            startup.startup.flags = 0x100  # STARTF_USESTDHANDLES
+            startup.startup.stdin, startup.startup.stdout, startup.startup.stderr = handles
+            startup.attributes = ctypes.addressof(attributes)
+            command = ctypes.create_unicode_buffer(subprocess.list2cmdline(args))
+            if not api.CreateProcessW(None, command, None, None, True,
+                    creationflags | 0x80000, None, None, ctypes.byref(startup), ctypes.byref(info)):
+                raise NativeContainmentError('native_job_create_process_failed')
+            try:
+                self._child_created = True
+                self._handle = subprocess.Handle(info.process)
+                self.pid = info.pid
+                self.job.process = self  # Retain root handle if construction later raises.
+            finally:
+                api.CloseHandle(info.thread)
+        finally:
+            if initialized:
+                api.DeleteProcThreadAttributeList(attributes)
+            self._close_pipe_fds(p2cread, p2cwrite, c2pread, c2pwrite, errread, errwrite)
+
+
+def _settle(job, proc, reader):
     """True only when every started process is gone and the job handle is closed."""
     settled = closed = False
+    if proc is None and job is not None:
+        proc = job.process
     try:
+        # A launch may fail after CreateProcessW succeeded but before Popen
+        # returned. Account for the job even when no proc object was returned.
+        if job is not None:
+            job.finish()
         if proc is not None:
-            if assigned:
-                job.finish()
-            else:
-                proc.kill()  # Suspended outside the job: it never executed.
             proc.wait(timeout=EXIT_CONFIRM_SECONDS)
         if reader is not None:
             reader.join(EXIT_CONFIRM_SECONDS)  # EOF once no pipe holder remains.
@@ -159,6 +244,8 @@ def _settle(job, proc, assigned, reader):
         pass
     finally:
         closed = job is None or job.close()  # KILL_ON_JOB_CLOSE ends any unconfirmed member.
+        if job is not None:
+            job.process = None  # Release the temporary job/process reference cycle.
     if settled and proc is not None:
         proc.stdout.close()
     return settled and closed
@@ -168,8 +255,8 @@ def contained_run(args, *, timeout, creationflags=0, shell=False, capture_output
                   limit=OUTPUT_LIMIT):
     """subprocess.run subset for one Windows CLI call inside an owned job.
 
-    Created suspended, assigned, then resumed, so no descendant starts outside
-    the job. Root exit or timeout ends the whole job; pipe EOF is never awaited
+    Created atomically in its job and suspended, then resumed, so no descendant
+    starts outside the job. Root exit or timeout ends the whole job; pipe EOF is never awaited
     first. Bounded stdout only; stderr is discarded. Raises TreeExitUnconfirmed
     unless zero active job members, root exit and pipe EOF are all observed.
     """
@@ -177,7 +264,7 @@ def contained_run(args, *, timeout, creationflags=0, shell=False, capture_output
         raise ValueError('contained_run_requires_argv_capture')
     deadline, chunks, size, broken = time.monotonic() + timeout, [], [0], []
     job = proc = reader = error = None
-    assigned = timed_out = False
+    timed_out = False
 
     def read():
         try:
@@ -190,11 +277,7 @@ def contained_run(args, *, timeout, creationflags=0, shell=False, capture_output
 
     try:
         job = WindowsJob()
-        proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL, shell=False, close_fds=True,
-            creationflags=creationflags | CREATE_SUSPENDED)
-        job.assign(proc)
-        assigned = True
+        proc = job.spawn(args, creationflags)
         job.resume(proc)
         reader = threading.Thread(target=read, daemon=True)
         reader.start()
@@ -204,7 +287,7 @@ def contained_run(args, *, timeout, creationflags=0, shell=False, capture_output
             timed_out = True
     except BaseException as exc:
         error = exc
-    if not _settle(job, proc, assigned, reader):
+    if not _settle(job, proc, reader):
         raise TreeExitUnconfirmed() from error
     if error is None and timed_out:
         error = subprocess.TimeoutExpired(args[0], timeout)
