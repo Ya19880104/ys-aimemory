@@ -4,7 +4,7 @@
 
 Live source `7652f1d7f04ef4c00e8860217a0f732f98dcb58e` 的 Gemini 已透過實際 native `chat_read` 與 `chat_reply` 通過兩則連續 fresh Hub 訊息 B、C：human sequence 55 → reply 56，再 human 57 → reply 58，均為 attempt 1。網站送出與兩次回覆之間沒有手動 model prompt。這是限定連續原生交付證據，與較早 queue 實驗及下方歷史快照分開；來源／驗收界線見[驗證記錄](VALIDATION_2026-10-04.zh-TW.md)。
 
-**更新：**之後在 `6d0ce27` 的全新有界fixture已通過官方同binding idle receiver停止／重啟（[驗證紀錄](VALIDATION_2026-10-04.zh-TW.md)）。目前來源在暫停／恢復後的重啟仍未證實。有界試驗中已擷取的guard程序身分已退出，但未擷取的receiver／probe後代程序未證實已關閉。目前來源在Windows上把每次官方CLI呼叫放入專屬Job Object：先暫停建立、綁定後才恢復執行，呼叫結束後終止整個程序樹。Journal記錄 `tree_exit_verified`；無法確認退出時投遞維持未解決，並在恢復前阻擋重啟。這只有離線測試；Antigravity在Job內的真實行為為 **not_run**，常駐MCP bridge的完整關閉仍未證實。下一段描述先前失敗的fixture。
+**更新：**之後在 `6d0ce27` 的全新有界fixture已通過官方同binding idle receiver停止／重啟（[驗證紀錄](VALIDATION_2026-10-04.zh-TW.md)）。目前來源在暫停／恢復後的重啟仍未證實。有界試驗中已擷取的guard程序身分已退出，但未擷取的receiver／probe後代程序未證實已關閉。目前來源在Windows上把每次官方CLI呼叫放入專屬Job Object：Windows在建立暫停程序的同一個操作中加入Job，之後才恢復執行；呼叫結束後終止整個程序樹。這修正了建立與綁定之間當機會遺留程序的空窗。本機回歸測試在Windows 11／Python 3.12通過；其他Windows／Python版本尚未測試。Journal記錄 `tree_exit_verified`；無法確認退出時投遞維持未解決，並在恢復前阻擋重啟。這只有離線測試；Antigravity在Job內的真實行為為 **not_run**，常駐MCP bridge的完整關閉仍未證實。下一段描述先前失敗的fixture。
 
 先前同 binding idle receiver restart **failed／incomplete**。更改檔案中的 `enabled` 設定未讓 host plugin live reload；owned receiver 退出後，到期前未出現替代程序。官方 host lifecycle 控制仍待 live 驗證。下方重啟步驟是尚未通過的測試 protocol，不是已驗證的重啟教學；尚無確立的一鍵重啟方式。
 

@@ -114,6 +114,6 @@ python scripts/test-deployment.py
 
 原交付歷史結果見 [測試與交付報告](TEST_REPORT.zh-TW.md)；当前版本須另附 exact commit 的測試紀錄。雲端原生身分確認、共享讀寫與自動喚醒應分開驗收。
 
-最新限定範圍證據：[2026-10-05 驗證](docs/VALIDATION_2026-10-05.zh-TW.md) 記錄已部署的 `a42630c` Hub、其CI與stage／promotion結果，以及僅來源的客戶端與gateway修正；新版Codex Windows Job清理的真實供應商驗收、Claude原生不回覆完成、雲端自動不回覆完成與三客戶端同時對話仍未完成。較早：[2026-10-04 驗證](docs/VALIDATION_2026-10-04.zh-TW.md)，包含 2026-10-05 補充，另保留[先前 native 證據](docs/VALIDATION_2026-10-03.zh-TW.md)。來源檢查與 live 驗收各自保留版本界線。專用 native Codex 有界交換、暫停／恢復、觀察到的 idle restart 與真實 provider in-flight 有界防重派通過；完整自動復原仍 pending。
+最新限定範圍證據：[2026-10-06 驗證](docs/VALIDATION_2026-10-06.zh-TW.md) 分別記錄 `c199d23` 通過的 CI 重跑、新來源修正及其尚待部署／原生驗收項目。[2026-10-05 驗證](docs/VALIDATION_2026-10-05.zh-TW.md) 記錄已部署的 `a42630c` Hub、其CI與stage／promotion結果，以及僅來源的客戶端與gateway修正；新版Codex Windows Job清理的真實供應商驗收、Claude原生不回覆完成、雲端自動不回覆完成與三客戶端同時對話仍未完成。較早：[2026-10-04 驗證](docs/VALIDATION_2026-10-04.zh-TW.md)，包含 2026-10-05 補充，另保留[先前 native 證據](docs/VALIDATION_2026-10-03.zh-TW.md)。來源檢查與 live 驗收各自保留版本界線。專用 native Codex 有界交換、暫停／恢復、觀察到的 idle restart 與真實 provider in-flight 有界防重派通過；完整自動復原仍 pending。
 
 在 **2026-10-05 台北 02:06** 截止點，Cloud C 於已部署 `6d0ce27` 通過兩次自動完整讀取／回覆事件，中間有一次官方閒置 transport/gateway 重連，無中途 model prompt，核實 task pause／unsubscribe 及一次 runtime 關閉。這是一次有界試驗，不是模型 restart、crash／in-flight recovery 或長期生命週期驗收。歷史 Cloud A/B 自行停止失敗及 2026-10-04 自動失敗／手動通過分開保留。見[去秘密實測請求與觀察到的權限](docs/CHATGPT_PRIVATE_TUNNEL.zh-TW.md#有界請求與觀察到的權限)；英文請求為未執行的翻譯，既有帳號 run 後權限讀回不能證明全新安裝或任意帳號皆可重現。[操作者停止流程](docs/CHATGPT_PRIVATE_TUNNEL.zh-TW.md#停止狀態與限制)仍為必要步驟。可靠度與雲端 Token 成本未測量；事件上限不是成本上限。

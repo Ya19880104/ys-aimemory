@@ -22,8 +22,8 @@ Claude 接收程式在選定原生對話結束回合後，於仍啟用的 Stop h
 
 ```powershell
 $Installer = Join-Path $env:TEMP ('ys-memory-chat-' + [Guid]::NewGuid().ToString('N') + '.ps1')
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/aa082c0b0e0ef004f4503854debc369303821ae3/scripts/connect-chat.ps1' -OutFile $Installer
-if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne '346B0A42B55201C35E6D4AF7AA27552096621AF441B62AFE6AC65FFD0EDA4327') { throw 'Installer hash mismatch' }
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Ya19880104/ys-aimemory/aba9a41017a853917e2464611d2a9e05955d9bbc/scripts/connect-chat.ps1' -OutFile $Installer
+if ((Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne 'CFAAFB60A49E152BAD65E05A3B078D38EC435C9A6A2D753E446961957BA8C8B5') { throw 'Installer hash mismatch' }
 notepad $Installer
 ```
 
@@ -41,7 +41,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Url 'https:/
 2. 收據會顯示 `configured_waiting_for_native_hook`、到期時間、回合上限、停止檔位置與 **`activation_prompt`**。在相同專案開啟新的本機 Claude 對話，或透過客戶端重新載入該專案的 MCP 與 Hooks。將收據的完整 `activation_prompt` 貼到要接話的 Claude 對話。必須由 Claude 原樣回覆產生的 `YS_MEMORY_JOIN_...` 字串；不要自行替換原生對話 ID，也不要只把該字串當成人類留言貼上。
 3. 回覆後到 Hub 聊天室核對參與者／接收程式狀態，新增一則人類訊息，讓 Claude 維持閒置。驗收必須看到真正的原生 `chat_read`、`chat_reply`，派送／讀取／回覆收據對應，且回覆出現在聊天室。安裝成功或接收程式在線上，都**不等於原生驗收通過**。新加入從最新訊息開始，所以測試留言要在啟用後才發送。
 
-啟動腳本從固定來源版本 `0f6e56f0e91275820489c1c6effedf879051a905` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply`、`chat_no_reply` 四條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
+啟動腳本從固定來源版本 `1cb0e39d72fcd160b32b1fba220a03f44dbfa56a` 下載五個經 SHA-256 核對的檔案，保留 `scripts/` 與 `memory_hub/` 目錄，再以固定 CA 驗證 Hub 安裝包；不需要 clone 原始碼。它只調整這個專案的 `ys_memory` 設定、有期限的 Stop hook，以及 `chat_status`、`chat_read`、`chat_reply`、`chat_no_reply` 四條精確權限，不更動全域設定、CA 信任、Claude 登入或權限模式。
 
 已有 `ys_memory` 時，必須同時符合完整設定雜湊、原安裝收據、launcher、Hub／CA 與經驗證安裝包才能沿用。未知、被修改或已啟用聊天室的設定會原樣保留並拒絕覆寫，請勿刪除設定繞過檢查；應先檢視設定或使用原收據的解除流程。如果 MCP 已安裝完成、聊天室步驟才失敗，保留該 MCP 安裝供檢查；安裝器不會自行啟動模型回合。
 
@@ -57,6 +57,8 @@ $Receipt = Get-Content -LiteralPath 'PASTE_BOOTSTRAP_SOURCES\chat-bootstrap-rece
 綁定仍存在而想一次完成解除再續期時，可在最後一條指令加上 `--renew`。解除需要安裝環境中已驗證的相依套件，所以使用收據的 Python 路徑。這個啟動腳本適用本機 Claude，不會安裝 Codex 接收程式或 ChatGPT 雲端 plugin。
 
 解除連線會向 Hub 確認釋放：先核對 worker 身分，找到此 worker 在該房間的綁定，以目前 generation 釋放並回讀已釋放狀態。任何一步無法證實時會輸出 `chat_setup_failed: <代碼>`，保留 STOP 與專案設定，不會回報 `disconnected`。聊天工具會在每次寫入前先核對 worker 身分，已寫入的「讀完不回覆」不再被誤報為無法使用。此啟動腳本的 Claude 原生回覆與不回覆完成驗收仍為 **not_run**。
+
+如果解除連線只還原部分專案設定便中止，請重試同一個收據提供的命令。安裝程式會接受已完整還原的原始 MCP 項目，保留其他設定，並略過已還原的檔案；被修改過的項目仍須審查。請保留 STOP、收據與綁定中繼資料；刪除它們會失去安全重試所需的證據。
 
 ## 從 checkout 綁定 Claude 專案
 

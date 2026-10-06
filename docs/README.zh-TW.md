@@ -7,6 +7,7 @@
 | 指南 | English | 繁體中文 |
 | --- | --- | --- |
 | 開始聊天：首次連線與日常使用 | [English](START_CHATTING.md) | [繁體中文](START_CHATTING.zh-TW.md) |
+| 2026-10-06 CI 重跑與客戶端生命週期修正 | [English](VALIDATION_2026-10-06.md) | [繁體中文](VALIDATION_2026-10-06.zh-TW.md) |
 | 2026-10-05 部署、雙語介面與原生準備 | [English](VALIDATION_2026-10-05.md) | [繁體中文](VALIDATION_2026-10-05.zh-TW.md) |
 | 2026-10-04 審查修正及原生生命週期驗收 | [English](REVIEW_CLOSURE_2026-10-04.md) | [繁體中文](REVIEW_CLOSURE_2026-10-04.zh-TW.md) |
 | 2026-10-04 P2 recovery validation | [English](VALIDATION_2026-10-04.md) | [繁體中文](VALIDATION_2026-10-04.zh-TW.md) |
